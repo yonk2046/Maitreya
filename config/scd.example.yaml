@@ -1,0 +1,305 @@
+# SCD Engine — v1.1 預設參數 (Default Thresholds)
+# ----------------------------------------------------
+# 本檔為唯一可調參數來源。修改門檻僅可改本檔，禁止改 core 程式碼。
+# Bump scoring_rubric.version 任何時候修改數字，並在 commit message 註明理由。
+# ----------------------------------------------------
+#
+# === Convention Rules (BINDING — see SCORING_RUBRIC.md §0.4) ===
+#
+#   linear_range: [r_min, r_max]
+#     value = base_at_min + (base_at_max - base_at_min) * clamp((x - r_min)/(r_max - r_min), 0, 1)
+#     if base_at_* unspecified, defaults are 0 and 100
+#     r_min may be > r_max (descending), formula self-consistent
+#
+#   *_curve: {k:v, ...}    piecewise linear between adjacent sorted keys; clamped at endpoints
+#   *_levels: {k:v, ...}   step function: pick value of largest key <= input
+#   *_streak               longest CONSECUTIVE run, NOT cumulative count
+#   pa aggregation         max(non-retest signal) + retest_bonus (if present), clamp at 100
+#
+# === Numeric Policy (BINDING — see SCORING_RUBRIC.md §0.3) ===
+#   - All scoring internal precision: Decimal, prec >= 28, rounding ROUND_HALF_EVEN
+#   - Snapshot quantize: 0.0001 (4 dp)
+#   - Display quantize:  0.1     (1 dp)
+#   - Tie-breaker quantizes composite to 4 dp before sort
+#   - Missing input -> subfactor ABSTAINS (not zero); removed from weighted-avg denominator
+#
+# === Gate-then-Score (BINDING — see SCORING_RUBRIC.md §0.5) ===
+#   When a raw input is also used by a hard gate, the sub-score's linear_range
+#   lower bound MUST be strictly above the gate's lower bound.
+#   v1.1 bumps:
+#     fii.sync_count.linear_range:           [2, 5] -> [3, 6]
+#     main_force.consecutive_days.linear_range: [3, 7] -> [4, 8]
+# ----------------------------------------------------
+
+meta:
+  config_version: "1.3.0"           # T-pivot 加入 temporal + episodes + storage
+  scoring_rubric_version: "1.1.0"   # 分數規則仍不變
+  schema_version: "1.4.0"           # T-pivot schema 加 temporal_state / market_regime / lookback
+  last_updated: "2026-05-22"
+  supersedes: "1.2.0"
+  patches_applied: ["P0-1","P0-2","P0-3","P0-4","P0-5","P1-*","P2-*","T-1","T-2","T-3","T-4","T-5","T-6","T-7"]
+
+# === Storage Layout (BINDING — see STORAGE_LAYOUT.md §6) ===
+storage:
+  base_dir:        "."
+  raw_dir:         "data/raw"
+  reports_dir:     "reports"
+  episodes_dir:    "episodes"
+  state_dir:       "state"
+  parquet_dir:     "parquet"
+  index_file:      "reports/index.json"
+  episodes_index:  "episodes/index.json"
+  state_index:     "state/index.json"
+
+# === Temporal Architecture (see TEMPORAL_ARCHITECTURE.md) ===
+# All defaults conservative; do NOT encode alpha here. Adjust only after P4 backtest.
+temporal:
+  lookback_window_days: 5             # how many prior snapshots feed into temporal_state
+  min_velocity_samples: 2             # below this -> abstain on velocity
+  min_acceleration_samples: 3         # below this -> abstain on acceleration
+  ema_lookbacks: [3, 5]               # which EMAs to compute (in score_tree.root.temporal)
+
+  # ScoreNode paths that get .temporal block. Empty by default; P4 decides what to enable.
+  score_tree_temporal_enabled_paths: []
+
+  # Tier-transition tracking
+  track_tier_transitions: true        # always on; cheap and crucial for state-engine semantics
+
+  # Bootstrap behaviour
+  bootstrap:
+    abstain_temporal_until_window_full: true
+    emit_event: "BOOTSTRAP_SNAPSHOT"
+
+# === Episodes (see EPISODE.md) ===
+# All types disabled until P3a data pipeline is real + P4 IC confirms each type.
+episodes:
+  enabled: false                      # global kill switch
+  index_file: "episodes/index.json"
+  storage_dir: "episodes/"
+
+  types:
+    accumulation:
+      enabled: false
+      rule_version: "v1"
+      trigger_rule:  "main_force_consecutive_days >= 3"
+      ongoing_rule:  "main_force_consecutive_days >= 1"
+      resolve_rule:  "main_force_consecutive_days == 0 for 2 days"
+      fail_rule:     null
+
+    distribution:
+      enabled: false
+      rule_version: "v1"
+      trigger_rule:  "main_force_consecutive_days <= -3"
+      ongoing_rule:  "main_force_consecutive_days <= 0"
+      resolve_rule:  "main_force_consecutive_days >= 0 for 2 days"
+      fail_rule:     null
+
+    breakout_attempt:
+      enabled: false
+      rule_version: "v1"
+      trigger_rule:  "current_price > rolling_high_20d"
+      ongoing_rule:  "current_price > breakout_level - 3%"
+      resolve_rule:  "current_price > rolling_high_20d for 3 days"
+      fail_rule:     "current_price < breakout_level - 3%"
+
+    recovery_attempt:
+      enabled: false
+      rule_version: "v1"
+
+    golden_persistence:
+      enabled: false
+      rule_version: "v1"
+      trigger_rule:  "tier == 'GOLDEN'"
+      ongoing_rule:  "tier == 'GOLDEN'"
+      resolve_rule:  "tier != 'GOLDEN' for 1 day"
+
+    watch_persistence:
+      enabled: false
+      rule_version: "v1"
+
+    margin_decompression:
+      enabled: false
+      rule_version: "v1"
+
+    regime_shift:
+      enabled: false                  # market-level; activate when regime classifier exists
+      rule_version: "v1"
+
+# === Market Regime Classifier (placeholder) ===
+market_regime:
+  enabled: false                      # no real classifier yet
+  classifier: "stub_v0"
+  features:
+    use_vix_proxy:     false
+    use_breadth_index: false
+    use_regime_dwell:  false
+
+# === Feature Flags (BINDING — see FEATURE_FLAGS.md) ===
+# All flags default to OFF. Changing any flag → new config_hash → new snapshot.
+# Flag values enter config_hash; replay must match.
+feature_flags:
+  day_trader_exclusion: false
+  day_trader_exclusion_branches:
+    - "凱基-台北"
+    - "元大-總公司"
+    - "永豐金-台北"
+
+# ===== Hard Gates =====
+gates:
+  cost_safety:
+    lookback_days: 5
+    max_premium_ratio: 1.05            # 現價 / 主力成本 上限
+
+  fii_sync:
+    indicator_brokers:                  # 指標外資分點
+      - JPM
+      - UBS
+      - GS
+      - ML
+      - Citi
+    min_brokers: 2                      # 同步買進至少幾家
+    min_consecutive_days: 3             # 連續同步天數
+
+  main_force:
+    min_consecutive_days: 3
+    volume_increasing_min_streaks: 2
+
+# ===== Stage 1 — Dual Engine =====
+stage_1:
+  weights:
+    fii: 0.5
+    main_force: 0.5
+
+  fii:
+    sync_count:
+      # v1.1 Gate-then-Score: 下界從 2 上移至 3，避免與 G2 (>=2) 重複計分
+      linear_range: [3, 6]              # 3 家 → 0 分，6 家 → 100 分
+      base_at_min: 0
+      base_at_max: 100
+    buy_ratio:
+      linear_range: [0.05, 0.15]        # 5% → 0 分，15% → 100 分
+    holding_trend:
+      up: 100
+      flat: 50
+      down: 0
+    sub_weights:
+      sync: 0.4
+      ratio: 0.4
+      trend: 0.2
+
+  main_force:
+    consecutive_days:
+      # v1.1 Gate-then-Score: 下界從 3 上移至 4，避免與 G3 (>=3) 重複計分
+      linear_range: [4, 8]
+      base_at_min: 0
+      base_at_max: 100
+    lock_strength:                      # main_force_buy / total_volume
+      linear_range: [0.10, 0.30]
+    increasing_streak:
+      per_segment: 25
+      cap: 100
+    top5_concentration:
+      linear_range: [0.50, 0.80]
+    sub_weights:
+      days: 0.3
+      lock: 0.3
+      streak: 0.2
+      concentration: 0.2
+
+# ===== Stage 2 — Behavioral Divergence =====
+stage_2:
+  weights:
+    concentration: 0.5
+    margin: 0.5
+
+  concentration:
+    shareholder_delta:
+      linear_range: [0.0, -0.05]        # 0% → 0 分，-5% → 100 分
+    broker_count_diff_negative_streak:
+      levels: { 5: 100, 3: 60, 0: 0 }
+    large_holder_400:
+      linear_range: [0.0, 0.03]
+    large_holder_1000:
+      linear_range: [0.0, 0.02]
+    sub_weights:
+      shareholders: 0.30
+      diff: 0.20
+      L400: 0.25
+      L1000: 0.25
+
+  margin:
+    maintenance_curve:                  # 維持率 % → 分數
+      130: 100
+      140: 80
+      150: 50
+      160: 20
+    healthy_wash:
+      per_day: 10
+      cap: 100
+    unhealthy_resistance:
+      per_day: -15
+      floor: 0
+    panic_signal:
+      max_maintenance_ratio: 142
+      min_quiet_volume_days: 3
+    sub_weights:
+      maintenance: 0.5
+      healthy_wash: 0.3
+      unhealthy_penalty: 0.2
+
+# ===== Stage 3 — Execution Trigger =====
+stage_3:
+  weights:
+    price_action: 0.6
+    trend_2h: 0.4
+
+  price_action:
+    scores:
+      pin_bar: 40
+      engulfing: 50
+      terminal: 30
+      retest: 20
+    pin_bar:
+      lower_shadow_to_body_ratio: 2.0
+    aggregation: max_with_retest_bonus  # 取最大訊號分；二次回測可疊加 20
+
+  trend_2h:
+    above_ema_positive_slope: 100
+    above_ema_flat_slope: 60
+    below_ema: 0
+
+  trade_type:
+    T1_conditions:
+      max_margin_maintenance_ratio: 140
+      requires_wash_completion: true
+    T2_conditions:
+      requires_fii_lock: true
+      requires_main_force_lock: true
+      requires_breakout_retest: true
+
+# ===== Composite & Tiers =====
+composite:
+  weights:
+    stage_1: 0.40
+    stage_2: 0.35
+    stage_3: 0.25
+
+tiers:
+  golden_min: 85
+  watch_min: 70
+  neutral_min: 50
+
+# ===== Tie-breaker chain =====
+ranking:
+  tie_breakers:
+    - { key: composite_score,            direction: desc }
+    - { key: stage_1,                    direction: desc }
+    - { key: main_force_consecutive_days, direction: desc }
+    - { key: fii_sync_count,             direction: desc }
+    - { key: ticker,                     direction: asc }   # 最終保證決定論
+
+# ===== Data validation =====
+data_validation:
+  on_missing_field: zero_with_warning   # 缺資料 → 子項記 0 並寫 audit_log
+  on_unknown_schema_version: fail       # 嚴格鎖 schema
+  tdcc_max_lag_days: 7                  # 集保週報最多容忍的延遲

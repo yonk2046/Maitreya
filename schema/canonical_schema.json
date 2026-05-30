@@ -1,0 +1,530 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scd.local/schema/canonical_schema.json",
+  "title": "SCD Engine Canonical Snapshot",
+  "description": "Immutable daily snapshot produced by /core. See docs/CANONICAL_SCHEMA.md for field semantics.",
+  "type": "object",
+  "required": [
+    "schema_version", "date", "generated_at", "config_hash", "core_version",
+    "environment", "provenance", "universe_size", "eligible_count", "stocks", "rankings", "audit_log"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "date":           { "type": "string", "format": "date" },
+    "generated_at":   { "type": "string", "format": "date-time",
+                        "description": "ISO 8601 UTC, MUST end with 'Z'. See REPLAY.md §4." },
+    "config_hash":    { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "core_version":   { "type": "string" },
+
+    "environment": {
+      "type": "object",
+      "description": "Replay reproducibility metadata. See REPLAY.md §10.",
+      "required": ["core_commit_sha","python","numpy","pandas","decimal_context","locale","timezone"],
+      "properties": {
+        "core_commit_sha": { "type": "string", "pattern": "^[a-f0-9]{40}$",
+                             "description": "Full git SHA (40 hex chars) of /core at snapshot creation" },
+        "core_version":    { "type": "string", "description": "Human-readable, e.g. 'core@1.0.0+abc1234'" },
+        "python":          { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "numpy":            { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "pandas":           { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "pyyaml":           { "type": "string" },
+        "jsonschema":       { "type": "string" },
+        "decimal_context":  {
+          "type": "object",
+          "required": ["prec","rounding"],
+          "properties": {
+            "prec":     { "type": "integer", "minimum": 28 },
+            "rounding": { "type": "string", "enum": ["ROUND_HALF_EVEN"] }
+          }
+        },
+        "locale":   { "type": "object", "required": ["LC_ALL","LC_NUMERIC"],
+                      "properties": {
+                        "LC_ALL":     { "type": "string" },
+                        "LC_NUMERIC": { "type": "string" }
+                      }
+                    },
+        "timezone": { "type": "string", "enum": ["UTC"], "description": "Internal TZ always UTC" },
+        "os":       { "type": "string", "description": "Informational only; not part of replay match" },
+
+        "lookback_snapshots": {
+          "type": "object",
+          "description": "Map of YYYY-MM-DD -> sha256:<hash> of prior snapshots this snapshot depended on. See TEMPORAL_ARCHITECTURE.md §3.3.",
+          "additionalProperties": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+        },
+        "lookback_window_days": {
+          "type": ["integer","null"],
+          "minimum": 0,
+          "description": "Configured lookback window; null only during bootstrap"
+        }
+      }
+    },
+
+    "provenance": {
+      "type": "object",
+      "description": "Per-source data provenance. See REPLAY.md §9.",
+      "required": ["sources", "field_to_source"],
+      "properties": {
+        "sources": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["dataset", "fetched_at", "raw_file", "raw_sha256", "provides_fields"],
+            "properties": {
+              "dataset":         { "type": "string" },
+              "url":             { "type": "string" },
+              "fetched_at":      { "type": "string", "format": "date-time",
+                                   "description": "UTC, ends with 'Z'" },
+              "raw_file":        { "type": "string",
+                                   "description": "Path under data/raw/<date>/" },
+              "raw_sha256":      { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+              "row_count":       { "type": ["integer","null"], "minimum": 0 },
+              "vendor_id":       { "type": ["string","null"] },
+              "report_date":     { "type": ["string","null"], "format": "date" },
+              "data_lag_days":   { "type": ["integer","null"], "minimum": 0 },
+              "provides_fields": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "field_to_source": {
+          "type": "object",
+          "description": "Map of field name -> source id in sources{}",
+          "additionalProperties": { "type": "string" }
+        },
+        "derived_fields": {
+          "type": "object",
+          "description": "Fields computed by /core, not fetched. Map of field name -> derivation spec.",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["derived_from", "formula", "step"],
+            "properties": {
+              "derived_from": { "type": "array", "items": { "type": "string" } },
+              "formula":      { "type": "string" },
+              "step":         { "type": "string" }
+            }
+          }
+        },
+        "_legacy_groups": {
+          "type": "object",
+          "description": "DEPRECATED: v1.0/v1.1 group-level provenance. Kept for backward read compatibility. Do not write into in v1.2+.",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "source":     { "type": "string" },
+              "fetched_at": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
+    },
+
+    "config_snapshot": { "type": "object" },
+    "universe_size":   { "type": "integer", "minimum": 0 },
+    "eligible_count":  { "type": "integer", "minimum": 0 },
+
+    "market_regime": {
+      "description": "Snapshot-level market regime. Optional in v1.4.0 (placeholder for future classifier). See TEMPORAL_ARCHITECTURE.md TP6.",
+      "type": "object",
+      "properties": {
+        "label":       { "type": ["string","null"] },
+        "classifier":  { "type": "string" },
+        "confidence":  { "type": ["number","null"] },
+        "features":    { "type": "object" }
+      }
+    },
+
+    "episodes_active_at_start": {
+      "type": "array",
+      "description": "Episodes that were already active when this snapshot was generated. See EPISODE.md §6.1.",
+      "items": {
+        "type": "object",
+        "required": ["episode_id","episode_hash"],
+        "properties": {
+          "episode_id":   { "type": "string" },
+          "episode_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+        }
+      }
+    },
+
+    "episodes_changed_today": {
+      "type": "array",
+      "description": "Episodes that changed state on this day (started/updated/resolved/failed/abandoned).",
+      "items": {
+        "type": "object",
+        "required": ["episode_id","change"],
+        "properties": {
+          "episode_id":     { "type": "string" },
+          "change":         { "type": "string", "enum": ["started","updated","resolved","failed","abandoned"] },
+          "delta_summary":  { "type": ["string","null"] },
+          "hash_after":     { "type": ["string","null"], "pattern": "^sha256:[a-f0-9]{64}$|^$" }
+        }
+      }
+    },
+
+    "tier_transitions": {
+      "type": "array",
+      "description": "Per-stock tier transitions on this day. See STORAGE_LAYOUT.md §2.5.",
+      "items": {
+        "type": "object",
+        "required": ["ticker","from_tier","to_tier"],
+        "properties": {
+          "ticker":                  { "type": "string" },
+          "from_tier":               { "type": "string", "enum": ["GOLDEN","WATCH","NEUTRAL","IGNORE","BOOTSTRAP"] },
+          "to_tier":                 { "type": "string", "enum": ["GOLDEN","WATCH","NEUTRAL","IGNORE"] },
+          "from_composite":          { "type": ["string","null"] },
+          "to_composite":            { "type": ["string","null"] },
+          "primary_cause_node_path": { "type": ["string","null"] },
+          "score_delta":             { "type": ["string","null"] },
+          "reason":                  { "type": ["string","null"] }
+        }
+      }
+    },
+
+    "stocks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/StockRecord" }
+    },
+
+    "rankings": {
+      "type": "object",
+      "required": ["golden", "watch", "neutral", "ignored", "sort_keys_used"],
+      "properties": {
+        "golden":         { "type": "array", "items": { "type": "string" } },
+        "watch":          { "type": "array", "items": { "type": "string" } },
+        "neutral":        { "type": "array", "items": { "type": "string" } },
+        "ignored":        { "type": "array", "items": { "type": "string" } },
+        "sort_keys_used": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "audit_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["event", "reason", "step"],
+        "properties": {
+          "ticker": { "type": ["string","null"], "description": "Ticker if event is per-stock; null for snapshot-level events" },
+          "event":  { "type": "string", "enum": [
+            "ELIMINATED",
+            "DATA_WARNING",
+            "TIE_RESOLVED",
+            "INFO",
+            "REPLAY_VERIFIED",
+            "HASH_MISMATCH",
+            "RAW_DATA_HASH_MISMATCH",
+            "CONFIG_HASH_MISMATCH",
+            "ENVIRONMENT_DRIFT",
+            "SCHEMA_VERSION_MISMATCH",
+            "SUBFACTOR_COMPUTED",
+            "FACTOR_LINEAGE",
+            "CONFIG_RESOLVED",
+            "NORMALIZATION_APPLIED",
+            "FEATURE_FLAG_RESOLVED",
+            "ABSTAIN_PROPAGATED",
+            "TIER_TRANSITIONED",
+            "EPISODE_STARTED",
+            "EPISODE_UPDATED",
+            "EPISODE_RESOLVED",
+            "EPISODE_FAILED",
+            "EPISODE_ABANDONED",
+            "REGIME_DETECTED",
+            "LOOKBACK_VERIFIED",
+            "LOOKBACK_VERIFICATION_FAILED",
+            "LOOKBACK_PARTIAL",
+            "BOOTSTRAP_SNAPSHOT",
+            "RAW_ARCHIVED",
+            "WORM_VIOLATION"
+          ]},
+          "reason":     { "type": "string" },
+          "step":       { "type": "string" },
+          "node_path":  { "type": ["string","null"],
+                          "description": "score_tree path for SUBFACTOR_COMPUTED / NORMALIZATION_APPLIED" },
+          "data":       { "type": ["object","null"],
+                          "description": "Free-form structured payload (e.g., raw_inputs, config_keys, before/after values)" }
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "StockRecord": {
+      "type": "object",
+      "required": [
+        "ticker", "name", "market", "current_price",
+        "gates", "stage_1", "stage_2", "stage_3", "composite_score", "tier",
+        "checklist"
+      ],
+      "properties": {
+        "ticker":         { "type": "string", "pattern": "^[0-9A-Z]{3,10}$" },
+        "name":           { "type": "string" },
+        "market":         { "type": "string", "enum": ["TWSE", "TPEx", "Emerging"] },
+        "industry":       { "type": ["string", "null"] },
+
+        "current_price":  { "type": ["number","null"] },
+        "prev_close":     { "type": ["number","null"] },
+        "change_pct":     { "type": ["number","null"] },
+        "volume":         { "type": ["integer","null"], "minimum": 0 },
+        "volume_5d_avg":  { "type": ["integer","null"], "minimum": 0 },
+        "volume_ratio":   { "type": ["number","null"] },
+
+        "fii_net_buy":              { "type": ["integer", "null"] },
+        "fii_buy_ratio":            { "type": ["number", "null"] },
+        "fii_holding_pct":          { "type": ["number", "null"] },
+        "fii_holding_trend_5d":     { "type": ["string", "null"], "enum": ["up", "flat", "down", null] },
+        "fii_sync_count":           { "type": ["integer", "null"] },
+        "fii_brokers_buying":       { "type": "array", "items": { "type": "string" } },
+        "fii_consecutive_buy_days": { "type": ["integer", "null"] },
+
+        "main_force_buy":                  { "type": ["integer", "null"] },
+        "top5_branches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["branch", "buy", "sell", "net"],
+            "properties": {
+              "branch": { "type": "string" },
+              "buy":    { "type": "integer" },
+              "sell":   { "type": "integer" },
+              "net":    { "type": "integer" }
+            }
+          }
+        },
+        "main_force_cost":                 { "type": ["number", "null"] },
+        "main_force_consecutive_days":     { "type": ["integer", "null"] },
+        "main_force_volume_trend":         { "type": "array", "items": { "type": "integer" } },
+        "volume_increasing_streak":        { "type": ["integer", "null"] },
+        "top5_concentration":              { "type": ["number", "null"] },
+        "dealer_net_buy":                  { "type": ["integer", "null"] },
+        "is_day_trader_branch":            { "type": "boolean" },
+
+        "shareholder_count":                  { "type": ["integer", "null"] },
+        "shareholder_count_delta_pct":        { "type": ["number", "null"] },
+        "broker_count_diff":                  { "type": ["integer", "null"] },
+        "broker_count_diff_negative_streak":  { "type": ["integer", "null"] },
+        "large_holder_400_pct":               { "type": ["number", "null"] },
+        "large_holder_400_delta_pct":         { "type": ["number", "null"] },
+        "large_holder_1000_pct":              { "type": ["number", "null"] },
+        "large_holder_1000_delta_pct":        { "type": ["number", "null"] },
+
+        "margin_balance":                    { "type": ["integer", "null"] },
+        "margin_change":                     { "type": ["integer", "null"] },
+        "margin_maintenance_ratio":          { "type": ["number", "null"] },
+        "price_down_margin_down_days_10d":   { "type": ["integer", "null"], "minimum": 0, "maximum": 10 },
+        "price_down_margin_up_days_10d":     { "type": ["integer", "null"], "minimum": 0, "maximum": 10 },
+        "margin_panic_signal":               { "type": "boolean" },
+
+        "pa_signals_30m": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["pin_bar", "engulfing", "terminal", "retest"] }
+        },
+        "trend_2h":         { "type": "string", "enum": ["up", "flat", "down"] },
+        "above_20ema_2h":   { "type": "boolean" },
+        "ema_slope_2h":     { "type": "string", "enum": ["positive", "flat", "negative"] },
+
+        "gates": {
+          "type": "object",
+          "required": ["G1", "G2", "G3", "eliminated_by"],
+          "properties": {
+            "G1":             { "type": "boolean" },
+            "G2":             { "type": "boolean" },
+            "G3":             { "type": "boolean" },
+            "eliminated_by":  { "type": ["string", "null"], "enum": ["G1", "G2", "G3", null] }
+          }
+        },
+
+        "stage_1":            { "type": "number", "minimum": 0, "maximum": 100 },
+        "stage_1_breakdown":  { "type": "object" },
+        "stage_2":            { "type": "number", "minimum": 0, "maximum": 100 },
+        "stage_2_breakdown":  { "type": "object" },
+        "stage_3":            { "type": "number", "minimum": 0, "maximum": 100 },
+        "stage_3_breakdown":  { "type": "object" },
+        "composite_score":    { "type": "number", "minimum": 0, "maximum": 100 },
+        "tier":               { "type": "string", "enum": ["GOLDEN", "WATCH", "NEUTRAL", "IGNORE"] },
+        "trade_type":         { "type": ["string", "null"], "enum": ["T1", "T2", null] },
+        "safety_margin_pct":  { "type": ["number", "null"] },
+
+        "checklist": {
+          "type": "object",
+          "required": [
+            "dual_engine_aligned", "cost_within_5pct",
+            "shareholders_dropping", "margin_healthy",
+            "margin_ratio", "pa_signal_present"
+          ],
+          "properties": {
+            "dual_engine_aligned":   { "type": "boolean" },
+            "cost_within_5pct":      { "type": "boolean" },
+            "shareholders_dropping": { "type": "boolean" },
+            "margin_healthy":        { "type": "boolean" },
+            "margin_ratio":          { "type": ["number", "null"] },
+            "pa_signal_present":     { "type": "boolean" }
+          }
+        },
+
+        "score_tree": {
+          "description": "Hierarchical, fully-decomposed score breakdown. See docs/SCORE_NODE.md.",
+          "type": "object",
+          "required": ["root_path", "root"],
+          "properties": {
+            "root_path": { "type": "string", "const": "composite" },
+            "root":      { "$ref": "#/$defs/ScoreNode" }
+          }
+        },
+
+        "temporal_state": {
+          "description": "Per-stock temporal memory derived from prior snapshots. See TEMPORAL_ARCHITECTURE.md §8.3.",
+          "type": "object",
+          "properties": {
+            "prior_tier":                   { "type": ["string","null"], "enum": ["GOLDEN","WATCH","NEUTRAL","IGNORE","BOOTSTRAP",null] },
+            "tier_in_current_state_days":   { "type": ["integer","null"], "minimum": 0 },
+            "tier_history_lookback":        { "type": "array", "items": { "type": "string", "enum": ["GOLDEN","WATCH","NEUTRAL","IGNORE","BOOTSTRAP"] } },
+            "score_history_lookback":       { "type": "array", "items": { "type": "string", "pattern": "^-?\\d+(\\.\\d{1,4})?$" } },
+            "score_velocity":               { "type": ["string","null"], "description": "Decimal-as-string, signed; abstain if insufficient lookback" },
+            "score_acceleration":           { "type": ["string","null"] },
+            "trend":                        { "type": ["string","null"], "enum": ["accelerating","steady_up","flat","steady_down","decelerating",null] },
+            "current_episode_ids":          { "type": "array", "items": { "type": "string" } },
+            "abstained": {
+              "type": "object",
+              "properties": {
+                "velocity":     { "type": "boolean" },
+                "acceleration": { "type": "boolean" },
+                "trend":        { "type": "boolean" },
+                "reason":       { "type": ["string","null"] }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "ScoreNode": {
+      "description": "Internal score-tree node OR leaf. See docs/SCORE_NODE.md §2.",
+      "type": "object",
+      "required": [
+        "path", "kind", "value", "formula",
+        "config_refs", "config_values_at_eval",
+        "normalization", "abstained"
+      ],
+      "properties": {
+        "path":    { "type": "string", "description": "Dot-separated path from root ('composite')" },
+        "kind":    { "type": "string", "enum": ["internal", "leaf"] },
+        "value":   { "type": "string", "pattern": "^-?\\d+(\\.\\d{1,4})?$",
+                     "description": "Decimal-as-string with up to 4 dp" },
+        "formula": { "type": "string" },
+
+        "inputs": {
+          "description": "Required for kind=internal. Map of child name -> ScoreNode.",
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/ScoreNode" }
+        },
+        "raw_inputs": {
+          "description": "Required for kind=leaf. Map of field name -> raw value.",
+          "type": "object"
+        },
+
+        "config_refs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "config_values_at_eval": {
+          "type": "object",
+          "description": "Snapshot of config values used at evaluation; keys must match config_refs."
+        },
+
+        "normalization": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/NormalizationStep" }
+        },
+
+        "provenance": {
+          "description": "Required for kind=leaf. Map of raw_input field name -> {source_id, derived, derivation_step?}",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["source_id", "derived"],
+            "properties": {
+              "source_id":        { "type": "string",
+                                    "description": "Must exist in provenance.sources" },
+              "derived":          { "type": "boolean" },
+              "derivation_step":  { "type": ["string","null"],
+                                    "description": "If derived=true, must match key in provenance.derived_fields" }
+            }
+          }
+        },
+
+        "abstained":            { "type": "boolean" },
+        "abstain_reason":       { "type": ["string","null"] },
+        "abstain_propagation":  { "type": ["string","null"],
+                                  "enum": ["redistribute_within_siblings", "treat_as_zero", "propagate_to_parent", null] },
+
+        "evaluated":            { "type": ["string","null"],
+                                  "description": "Optional human-readable evaluation trace, e.g. '0 + 100*0 = 0.0000'" },
+        "clamped":              { "type": ["boolean","null"] },
+
+        "temporal": {
+          "description": "Optional temporal context for this node (velocity, acceleration, lookback series). See SCORE_NODE.md §13.",
+          "type": "object",
+          "properties": {
+            "lookback_window_days":    { "type": "integer", "minimum": 1 },
+            "values_series":           { "type": "array", "items": { "type": "string", "pattern": "^-?\\d+(\\.\\d{1,4})?$" } },
+            "series_dates":            { "type": "array", "items": { "type": "string", "format": "date" } },
+            "velocity":                { "type": ["string","null"] },
+            "acceleration":            { "type": ["string","null"] },
+            "ema_3":                   { "type": ["string","null"] },
+            "ema_5":                   { "type": ["string","null"] },
+            "lookback_snapshot_hashes": {
+              "type": "object",
+              "additionalProperties": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+            },
+            "abstained":               { "type": "boolean" },
+            "abstain_reason":          { "type": ["string","null"] }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if":   { "properties": { "kind": { "const": "internal" } } },
+          "then": { "required": ["inputs"] }
+        },
+        {
+          "if":   { "properties": { "kind": { "const": "leaf" } } },
+          "then": { "required": ["raw_inputs", "provenance"] }
+        }
+      ]
+    },
+
+    "NormalizationStep": {
+      "description": "A single transformation step applied to produce a node's value. See docs/SCORE_NODE.md §2.4.",
+      "type": "object",
+      "required": ["op"],
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": [
+            "linear", "piecewise", "step", "lookup",
+            "weighted_sum", "clamp", "quantize",
+            "max_with_retest_bonus", "weight_redistribute",
+            "filter_branches"
+          ]
+        },
+        "r_min":         { "type": ["number","string"] },
+        "r_max":         { "type": ["number","string"] },
+        "base_min":      { "type": ["number","string"] },
+        "base_max":      { "type": ["number","string"] },
+        "curve":         { "type": "object" },
+        "levels":        { "type": "object" },
+        "table":         { "type": "object" },
+        "weights":       { "type": "array", "items": { "type": ["number","string"] } },
+        "min":           { "type": ["number","string"] },
+        "max":           { "type": ["number","string"] },
+        "dp":            { "type": "integer", "minimum": 0 },
+        "rounding":      { "type": "string", "enum": ["ROUND_HALF_EVEN"] },
+        "bonus":         { "type": ["number","string"] },
+        "cap":           { "type": ["number","string"] },
+        "abstained":     { "type": "array", "items": { "type": "string" } },
+        "active_sum":    { "type": ["number","string"] },
+        "excluded":      { "type": "array", "items": { "type": "string" },
+                           "description": "For op=filter_branches: list of branch names removed" }
+      }
+    }
+  }
+}

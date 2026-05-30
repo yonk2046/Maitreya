@@ -1,0 +1,1813 @@
+{
+  "schema_version": "1.4.0",
+  "date": "2026-05-22",
+  "generated_at": "2026-05-22T15:59:00Z",
+  "config_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "core_version": "core@1.0.0-spec",
+  "environment": {
+    "core_commit_sha": "0000000000000000000000000000000000000000",
+    "core_version": "core@1.0.0-spec+0000000",
+    "python": "3.11.7",
+    "numpy": "1.26.4",
+    "pandas": "2.2.0",
+    "pyyaml": "6.0.1",
+    "jsonschema": "4.26.0",
+    "decimal_context": {
+      "prec": 28,
+      "rounding": "ROUND_HALF_EVEN"
+    },
+    "locale": {
+      "LC_ALL": "C.UTF-8",
+      "LC_NUMERIC": "C"
+    },
+    "timezone": "UTC",
+    "os": "linux-5.15.0-x86_64",
+    "lookback_snapshots": {},
+    "lookback_window_days": 5
+  },
+  "provenance": {
+    "sources": {
+      "twse_three_institutional": {
+        "dataset": "TWSE.three_institutional.daily",
+        "url": "https://www.twse.com.tw/rwd/zh/fund/T86",
+        "fetched_at": "2026-05-22T07:30:12Z",
+        "raw_file": "data/raw/2026-05-22/twse_three_institutional.csv",
+        "raw_sha256": "sha256:6f3a000000000000000000000000000000000000000000000000000000000000",
+        "row_count": 1812,
+        "vendor_id": null,
+        "report_date": null,
+        "data_lag_days": 0,
+        "provides_fields": [
+          "fii_net_buy",
+          "fii_buy_ratio",
+          "fii_holding_pct"
+        ]
+      },
+      "vendor_broker_chip": {
+        "dataset": "VendorX.broker_chip.daily",
+        "url": "https://vendor-x.example/api/v3/broker_chip",
+        "fetched_at": "2026-05-22T08:05:33Z",
+        "raw_file": "data/raw/2026-05-22/vendor_broker_chip.csv",
+        "raw_sha256": "sha256:1a2b000000000000000000000000000000000000000000000000000000000000",
+        "row_count": 45230,
+        "vendor_id": "VendorX_v3",
+        "report_date": null,
+        "data_lag_days": 0,
+        "provides_fields": [
+          "top5_branches",
+          "fii_brokers_buying",
+          "dealer_net_buy",
+          "is_day_trader_branch"
+        ]
+      },
+      "twse_margin": {
+        "dataset": "TWSE.margin.daily",
+        "url": "https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN",
+        "fetched_at": "2026-05-22T07:35:00Z",
+        "raw_file": "data/raw/2026-05-22/margin.csv",
+        "raw_sha256": "sha256:3c4d000000000000000000000000000000000000000000000000000000000000",
+        "row_count": 1812,
+        "vendor_id": null,
+        "report_date": null,
+        "data_lag_days": 0,
+        "provides_fields": [
+          "margin_balance",
+          "margin_change",
+          "margin_maintenance_ratio"
+        ]
+      },
+      "tdcc_weekly_distribution": {
+        "dataset": "TDCC.weekly_distribution",
+        "url": "https://www.tdcc.com.tw/portal/zh/smWeb/qryStock",
+        "fetched_at": "2026-05-22T01:00:00Z",
+        "raw_file": "data/raw/2026-05-22/tdcc_weekly_2026-05-17.csv",
+        "raw_sha256": "sha256:5e6f000000000000000000000000000000000000000000000000000000000000",
+        "row_count": 1810,
+        "vendor_id": null,
+        "report_date": "2026-05-17",
+        "data_lag_days": 5,
+        "provides_fields": [
+          "shareholder_count",
+          "large_holder_400_pct",
+          "large_holder_1000_pct"
+        ]
+      },
+      "twse_daily_price": {
+        "dataset": "TWSE.daily_price",
+        "url": "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX",
+        "fetched_at": "2026-05-22T07:00:05Z",
+        "raw_file": "data/raw/2026-05-22/price_volume.csv",
+        "raw_sha256": "sha256:7a8b000000000000000000000000000000000000000000000000000000000000",
+        "row_count": 1812,
+        "vendor_id": null,
+        "report_date": null,
+        "data_lag_days": 0,
+        "provides_fields": [
+          "current_price",
+          "prev_close",
+          "change_pct",
+          "volume",
+          "volume_5d_avg"
+        ]
+      },
+      "realtime_intraday_30m": {
+        "dataset": "Realtime.intraday_30m",
+        "url": "internal://intraday_collector",
+        "fetched_at": "2026-05-22T05:30:00Z",
+        "raw_file": "data/raw/2026-05-22/intraday_kline.parquet",
+        "raw_sha256": "sha256:9c0d000000000000000000000000000000000000000000000000000000000000",
+        "row_count": 16308,
+        "vendor_id": null,
+        "report_date": null,
+        "data_lag_days": 0,
+        "provides_fields": [
+          "pa_signals_30m",
+          "trend_2h",
+          "above_20ema_2h",
+          "ema_slope_2h"
+        ]
+      }
+    },
+    "field_to_source": {
+      "current_price": "twse_daily_price",
+      "prev_close": "twse_daily_price",
+      "change_pct": "twse_daily_price",
+      "volume": "twse_daily_price",
+      "volume_5d_avg": "twse_daily_price",
+      "fii_net_buy": "twse_three_institutional",
+      "fii_buy_ratio": "twse_three_institutional",
+      "fii_holding_pct": "twse_three_institutional",
+      "top5_branches": "vendor_broker_chip",
+      "fii_brokers_buying": "vendor_broker_chip",
+      "dealer_net_buy": "vendor_broker_chip",
+      "is_day_trader_branch": "vendor_broker_chip",
+      "margin_balance": "twse_margin",
+      "margin_change": "twse_margin",
+      "margin_maintenance_ratio": "twse_margin",
+      "shareholder_count": "tdcc_weekly_distribution",
+      "large_holder_400_pct": "tdcc_weekly_distribution",
+      "large_holder_1000_pct": "tdcc_weekly_distribution",
+      "pa_signals_30m": "realtime_intraday_30m",
+      "trend_2h": "realtime_intraday_30m",
+      "above_20ema_2h": "realtime_intraday_30m",
+      "ema_slope_2h": "realtime_intraday_30m"
+    },
+    "derived_fields": {
+      "volume_ratio": {
+        "derived_from": [
+          "volume",
+          "volume_5d_avg"
+        ],
+        "formula": "volume / volume_5d_avg",
+        "step": "core.derivations.volume_ratio"
+      },
+      "main_force_buy": {
+        "derived_from": [
+          "top5_branches[*].net"
+        ],
+        "formula": "sum_positive",
+        "step": "core.derivations.main_force_buy"
+      },
+      "main_force_cost": {
+        "derived_from": [
+          "top5_branches series (5 sessions)",
+          "current_price series"
+        ],
+        "formula": "volume_weighted_avg_of_top5_buys_over_lookback_days",
+        "step": "core.derivations.main_force_cost"
+      },
+      "main_force_consecutive_days": {
+        "derived_from": [
+          "top5_branches series"
+        ],
+        "formula": "longest_consecutive_net_buy_run",
+        "step": "core.derivations.mf_consec_days"
+      },
+      "top5_concentration": {
+        "derived_from": [
+          "top5_branches[*].buy",
+          "vendor_broker_chip.daily_total_buy"
+        ],
+        "formula": "sum(top5.buy) / total_buy",
+        "step": "core.derivations.top5_concentration"
+      },
+      "fii_holding_trend_5d": {
+        "derived_from": [
+          "fii_holding_pct series (5 sessions)"
+        ],
+        "formula": "sign_of_linear_regression_slope",
+        "step": "core.derivations.fii_holding_trend"
+      },
+      "fii_consecutive_buy_days": {
+        "derived_from": [
+          "fii_net_buy series"
+        ],
+        "formula": "longest_consecutive_net_buy_run",
+        "step": "core.derivations.fii_consec_days"
+      },
+      "shareholder_count_delta_pct": {
+        "derived_from": [
+          "tdcc_weekly_distribution.current",
+          "tdcc_weekly_distribution.previous"
+        ],
+        "formula": "(current - previous) / previous",
+        "step": "core.derivations.shareholder_delta"
+      },
+      "safety_margin_pct": {
+        "derived_from": [
+          "main_force_cost",
+          "current_price"
+        ],
+        "formula": "(main_force_cost - current_price) / main_force_cost",
+        "step": "core.derivations.safety_margin"
+      }
+    }
+  },
+  "config_snapshot": {
+    "_note": "完整 config 副本省略，僅展示形式；正式 snapshot 必須完整內嵌 config/scd.yaml。",
+    "config_version": "1.3.0",
+    "scoring_rubric_version": "1.1.0",
+    "composite.weights": [
+      0.4,
+      0.35,
+      0.25
+    ],
+    "stage_1.fii.sync_count.linear_range": [
+      3,
+      6
+    ],
+    "stage_1.main_force.consecutive_days.linear_range": [
+      4,
+      8
+    ],
+    "tiers": {
+      "golden_min": 85,
+      "watch_min": 70,
+      "neutral_min": 50
+    },
+    "feature_flags": {
+      "day_trader_exclusion": false,
+      "day_trader_exclusion_branches": [
+        "凱基-台北",
+        "元大-總公司",
+        "永豐金-台北"
+      ]
+    },
+    "temporal": {
+      "lookback_window_days": 5,
+      "min_velocity_samples": 2,
+      "min_acceleration_samples": 3
+    },
+    "episodes": {
+      "enabled": false
+    },
+    "market_regime": {
+      "enabled": false,
+      "classifier": "stub_v0"
+    }
+  },
+  "universe_size": 1800,
+  "eligible_count": 142,
+  "stocks": [
+    {
+      "ticker": "3481",
+      "name": "群創",
+      "market": "TWSE",
+      "industry": "光電",
+      "current_price": 19.75,
+      "prev_close": 19.4,
+      "change_pct": 1.8,
+      "volume": 215430,
+      "volume_5d_avg": 118000,
+      "volume_ratio": 1.83,
+      "fii_net_buy": 98089,
+      "fii_buy_ratio": 0.12,
+      "fii_holding_pct": 28.4,
+      "fii_holding_trend_5d": "up",
+      "fii_sync_count": 3,
+      "fii_brokers_buying": [
+        "JPM",
+        "UBS",
+        "GS"
+      ],
+      "fii_consecutive_buy_days": 4,
+      "main_force_buy": 192341,
+      "top5_branches": [
+        {
+          "branch": "美林-台北",
+          "buy": 51200,
+          "sell": 12000,
+          "net": 39200
+        },
+        {
+          "branch": "摩根大通-台北",
+          "buy": 48030,
+          "sell": 11400,
+          "net": 36630
+        },
+        {
+          "branch": "瑞銀-高雄",
+          "buy": 38900,
+          "sell": 10200,
+          "net": 28700
+        },
+        {
+          "branch": "高盛-台北",
+          "buy": 32100,
+          "sell": 8800,
+          "net": 23300
+        },
+        {
+          "branch": "花旗環球",
+          "buy": 22011,
+          "sell": 4400,
+          "net": 17611
+        }
+      ],
+      "main_force_cost": 18.85,
+      "main_force_consecutive_days": 5,
+      "main_force_volume_trend": [
+        21000,
+        28000,
+        35000,
+        42000,
+        66341
+      ],
+      "volume_increasing_streak": 3,
+      "top5_concentration": 0.7,
+      "dealer_net_buy": 4220,
+      "is_day_trader_branch": false,
+      "shareholder_count": 360500,
+      "shareholder_count_delta_pct": -0.032,
+      "broker_count_diff": -180,
+      "broker_count_diff_negative_streak": 5,
+      "large_holder_400_pct": 21.4,
+      "large_holder_400_delta_pct": 0.018,
+      "large_holder_1000_pct": 14.9,
+      "large_holder_1000_delta_pct": 0.012,
+      "margin_balance": 86420,
+      "margin_change": -1240,
+      "margin_maintenance_ratio": 138.0,
+      "price_down_margin_down_days_10d": 6,
+      "price_down_margin_up_days_10d": 0,
+      "margin_panic_signal": true,
+      "pa_signals_30m": [
+        "engulfing",
+        "retest"
+      ],
+      "trend_2h": "up",
+      "above_20ema_2h": true,
+      "ema_slope_2h": "positive",
+      "gates": {
+        "G1": true,
+        "G2": true,
+        "G3": true,
+        "eliminated_by": null
+      },
+      "stage_1": 50.9166,
+      "stage_1_breakdown": {
+        "_decimal_verified": true,
+        "fii_sub": 48.0,
+        "fii_sub_breakdown": {
+          "sync": 0.0,
+          "ratio": 70.0,
+          "trend": 100
+        },
+        "main_force_sub": 53.8333,
+        "main_force_sub_breakdown": {
+          "days": 25.0,
+          "lock": 60.0,
+          "streak": 75,
+          "concentration": 66.6667
+        }
+      },
+      "stage_2": 64.6,
+      "stage_2_breakdown": {
+        "_decimal_verified": true,
+        "concentration_sub": 69.2,
+        "concentration_sub_breakdown": {
+          "shareholders": 64.0,
+          "diff": 100,
+          "L400": 60.0,
+          "L1000": 60.0
+        },
+        "margin_sub": 60.0,
+        "margin_sub_breakdown": {
+          "maintenance": 84.0,
+          "healthy_wash": 60,
+          "unhealthy_penalty": 0
+        }
+      },
+      "stage_3": 82.0,
+      "stage_3_breakdown": {
+        "_decimal_verified": true,
+        "price_action_sub": 70,
+        "trend_2h_sub": 100
+      },
+      "composite_score": 63.4766,
+      "tier": "NEUTRAL",
+      "trade_type": "T2",
+      "safety_margin_pct": -0.0477,
+      "_audit_trail": "v1.1 Gate-then-Score: fii_sync=3 maps to 0 (was 50 in v1.0); mf_consec=5 maps to 25 (was 80 in v1.0). Composite drops from 72.15→63.48 (NEUTRAL). See SCORING_RUBRIC.md §7.2.",
+      "checklist": {
+        "dual_engine_aligned": true,
+        "cost_within_5pct": true,
+        "shareholders_dropping": true,
+        "margin_healthy": true,
+        "margin_ratio": 138.0,
+        "pa_signal_present": true
+      },
+      "score_tree": {
+        "root_path": "composite",
+        "root": {
+          "path": "composite",
+          "kind": "internal",
+          "value": "63.4766",
+          "formula": "0.40*chip_score + 0.35*behavior_score + 0.25*structure_score",
+          "inputs": {
+            "chip_score": {
+              "path": "composite.chip_score",
+              "kind": "internal",
+              "value": "50.9166",
+              "formula": "0.5*fii_sub + 0.5*mainforce_sub",
+              "inputs": {
+                "fii_sub": {
+                  "path": "composite.chip_score.fii_sub",
+                  "kind": "internal",
+                  "value": "48.0000",
+                  "formula": "0.4*sync_score + 0.4*ratio_score + 0.2*trend_score",
+                  "inputs": {
+                    "sync_score": {
+                      "path": "composite.chip_score.fii_sub.sync_score",
+                      "kind": "leaf",
+                      "value": "0.0000",
+                      "formula": "linear_range(x=fii_sync_count, r_min=3, r_max=6, base_min=0, base_max=100)",
+                      "raw_inputs": {
+                        "fii_sync_count": 3
+                      },
+                      "config_refs": [
+                        "stage_1.fii.sync_count.linear_range",
+                        "stage_1.fii.sync_count.base_at_min",
+                        "stage_1.fii.sync_count.base_at_max"
+                      ],
+                      "config_values_at_eval": {
+                        "stage_1.fii.sync_count.linear_range": [
+                          3,
+                          6
+                        ],
+                        "stage_1.fii.sync_count.base_at_min": 0,
+                        "stage_1.fii.sync_count.base_at_max": 100
+                      },
+                      "normalization": [
+                        {
+                          "op": "linear",
+                          "r_min": 3,
+                          "r_max": 6,
+                          "base_min": 0,
+                          "base_max": 100
+                        },
+                        {
+                          "op": "clamp",
+                          "min": 0,
+                          "max": 100
+                        },
+                        {
+                          "op": "quantize",
+                          "dp": 4,
+                          "rounding": "ROUND_HALF_EVEN"
+                        }
+                      ],
+                      "abstained": false,
+                      "abstain_reason": null,
+                      "provenance": {
+                        "fii_sync_count": {
+                          "source_id": "vendor_broker_chip",
+                          "derived": true,
+                          "derivation_step": "core.derivations.fii_sync_count"
+                        }
+                      },
+                      "evaluated": "0 + 100*clamp((3-3)/(6-3),0,1) = 0 + 100*0 = 0.0000",
+                      "clamped": false
+                    },
+                    "ratio_score": {
+                      "path": "composite.chip_score.fii_sub.ratio_score",
+                      "kind": "leaf",
+                      "value": "70.0000",
+                      "formula": "linear_range(x=fii_buy_ratio, r_min=0.05, r_max=0.15)",
+                      "raw_inputs": {
+                        "fii_buy_ratio": "0.12"
+                      },
+                      "config_refs": [
+                        "stage_1.fii.buy_ratio.linear_range"
+                      ],
+                      "config_values_at_eval": {
+                        "stage_1.fii.buy_ratio.linear_range": [
+                          0.05,
+                          0.15
+                        ]
+                      },
+                      "normalization": [
+                        {
+                          "op": "linear",
+                          "r_min": "0.05",
+                          "r_max": "0.15",
+                          "base_min": 0,
+                          "base_max": 100
+                        },
+                        {
+                          "op": "clamp",
+                          "min": 0,
+                          "max": 100
+                        },
+                        {
+                          "op": "quantize",
+                          "dp": 4,
+                          "rounding": "ROUND_HALF_EVEN"
+                        }
+                      ],
+                      "abstained": false,
+                      "abstain_reason": null,
+                      "provenance": {
+                        "fii_buy_ratio": {
+                          "source_id": "twse_three_institutional",
+                          "derived": false,
+                          "derivation_step": null
+                        }
+                      },
+                      "evaluated": "100*(0.12-0.05)/(0.15-0.05) = 70.0000",
+                      "clamped": false
+                    },
+                    "trend_score": {
+                      "path": "composite.chip_score.fii_sub.trend_score",
+                      "kind": "leaf",
+                      "value": "100.0000",
+                      "formula": "lookup(fii_holding_trend_5d, {up:100, flat:50, down:0})",
+                      "raw_inputs": {
+                        "fii_holding_trend_5d": "up"
+                      },
+                      "config_refs": [
+                        "stage_1.fii.holding_trend"
+                      ],
+                      "config_values_at_eval": {
+                        "stage_1.fii.holding_trend": {
+                          "up": 100,
+                          "flat": 50,
+                          "down": 0
+                        }
+                      },
+                      "normalization": [
+                        {
+                          "op": "lookup",
+                          "table": {
+                            "up": 100,
+                            "flat": 50,
+                            "down": 0
+                          }
+                        },
+                        {
+                          "op": "quantize",
+                          "dp": 4,
+                          "rounding": "ROUND_HALF_EVEN"
+                        }
+                      ],
+                      "abstained": false,
+                      "abstain_reason": null,
+                      "provenance": {
+                        "fii_holding_trend_5d": {
+                          "source_id": "twse_three_institutional",
+                          "derived": true,
+                          "derivation_step": "core.derivations.fii_holding_trend"
+                        }
+                      },
+                      "evaluated": "lookup('up') = 100.0000",
+                      "clamped": false
+                    }
+                  },
+                  "config_refs": [
+                    "stage_1.fii.sub_weights"
+                  ],
+                  "config_values_at_eval": {
+                    "stage_1.fii.sub_weights": {
+                      "sync": 0.4,
+                      "ratio": 0.4,
+                      "trend": 0.2
+                    }
+                  },
+                  "normalization": [
+                    {
+                      "op": "weighted_sum",
+                      "weights": [
+                        "0.4",
+                        "0.4",
+                        "0.2"
+                      ]
+                    },
+                    {
+                      "op": "quantize",
+                      "dp": 4,
+                      "rounding": "ROUND_HALF_EVEN"
+                    }
+                  ],
+                  "abstained": false,
+                  "abstain_reason": null,
+                  "abstain_propagation": "redistribute_within_siblings"
+                },
+                "mainforce_sub": {
+                  "path": "composite.chip_score.mainforce_sub",
+                  "kind": "internal",
+                  "value": "53.8333",
+                  "formula": "0.3*days + 0.3*lock + 0.2*streak + 0.2*concentration",
+                  "inputs": {
+                    "days_score": {
+                      "path": "composite.chip_score.mainforce_sub.days_score",
+                      "kind": "leaf",
+                      "value": "25.0000",
+                      "formula": "linear_range(x=main_force_consecutive_days, r_min=4, r_max=8, base_min=0, base_max=100)",
+                      "raw_inputs": {
+                        "main_force_consecutive_days": 5
+                      },
+                      "config_refs": [
+                        "stage_1.main_force.consecutive_days.linear_range",
+                        "stage_1.main_force.consecutive_days.base_at_min",
+                        "stage_1.main_force.consecutive_days.base_at_max"
+                      ],
+                      "config_values_at_eval": {
+                        "stage_1.main_force.consecutive_days.linear_range": [
+                          4,
+                          8
+                        ],
+                        "stage_1.main_force.consecutive_days.base_at_min": 0,
+                        "stage_1.main_force.consecutive_days.base_at_max": 100
+                      },
+                      "normalization": [
+                        {
+                          "op": "linear",
+                          "r_min": 4,
+                          "r_max": 8,
+                          "base_min": 0,
+                          "base_max": 100
+                        },
+                        {
+                          "op": "clamp",
+                          "min": 0,
+                          "max": 100
+                        },
+                        {
+                          "op": "quantize",
+                          "dp": 4,
+                          "rounding": "ROUND_HALF_EVEN"
+                        }
+                      ],
+                      "abstained": false,
+                      "abstain_reason": null,
+                      "provenance": {
+                        "main_force_consecutive_days": {
+                          "source_id": "vendor_broker_chip",
+                          "derived": true,
+                          "derivation_step": "core.derivations.mf_consec_days"
+                        }
+                      },
+                      "evaluated": "0 + 100*(5-4)/(8-4) = 25.0000",
+                      "clamped": false
+                    },
+                    "lock_score": {
+                      "path": "composite.chip_score.mainforce_sub.lock_score",
+                      "kind": "leaf",
+                      "value": "60.0000",
+                      "formula": "linear_range(x=main_force_buy/total_volume, r_min=0.10, r_max=0.30)",
+                      "raw_inputs": {
+                        "main_force_buy_ratio": "0.22"
+                      },
+                      "config_refs": [
+                        "stage_1.main_force.lock_strength.linear_range"
+                      ],
+                      "config_values_at_eval": {
+                        "stage_1.main_force.lock_strength.linear_range": [
+                          0.1,
+                          0.3
+                        ]
+                      },
+                      "normalization": [
+                        {
+                          "op": "linear",
+                          "r_min": "0.10",
+                          "r_max": "0.30",
+                          "base_min": 0,
+                          "base_max": 100
+                        },
+                        {
+                          "op": "clamp",
+                          "min": 0,
+                          "max": 100
+                        },
+                        {
+                          "op": "quantize",
+                          "dp": 4,
+                          "rounding": "ROUND_HALF_EVEN"
+                        }
+                      ],
+                      "abstained": false,
+                      "abstain_reason": null,
+                      "provenance": {
+                        "main_force_buy_ratio": {
+                          "source_id": "vendor_broker_chip",
+                          "derived": true,
+                          "derivation_step": "core.derivations.main_force_buy"
+                        }
+                      },
+                      "evaluated": "100*(0.22-0.10)/(0.30-0.10) = 60.0000",
+                      "clamped": false
+                    },
+                    "streak_score": {
+                      "path": "composite.chip_score.mainforce_sub.streak_score",
+                      "kind": "leaf",
+                      "value": "75.0000",
+                      "formula": "min(25*streak_count, 100)",
+                      "raw_inputs": {
+                        "volume_increasing_streak": 3
+                      },
+                      "config_refs": [
+                        "stage_1.main_force.increasing_streak.per_segment",
+                        "stage_1.main_force.increasing_streak.cap"
+                      ],
+                      "config_values_at_eval": {
+                        "stage_1.main_force.increasing_streak.per_segment": 25,
+                        "stage_1.main_force.increasing_streak.cap": 100
+                      },
+                      "normalization": [
+                        {
+                          "op": "clamp",
+                          "min": 0,
+                          "max": 100
+                        },
+                        {
+                          "op": "quantize",
+                          "dp": 4,
+                          "rounding": "ROUND_HALF_EVEN"
+                        }
+                      ],
+                      "abstained": false,
+                      "abstain_reason": null,
+                      "provenance": {
+                        "volume_increasing_streak": {
+                          "source_id": "vendor_broker_chip",
+                          "derived": true,
+                          "derivation_step": "core.derivations.volume_increasing_streak"
+                        }
+                      },
+                      "evaluated": "min(25*3, 100) = 75.0000",
+                      "clamped": false
+                    },
+                    "concentration_score": {
+                      "path": "composite.chip_score.mainforce_sub.concentration_score",
+                      "kind": "leaf",
+                      "value": "66.6667",
+                      "formula": "linear_range(x=top5_concentration, r_min=0.50, r_max=0.80) [day_trader_exclusion=false: no filtering applied]",
+                      "raw_inputs": {
+                        "top5_concentration": "0.70"
+                      },
+                      "config_refs": [
+                        "stage_1.main_force.top5_concentration.linear_range",
+                        "feature_flags.day_trader_exclusion"
+                      ],
+                      "config_values_at_eval": {
+                        "stage_1.main_force.top5_concentration.linear_range": [
+                          0.5,
+                          0.8
+                        ],
+                        "feature_flags.day_trader_exclusion": false
+                      },
+                      "normalization": [
+                        {
+                          "op": "linear",
+                          "r_min": "0.50",
+                          "r_max": "0.80",
+                          "base_min": 0,
+                          "base_max": 100
+                        },
+                        {
+                          "op": "clamp",
+                          "min": 0,
+                          "max": 100
+                        },
+                        {
+                          "op": "quantize",
+                          "dp": 4,
+                          "rounding": "ROUND_HALF_EVEN"
+                        }
+                      ],
+                      "abstained": false,
+                      "abstain_reason": null,
+                      "provenance": {
+                        "top5_concentration": {
+                          "source_id": "vendor_broker_chip",
+                          "derived": true,
+                          "derivation_step": "core.derivations.top5_concentration"
+                        }
+                      },
+                      "evaluated": "100*(0.70-0.50)/(0.80-0.50) = 66.6667",
+                      "clamped": false
+                    }
+                  },
+                  "config_refs": [
+                    "stage_1.main_force.sub_weights"
+                  ],
+                  "config_values_at_eval": {
+                    "stage_1.main_force.sub_weights": {
+                      "days": 0.3,
+                      "lock": 0.3,
+                      "streak": 0.2,
+                      "concentration": 0.2
+                    }
+                  },
+                  "normalization": [
+                    {
+                      "op": "weighted_sum",
+                      "weights": [
+                        "0.3",
+                        "0.3",
+                        "0.2",
+                        "0.2"
+                      ]
+                    },
+                    {
+                      "op": "quantize",
+                      "dp": 4,
+                      "rounding": "ROUND_HALF_EVEN"
+                    }
+                  ],
+                  "abstained": false,
+                  "abstain_reason": null,
+                  "abstain_propagation": "redistribute_within_siblings"
+                }
+              },
+              "config_refs": [
+                "stage_1.weights"
+              ],
+              "config_values_at_eval": {
+                "stage_1.weights": {
+                  "fii": 0.5,
+                  "main_force": 0.5
+                }
+              },
+              "normalization": [
+                {
+                  "op": "weighted_sum",
+                  "weights": [
+                    "0.5",
+                    "0.5"
+                  ]
+                },
+                {
+                  "op": "quantize",
+                  "dp": 4,
+                  "rounding": "ROUND_HALF_EVEN"
+                }
+              ],
+              "abstained": false,
+              "abstain_reason": null,
+              "abstain_propagation": "redistribute_within_siblings"
+            },
+            "behavior_score": {
+              "path": "composite.behavior_score",
+              "kind": "internal",
+              "value": "64.6000",
+              "formula": "0.5*concentration_sub + 0.5*margin_sub",
+              "inputs": {
+                "concentration_sub": {
+                  "path": "composite.behavior_score.concentration_sub",
+                  "kind": "internal",
+                  "value": "69.2000",
+                  "formula": "0.3*shareholders + 0.2*diff + 0.25*L400 + 0.25*L1000",
+                  "inputs": {
+                    "shareholders_score": {
+                      "path": "composite.behavior_score.concentration_sub.shareholders_score",
+                      "kind": "leaf",
+                      "value": "64.0000",
+                      "formula": "linear_range(x, r_min=0.0, r_max=-0.05)  [descending]",
+                      "raw_inputs": {
+                        "shareholder_count_delta_pct": "-0.032"
+                      },
+                      "config_refs": [
+                        "stage_2.concentration.shareholder_delta.linear_range"
+                      ],
+                      "config_values_at_eval": {
+                        "stage_2.concentration.shareholder_delta.linear_range": [
+                          0.0,
+                          -0.05
+                        ]
+                      },
+                      "normalization": [
+                        {
+                          "op": "linear",
+                          "r_min": "0.0",
+                          "r_max": "-0.05",
+                          "base_min": 0,
+                          "base_max": 100
+                        },
+                        {
+                          "op": "clamp",
+                          "min": 0,
+                          "max": 100
+                        },
+                        {
+                          "op": "quantize",
+                          "dp": 4,
+                          "rounding": "ROUND_HALF_EVEN"
+                        }
+                      ],
+                      "abstained": false,
+                      "abstain_reason": null,
+                      "provenance": {
+                        "shareholder_count_delta_pct": {
+                          "source_id": "tdcc_weekly_distribution",
+                          "derived": true,
+                          "derivation_step": "core.derivations.shareholder_delta"
+                        }
+                      },
+                      "evaluated": "100*(-0.032-0)/(-0.05-0) = 64.0000",
+                      "clamped": false
+                    },
+                    "diff_score": {
+                      "path": "composite.behavior_score.concentration_sub.diff_score",
+                      "kind": "leaf",
+                      "value": "100.0000",
+                      "formula": "step_function(x, levels={5:100, 3:60, 0:0})",
+                      "raw_inputs": {
+                        "broker_count_diff_negative_streak": 5
+                      },
+                      "config_refs": [
+                        "stage_2.concentration.broker_count_diff_negative_streak.levels"
+                      ],
+                      "config_values_at_eval": {
+                        "stage_2.concentration.broker_count_diff_negative_streak.levels": {
+                          "5": 100,
+                          "3": 60,
+                          "0": 0
+                        }
+                      },
+                      "normalization": [
+                        {
+                          "op": "step",
+                          "levels": {
+                            "5": 100,
+                            "3": 60,
+                            "0": 0
+                          }
+                        },
+                        {
+                          "op": "quantize",
+                          "dp": 4,
+                          "rounding": "ROUND_HALF_EVEN"
+                        }
+                      ],
+                      "abstained": false,
+                      "abstain_reason": null,
+                      "provenance": {
+                        "broker_count_diff_negative_streak": {
+                          "source_id": "vendor_broker_chip",
+                          "derived": true,
+                          "derivation_step": "core.derivations.broker_diff_streak"
+                        }
+                      },
+                      "evaluated": "largest_key_le(5, [0,3,5]) = 5 → 100.0000",
+                      "clamped": false
+                    },
+                    "L400_score": {
+                      "path": "composite.behavior_score.concentration_sub.L400_score",
+                      "kind": "leaf",
+                      "value": "60.0000",
+                      "formula": "linear_range(x, r_min=0, r_max=0.03)",
+                      "raw_inputs": {
+                        "large_holder_400_delta_pct": "0.018"
+                      },
+                      "config_refs": [
+                        "stage_2.concentration.large_holder_400.linear_range"
+                      ],
+                      "config_values_at_eval": {
+                        "stage_2.concentration.large_holder_400.linear_range": [
+                          0.0,
+                          0.03
+                        ]
+                      },
+                      "normalization": [
+                        {
+                          "op": "linear",
+                          "r_min": "0.0",
+                          "r_max": "0.03",
+                          "base_min": 0,
+                          "base_max": 100
+                        },
+                        {
+                          "op": "clamp",
+                          "min": 0,
+                          "max": 100
+                        },
+                        {
+                          "op": "quantize",
+                          "dp": 4,
+                          "rounding": "ROUND_HALF_EVEN"
+                        }
+                      ],
+                      "abstained": false,
+                      "abstain_reason": null,
+                      "provenance": {
+                        "large_holder_400_delta_pct": {
+                          "source_id": "tdcc_weekly_distribution",
+                          "derived": true,
+                          "derivation_step": "core.derivations.large_holder_delta"
+                        }
+                      },
+                      "evaluated": "100*0.018/0.03 = 60.0000",
+                      "clamped": false
+                    },
+                    "L1000_score": {
+                      "path": "composite.behavior_score.concentration_sub.L1000_score",
+                      "kind": "leaf",
+                      "value": "60.0000",
+                      "formula": "linear_range(x, r_min=0, r_max=0.02)",
+                      "raw_inputs": {
+                        "large_holder_1000_delta_pct": "0.012"
+                      },
+                      "config_refs": [
+                        "stage_2.concentration.large_holder_1000.linear_range"
+                      ],
+                      "config_values_at_eval": {
+                        "stage_2.concentration.large_holder_1000.linear_range": [
+                          0.0,
+                          0.02
+                        ]
+                      },
+                      "normalization": [
+                        {
+                          "op": "linear",
+                          "r_min": "0.0",
+                          "r_max": "0.02",
+                          "base_min": 0,
+                          "base_max": 100
+                        },
+                        {
+                          "op": "clamp",
+                          "min": 0,
+                          "max": 100
+                        },
+                        {
+                          "op": "quantize",
+                          "dp": 4,
+                          "rounding": "ROUND_HALF_EVEN"
+                        }
+                      ],
+                      "abstained": false,
+                      "abstain_reason": null,
+                      "provenance": {
+                        "large_holder_1000_delta_pct": {
+                          "source_id": "tdcc_weekly_distribution",
+                          "derived": true,
+                          "derivation_step": "core.derivations.large_holder_delta"
+                        }
+                      },
+                      "evaluated": "100*0.012/0.02 = 60.0000",
+                      "clamped": false
+                    }
+                  },
+                  "config_refs": [
+                    "stage_2.concentration.sub_weights"
+                  ],
+                  "config_values_at_eval": {
+                    "stage_2.concentration.sub_weights": {
+                      "shareholders": 0.3,
+                      "diff": 0.2,
+                      "L400": 0.25,
+                      "L1000": 0.25
+                    }
+                  },
+                  "normalization": [
+                    {
+                      "op": "weighted_sum",
+                      "weights": [
+                        "0.3",
+                        "0.2",
+                        "0.25",
+                        "0.25"
+                      ]
+                    },
+                    {
+                      "op": "quantize",
+                      "dp": 4,
+                      "rounding": "ROUND_HALF_EVEN"
+                    }
+                  ],
+                  "abstained": false,
+                  "abstain_reason": null,
+                  "abstain_propagation": "redistribute_within_siblings"
+                },
+                "margin_sub": {
+                  "path": "composite.behavior_score.margin_sub",
+                  "kind": "internal",
+                  "value": "60.0000",
+                  "formula": "0.5*maintenance + 0.3*wash + 0.2*penalty",
+                  "inputs": {
+                    "maintenance_score": {
+                      "path": "composite.behavior_score.margin_sub.maintenance_score",
+                      "kind": "leaf",
+                      "value": "84.0000",
+                      "formula": "piecewise(x, curve={130:100,140:80,150:50,160:20})",
+                      "raw_inputs": {
+                        "margin_maintenance_ratio": "138"
+                      },
+                      "config_refs": [
+                        "stage_2.margin.maintenance_curve"
+                      ],
+                      "config_values_at_eval": {
+                        "stage_2.margin.maintenance_curve": {
+                          "130": 100,
+                          "140": 80,
+                          "150": 50,
+                          "160": 20
+                        }
+                      },
+                      "normalization": [
+                        {
+                          "op": "piecewise",
+                          "curve": {
+                            "130": 100,
+                            "140": 80,
+                            "150": 50,
+                            "160": 20
+                          }
+                        },
+                        {
+                          "op": "clamp",
+                          "min": 0,
+                          "max": 100
+                        },
+                        {
+                          "op": "quantize",
+                          "dp": 4,
+                          "rounding": "ROUND_HALF_EVEN"
+                        }
+                      ],
+                      "abstained": false,
+                      "abstain_reason": null,
+                      "provenance": {
+                        "margin_maintenance_ratio": {
+                          "source_id": "twse_margin",
+                          "derived": false,
+                          "derivation_step": null
+                        }
+                      },
+                      "evaluated": "between 130(100) and 140(80): 100 - 20*(138-130)/(140-130) = 84.0000",
+                      "clamped": false
+                    },
+                    "wash_score": {
+                      "path": "composite.behavior_score.margin_sub.wash_score",
+                      "kind": "leaf",
+                      "value": "60.0000",
+                      "formula": "min(10*healthy_days, 100)",
+                      "raw_inputs": {
+                        "price_down_margin_down_days_10d": 6
+                      },
+                      "config_refs": [
+                        "stage_2.margin.healthy_wash.per_day",
+                        "stage_2.margin.healthy_wash.cap"
+                      ],
+                      "config_values_at_eval": {
+                        "stage_2.margin.healthy_wash.per_day": 10,
+                        "stage_2.margin.healthy_wash.cap": 100
+                      },
+                      "normalization": [
+                        {
+                          "op": "clamp",
+                          "min": 0,
+                          "max": 100
+                        },
+                        {
+                          "op": "quantize",
+                          "dp": 4,
+                          "rounding": "ROUND_HALF_EVEN"
+                        }
+                      ],
+                      "abstained": false,
+                      "abstain_reason": null,
+                      "provenance": {
+                        "price_down_margin_down_days_10d": {
+                          "source_id": "twse_margin",
+                          "derived": true,
+                          "derivation_step": "core.derivations.healthy_wash_days"
+                        }
+                      },
+                      "evaluated": "min(10*6, 100) = 60.0000",
+                      "clamped": false
+                    },
+                    "penalty_score": {
+                      "path": "composite.behavior_score.margin_sub.penalty_score",
+                      "kind": "leaf",
+                      "value": "0.0000",
+                      "formula": "max(0, -15*unhealthy_days)",
+                      "raw_inputs": {
+                        "price_down_margin_up_days_10d": 0
+                      },
+                      "config_refs": [
+                        "stage_2.margin.unhealthy_resistance.per_day",
+                        "stage_2.margin.unhealthy_resistance.floor"
+                      ],
+                      "config_values_at_eval": {
+                        "stage_2.margin.unhealthy_resistance.per_day": -15,
+                        "stage_2.margin.unhealthy_resistance.floor": 0
+                      },
+                      "normalization": [
+                        {
+                          "op": "clamp",
+                          "min": 0,
+                          "max": 100
+                        },
+                        {
+                          "op": "quantize",
+                          "dp": 4,
+                          "rounding": "ROUND_HALF_EVEN"
+                        }
+                      ],
+                      "abstained": false,
+                      "abstain_reason": null,
+                      "provenance": {
+                        "price_down_margin_up_days_10d": {
+                          "source_id": "twse_margin",
+                          "derived": true,
+                          "derivation_step": "core.derivations.unhealthy_days"
+                        }
+                      },
+                      "evaluated": "max(0, -15*0) = 0.0000",
+                      "clamped": false
+                    }
+                  },
+                  "config_refs": [
+                    "stage_2.margin.sub_weights"
+                  ],
+                  "config_values_at_eval": {
+                    "stage_2.margin.sub_weights": {
+                      "maintenance": 0.5,
+                      "healthy_wash": 0.3,
+                      "unhealthy_penalty": 0.2
+                    }
+                  },
+                  "normalization": [
+                    {
+                      "op": "weighted_sum",
+                      "weights": [
+                        "0.5",
+                        "0.3",
+                        "0.2"
+                      ]
+                    },
+                    {
+                      "op": "quantize",
+                      "dp": 4,
+                      "rounding": "ROUND_HALF_EVEN"
+                    }
+                  ],
+                  "abstained": false,
+                  "abstain_reason": null,
+                  "abstain_propagation": "redistribute_within_siblings"
+                }
+              },
+              "config_refs": [
+                "stage_2.weights"
+              ],
+              "config_values_at_eval": {
+                "stage_2.weights": {
+                  "concentration": 0.5,
+                  "margin": 0.5
+                }
+              },
+              "normalization": [
+                {
+                  "op": "weighted_sum",
+                  "weights": [
+                    "0.5",
+                    "0.5"
+                  ]
+                },
+                {
+                  "op": "quantize",
+                  "dp": 4,
+                  "rounding": "ROUND_HALF_EVEN"
+                }
+              ],
+              "abstained": false,
+              "abstain_reason": null,
+              "abstain_propagation": "redistribute_within_siblings"
+            },
+            "structure_score": {
+              "path": "composite.structure_score",
+              "kind": "internal",
+              "value": "82.0000",
+              "formula": "0.6*price_action_score + 0.4*trend_2h_score",
+              "inputs": {
+                "price_action_score": {
+                  "path": "composite.structure_score.price_action_score",
+                  "kind": "leaf",
+                  "value": "70.0000",
+                  "formula": "max(scores[signals \\ {retest}]) + retest_bonus(if retest), capped at 100",
+                  "raw_inputs": {
+                    "pa_signals_30m": [
+                      "engulfing",
+                      "retest"
+                    ]
+                  },
+                  "config_refs": [
+                    "stage_3.price_action.scores",
+                    "stage_3.price_action.aggregation"
+                  ],
+                  "config_values_at_eval": {
+                    "stage_3.price_action.scores": {
+                      "pin_bar": 40,
+                      "engulfing": 50,
+                      "terminal": 30,
+                      "retest": 20
+                    },
+                    "stage_3.price_action.aggregation": "max_with_retest_bonus"
+                  },
+                  "normalization": [
+                    {
+                      "op": "max_with_retest_bonus",
+                      "bonus": 20,
+                      "cap": 100
+                    },
+                    {
+                      "op": "quantize",
+                      "dp": 4,
+                      "rounding": "ROUND_HALF_EVEN"
+                    }
+                  ],
+                  "abstained": false,
+                  "abstain_reason": null,
+                  "provenance": {
+                    "pa_signals_30m": {
+                      "source_id": "realtime_intraday_30m",
+                      "derived": true,
+                      "derivation_step": "core.derivations.pa_signals"
+                    }
+                  },
+                  "evaluated": "max(50) + 20 = 70.0000",
+                  "clamped": false
+                },
+                "trend_2h_score": {
+                  "path": "composite.structure_score.trend_2h_score",
+                  "kind": "leaf",
+                  "value": "100.0000",
+                  "formula": "lookup(above_20ema, slope) -> {above+positive: 100, above+flat: 60, below: 0}",
+                  "raw_inputs": {
+                    "trend_2h_status": "up_positive_slope"
+                  },
+                  "config_refs": [
+                    "stage_3.trend_2h.above_ema_positive_slope",
+                    "stage_3.trend_2h.above_ema_flat_slope",
+                    "stage_3.trend_2h.below_ema"
+                  ],
+                  "config_values_at_eval": {
+                    "stage_3.trend_2h.above_ema_positive_slope": 100,
+                    "stage_3.trend_2h.above_ema_flat_slope": 60,
+                    "stage_3.trend_2h.below_ema": 0
+                  },
+                  "normalization": [
+                    {
+                      "op": "lookup",
+                      "table": {
+                        "up_positive_slope": 100,
+                        "up_flat_slope": 60,
+                        "flat": 30,
+                        "down": 0
+                      }
+                    },
+                    {
+                      "op": "quantize",
+                      "dp": 4,
+                      "rounding": "ROUND_HALF_EVEN"
+                    }
+                  ],
+                  "abstained": false,
+                  "abstain_reason": null,
+                  "provenance": {
+                    "trend_2h_status": {
+                      "source_id": "realtime_intraday_30m",
+                      "derived": true,
+                      "derivation_step": "core.derivations.trend_2h"
+                    }
+                  },
+                  "evaluated": "lookup('up_positive_slope') = 100",
+                  "clamped": false
+                }
+              },
+              "config_refs": [
+                "stage_3.weights"
+              ],
+              "config_values_at_eval": {
+                "stage_3.weights": {
+                  "price_action": 0.6,
+                  "trend_2h": 0.4
+                }
+              },
+              "normalization": [
+                {
+                  "op": "weighted_sum",
+                  "weights": [
+                    "0.6",
+                    "0.4"
+                  ]
+                },
+                {
+                  "op": "quantize",
+                  "dp": 4,
+                  "rounding": "ROUND_HALF_EVEN"
+                }
+              ],
+              "abstained": false,
+              "abstain_reason": null,
+              "abstain_propagation": "redistribute_within_siblings"
+            }
+          },
+          "config_refs": [
+            "composite.weights"
+          ],
+          "config_values_at_eval": {
+            "composite.weights": {
+              "stage_1": 0.4,
+              "stage_2": 0.35,
+              "stage_3": 0.25
+            }
+          },
+          "normalization": [
+            {
+              "op": "weighted_sum",
+              "weights": [
+                "0.40",
+                "0.35",
+                "0.25"
+              ]
+            },
+            {
+              "op": "quantize",
+              "dp": 4,
+              "rounding": "ROUND_HALF_EVEN"
+            }
+          ],
+          "abstained": false,
+          "abstain_reason": null,
+          "abstain_propagation": "redistribute_within_siblings"
+        }
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "bootstrap: no prior snapshot in lookback window"
+        }
+      }
+    },
+    {
+      "ticker": "2317",
+      "name": "鴻海",
+      "market": "TWSE",
+      "industry": "電子",
+      "current_price": 124.0,
+      "prev_close": 122.5,
+      "change_pct": 1.22,
+      "volume": 38020,
+      "volume_5d_avg": 31000,
+      "volume_ratio": 1.23,
+      "fii_net_buy": 5210,
+      "fii_buy_ratio": 0.04,
+      "fii_holding_pct": 48.2,
+      "fii_holding_trend_5d": "flat",
+      "fii_sync_count": 1,
+      "fii_brokers_buying": [
+        "GS"
+      ],
+      "fii_consecutive_buy_days": 2,
+      "main_force_buy": 8240,
+      "top5_branches": [],
+      "main_force_cost": 117.0,
+      "main_force_consecutive_days": 2,
+      "main_force_volume_trend": [
+        2200,
+        3100
+      ],
+      "volume_increasing_streak": 1,
+      "top5_concentration": 0.42,
+      "dealer_net_buy": -110,
+      "is_day_trader_branch": false,
+      "shareholder_count": 752100,
+      "shareholder_count_delta_pct": 0.004,
+      "broker_count_diff": 24,
+      "broker_count_diff_negative_streak": 0,
+      "large_holder_400_pct": 18.1,
+      "large_holder_400_delta_pct": -0.002,
+      "large_holder_1000_pct": 12.4,
+      "large_holder_1000_delta_pct": -0.001,
+      "margin_balance": 41200,
+      "margin_change": 380,
+      "margin_maintenance_ratio": 152.0,
+      "price_down_margin_down_days_10d": 1,
+      "price_down_margin_up_days_10d": 4,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": true,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": "G1"
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_note": "skipped: eliminated by G1"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_note": "skipped: eliminated by G1"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_note": "skipped: eliminated by G1"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": -0.0598,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": 152.0,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "bootstrap: no prior snapshot in lookback window"
+        }
+      }
+    }
+  ],
+  "rankings": {
+    "golden": [],
+    "watch": [],
+    "neutral": [
+      "3481"
+    ],
+    "ignored": [
+      "2317"
+    ],
+    "sort_keys_used": [
+      "composite_score desc",
+      "stage_1 desc",
+      "main_force_consecutive_days desc",
+      "fii_sync_count desc",
+      "ticker asc"
+    ]
+  },
+  "audit_log": [
+    {
+      "ticker": null,
+      "event": "BOOTSTRAP_SNAPSHOT",
+      "reason": "first snapshot in repo; no lookback available; temporal_state fields abstained",
+      "step": "core.temporal.bootstrap",
+      "node_path": null,
+      "data": {
+        "lookback_window_requested": 5,
+        "lookback_window_actual": 0,
+        "affected_tickers": [
+          "3481",
+          "2317"
+        ],
+        "abstained_fields": [
+          "score_velocity",
+          "score_acceleration",
+          "trend"
+        ]
+      }
+    },
+    {
+      "ticker": null,
+      "event": "FEATURE_FLAG_RESOLVED",
+      "reason": "feature_flags.day_trader_exclusion=false (default); no branch filtering applied to top5_concentration",
+      "step": "core.feature_flags.resolve",
+      "node_path": null,
+      "data": {
+        "flag": "day_trader_exclusion",
+        "value": false,
+        "default": false,
+        "took_effect_at": "2026-05-22T15:59:00Z",
+        "downstream_paths": [
+          "composite.chip_score.mainforce_sub.concentration_score"
+        ]
+      }
+    },
+    {
+      "ticker": "3481",
+      "event": "FACTOR_LINEAGE",
+      "reason": "composite = 0.40*chip(50.9166) + 0.35*behavior(64.6000) + 0.25*structure(82.0000) = 63.4766",
+      "step": "scoring.composite",
+      "node_path": "composite",
+      "data": {
+        "child_paths": [
+          "composite.chip_score",
+          "composite.behavior_score",
+          "composite.structure_score"
+        ],
+        "weights": [
+          "0.40",
+          "0.35",
+          "0.25"
+        ],
+        "child_values": [
+          "50.9166",
+          "64.6000",
+          "82.0000"
+        ],
+        "formula": "0.40*chip_score + 0.35*behavior_score + 0.25*structure_score",
+        "output_value": "63.4766"
+      }
+    },
+    {
+      "ticker": "3481",
+      "event": "SUBFACTOR_COMPUTED",
+      "reason": "linear[3,6] -> base[0,100] applied to fii_sync_count=3 (Gate-then-Score v1.1)",
+      "step": "scoring.chip.fii.sync_score",
+      "node_path": "composite.chip_score.fii_sub.sync_score",
+      "data": {
+        "raw_inputs": {
+          "fii_sync_count": 3
+        },
+        "config_keys_resolved": {
+          "stage_1.fii.sync_count.linear_range": [
+            3,
+            6
+          ],
+          "stage_1.fii.sync_count.base_at_min": 0,
+          "stage_1.fii.sync_count.base_at_max": 100
+        },
+        "normalization": [
+          {
+            "op": "linear",
+            "r_min": 3,
+            "r_max": 6,
+            "base_min": 0,
+            "base_max": 100
+          },
+          {
+            "op": "clamp",
+            "min": 0,
+            "max": 100
+          },
+          {
+            "op": "quantize",
+            "dp": 4,
+            "rounding": "ROUND_HALF_EVEN"
+          }
+        ],
+        "output_value": "0.0000",
+        "clamped": false,
+        "abstained": false
+      }
+    },
+    {
+      "ticker": "3481",
+      "event": "SUBFACTOR_COMPUTED",
+      "reason": "piecewise(curve={130:100,140:80,...}) applied to margin_maintenance_ratio=138",
+      "step": "scoring.behavior.margin.maintenance_score",
+      "node_path": "composite.behavior_score.margin_sub.maintenance_score",
+      "data": {
+        "raw_inputs": {
+          "margin_maintenance_ratio": "138"
+        },
+        "config_keys_resolved": {
+          "stage_2.margin.maintenance_curve": {
+            "130": 100,
+            "140": 80,
+            "150": 50,
+            "160": 20
+          }
+        },
+        "normalization": [
+          {
+            "op": "piecewise",
+            "curve": {
+              "130": 100,
+              "140": 80,
+              "150": 50,
+              "160": 20
+            }
+          },
+          {
+            "op": "clamp",
+            "min": 0,
+            "max": 100
+          },
+          {
+            "op": "quantize",
+            "dp": 4,
+            "rounding": "ROUND_HALF_EVEN"
+          }
+        ],
+        "output_value": "84.0000",
+        "clamped": false,
+        "abstained": false
+      }
+    },
+    {
+      "ticker": null,
+      "event": "CONFIG_RESOLVED",
+      "reason": "28 config keys resolved from scd.yaml; 0 fallback to defaults",
+      "step": "core.config.resolve",
+      "node_path": null,
+      "data": {
+        "total_keys": 28,
+        "fallback_count": 0,
+        "config_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "ticker": null,
+      "event": "ABSTAIN_PROPAGATED",
+      "reason": "DEMO ONLY: example payload of abstain handling for tickers with missing margin history",
+      "step": "scoring.behavior.margin.example",
+      "node_path": "composite.behavior_score.margin_sub",
+      "data": {
+        "_note": "Demonstrative entry; no real stock in this snapshot triggered abstain",
+        "abstained_children": [
+          "wash_score"
+        ],
+        "original_weights": {
+          "maintenance_score": 0.5,
+          "wash_score": 0.3,
+          "penalty_score": 0.2
+        },
+        "active_weights": {
+          "maintenance_score": 0.7142857,
+          "penalty_score": 0.2857143
+        },
+        "policy": "redistribute_within_siblings"
+      }
+    },
+    {
+      "ticker": "2317",
+      "event": "ELIMINATED",
+      "reason": "G1 violated: current_price=124.0 > main_force_cost(117.0) × 1.05 = 122.85",
+      "step": "filters.cost_safety_gate"
+    },
+    {
+      "ticker": "2317",
+      "event": "ELIMINATED",
+      "reason": "G2 violated: fii_sync_count=1 < min_brokers=2",
+      "step": "filters.fii_sync_gate"
+    },
+    {
+      "ticker": "2317",
+      "event": "ELIMINATED",
+      "reason": "G3 violated: main_force_consecutive_days=2 < min_consecutive_days=3",
+      "step": "filters.main_force_gate"
+    },
+    {
+      "ticker": "3481",
+      "event": "INFO",
+      "reason": "margin_panic_signal=true (maintenance_ratio=138.0, quiet_volume_days=4, no recent crash news)",
+      "step": "scoring.stage_2.margin_psychology"
+    }
+  ],
+  "market_regime": {
+    "label": null,
+    "classifier": "stub_v0",
+    "confidence": null,
+    "features": {
+      "vix_proxy": null,
+      "breadth_index": null,
+      "regime_dwell": null
+    }
+  },
+  "episodes_active_at_start": [],
+  "episodes_changed_today": [],
+  "tier_transitions": []
+}
