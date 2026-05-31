@@ -1,0 +1,73 @@
+name: Maitreya Daily Pipeline
+
+# 19:00 Taiwan time = 11:00 UTC (UTC+8)
+# Runs Mon–Fri on trading days
+on:
+  schedule:
+    - cron: '0 11 * * 1-5'
+  workflow_dispatch:          # allow manual trigger from GitHub UI
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: write         # needed to commit + push data back to repo
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 2. Python setup ────────────────────────────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r "Ai stock/requirements.txt"
+
+      # ── 3. Daily pipeline ──────────────────────────────────────────────
+      # Runs from "Ai stock/" dir; fetch_daily.py resolves paths relative
+      # to its own location so the project root (SCD engine/) is correct.
+      - name: Run daily pipeline
+        working-directory: "Ai stock"
+        run: |
+          make daily
+
+      # ── 4. Verify index integrity ──────────────────────────────────────
+      - name: Verify index
+        working-directory: "Ai stock"
+        run: |
+          make verify-index
+
+      # ── 5. Fast tests ─────────────────────────────────────────────────
+      - name: Run fast tests
+        working-directory: "Ai stock"
+        run: |
+          make test-fast
+
+      # ── 6. Commit & push updated data back to repo ────────────────────
+      - name: Commit data + reports
+        run: |
+          git config user.name  "maitreya-bot"
+          git config user.email "maitreya-bot@users.noreply.github.com"
+
+          # Stage only the data and reports directories
+          git add "Ai stock/data/" "Ai stock/reports/" || true
+
+          # Only commit if there are actual changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit — pipeline produced no new data."
+          else
+            DATE=$(date -u +%Y-%m-%d)
+            git commit -m "data: daily pipeline ${DATE} [skip ci]"
+            git push
+          fi
