@@ -145,6 +145,10 @@ class GoldenEntry:
     days_in_sm_state: int = 0
     sm_state_entered: str | None = None
 
+    # Cost / price
+    main_force_cost:  float | None = None   # avg buy cost from latest snapshot
+    current_price:    float | None = None   # latest closing price
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "ticker":           self.ticker,
@@ -172,6 +176,8 @@ class GoldenEntry:
             "sm_state_entered":   self.sm_state_entered,
             "gates_passed":       self.gates_passed,
             "score_breakdown":    self.score_breakdown,
+            "main_force_cost":    self.main_force_cost,
+            "current_price":      self.current_price,
         }
 
 
@@ -364,6 +370,13 @@ def run(snapshots: list[dict]) -> GoldenResult:
     # Build latest sector rank (for conviction bonus)
     sector_rank = _latest_sector_rank(snapshots)
 
+    # Build cost / price lookup from latest snapshot
+    latest_stock_map: dict[str, dict] = {
+        s["ticker"]: s
+        for s in snapshots[-1].get("stocks", [])
+        if "ticker" in s
+    }
+
     result = GoldenResult(date=date, snapshot_count=len(snapshots))
 
     # Only tickers that appear in both engines
@@ -426,6 +439,8 @@ def run(snapshots: list[dict]) -> GoldenResult:
             sm_state_entered=ts.state_entered,
             gates_passed=gates_pass,
             score_breakdown=breakdown,
+            main_force_cost=latest_stock_map.get(ticker, {}).get("main_force_cost"),
+            current_price=latest_stock_map.get(ticker, {}).get("current_price"),
         )
 
         if all_passed:

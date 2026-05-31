@@ -1562,12 +1562,46 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         spon_sub  = f"連買{streak_n}/{streak_n}天" if streak_n > 0 else "無持續買超"
         streak_s  = f"{streak_n}日" if streak_n else "—"
 
+        # ── Cost / price distance ─────────────────────────────────────────
+        mf_cost   = e.main_force_cost
+        cur_price = price or e.current_price   # prefer live stock dict value
+        if mf_cost and mf_cost > 0 and cur_price and cur_price > 0:
+            cost_s   = f"NT${mf_cost:,.2f}"
+            dist_pct = (cur_price - mf_cost) / mf_cost * 100
+            dist_s   = f"{dist_pct:+.1f}%"
+            # Safety: within ±5% = green (price hugging cost = accumulation still cheap)
+            # >+5% = amber (extended), <-5% = red (price below cost, unusual)
+            if abs(dist_pct) <= 5:
+                dist_col   = "#52B788"   # green — within safe zone
+                safety_txt = "✓ 安全區間內"
+            elif dist_pct > 5:
+                dist_col   = "#E8A838"   # amber — price extended above cost
+                safety_txt = f"↑ 偏離 {dist_pct:.1f}%"
+            else:
+                dist_col   = "#E05C7A"   # red — price below cost
+                safety_txt = f"↓ 低於成本 {abs(dist_pct):.1f}%"
+        else:
+            cost_s     = "—"
+            dist_s     = "—"
+            dist_col   = "#6B8EAA"
+            safety_txt = ""
+
+        cost_kv = (
+            f'<div class="g5-kv" style="min-width:120px;">'
+            f'<div class="g5-kv-label">主力成本</div>'
+            f'<div class="g5-kv-val">{cost_s}</div>'
+            f'<div class="g5-kv-sub" style="color:{dist_col};font-weight:600;">'
+            f'現價 {dist_s} &nbsp;{safety_txt}'
+            f'</div></div>'
+        )
+
         # Core strip
         core_strip = (
             f'<div class="g5-core-strip">'
             f'<div class="g5-kv"><div class="g5-kv-label">主力連買</div><div class="g5-kv-val val-cyan">{streak_s}</div></div>'
             f'<div class="g5-kv"><div class="g5-kv-label">主力支持強度</div><div class="g5-kv-val val-amber">{spon_pct}</div>'
             f'<div class="g5-kv-sub">{spon_sub}</div></div>'
+            f'{cost_kv}'
             f'<div class="g5-kv"><div class="g5-kv-label">3日動能</div><div class="g5-kv-val">{vel_s}</div></div>'
             f'<div class="g5-kv"><div class="g5-kv-label">加速度</div><div class="g5-kv-val">{acc_s}</div></div>'
             f'<div class="g5-kv"><div class="g5-kv-label">淨累計</div><div class="g5-kv-val">{net_s}</div><div class="g5-kv-sub">張</div></div>'
