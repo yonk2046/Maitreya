@@ -1563,8 +1563,9 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         streak_s  = f"{streak_n}日" if streak_n else "—"
 
         # ── Cost / price distance ─────────────────────────────────────────
-        mf_cost   = e.main_force_cost
-        cur_price = price or e.current_price   # prefer live stock dict value
+        # getattr guards against cached GoldenEntry objects missing new fields
+        mf_cost   = getattr(e, "main_force_cost", None)
+        cur_price = price or getattr(e, "current_price", None)
         if mf_cost and mf_cost > 0 and cur_price and cur_price > 0:
             cost_s   = f"NT${mf_cost:,.2f}"
             dist_pct = (cur_price - mf_cost) / mf_cost * 100
