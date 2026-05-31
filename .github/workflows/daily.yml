@@ -34,7 +34,13 @@ jobs:
         run: |
           pip install -r "Ai stock/requirements.txt"
 
-      # ── 3. Daily pipeline ──────────────────────────────────────────────
+      # ── 3. Fetch market pulse (TAIEX / TX futures / 三大法人) ────────────
+      - name: Fetch market pulse
+        working-directory: "Ai stock"
+        run: |
+          python tools/fetch_market_pulse.py || echo "fetch-pulse failed (non-trading day?) — continuing"
+
+      # ── 4. Daily pipeline ──────────────────────────────────────────────
       # Runs from "Ai stock/" dir; fetch_daily.py resolves paths relative
       # to its own location so the project root (SCD engine/) is correct.
       - name: Run daily pipeline
@@ -42,19 +48,19 @@ jobs:
         run: |
           make daily
 
-      # ── 4. Verify index integrity ──────────────────────────────────────
+      # ── 5. Verify index integrity ──────────────────────────────────────
       - name: Verify index
         working-directory: "Ai stock"
         run: |
           make verify-index
 
-      # ── 5. Fast tests ─────────────────────────────────────────────────
+      # ── 6. Fast tests ─────────────────────────────────────────────────
       - name: Run fast tests
         working-directory: "Ai stock"
         run: |
           make test-fast
 
-      # ── 6. Commit & push updated data back to repo ────────────────────
+      # ── 7. Commit & push updated data back to repo ────────────────────
       - name: Commit data + reports
         run: |
           git config user.name  "maitreya-bot"
