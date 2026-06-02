@@ -30,8 +30,8 @@ from typing import Any
 
 _PARTICIPANTS = [
     ("main_force",   "main_force_buy",  "主力"),
-    ("foreign",      "fii_net_buy",     "外資"),
-    ("invest_trust", "dealer_net_buy",  "投信"),
+    ("foreign",      "fii_net_buy",     "外資"),   # from T86 t86["foreign"]
+    ("invest_trust", "dealer_net_buy",  "投信"),   # from T86 t86["trust"] via dealer_net_buy
 ]
 
 _LEVEL_LABELS = {

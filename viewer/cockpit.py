@@ -1462,8 +1462,22 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         else:
             items.append(("✗", "贊助強度", f"贊助分數 {spon:.0%}，偏低", False))
 
-        # 3. Institutional alignment (data unavailable in current pipeline)
-        items.append(("—", "法人同向", "資料待補（外資/投信/主力同向確認）", None))
+        # 3. Institutional alignment — from T86 fii_sync_count (0-3)
+        sync = stock.get("fii_sync_count")
+        fii  = stock.get("fii_net_buy")
+        trust = stock.get("dealer_net_buy")   # 投信，mapped from T86 trust
+        if sync is None:
+            items.append(("—", "法人同向", "資料待補（T86 三大法人）", None))
+        elif sync >= 2:
+            parts = []
+            if (stock.get("main_force_buy") or 0) > 0: parts.append("主力✓")
+            if fii and fii > 0: parts.append("外資✓")
+            if trust and trust > 0: parts.append("投信✓")
+            items.append(("✓", "法人同向", f"{'  '.join(parts)}  （{sync}/3 方淨買）", True))
+        elif sync == 1:
+            items.append(("△", "法人同向", f"單方淨買（{sync}/3 方），同向未達標", None))
+        else:
+            items.append(("✗", "法人同向", "三大法人均未淨買", False))
 
         # 4. Cost support
         if mf_cost and mf_cost > 0 and cur_price_val and cur_price_val > 0:

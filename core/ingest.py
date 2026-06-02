@@ -105,12 +105,12 @@ def _abstain_stock_record(ticker: str, raw: dict, has_branches: bool) -> dict:
         "volume_5d_avg": None,
         "volume_ratio":  None,
 
-        # FII / main-force fields — set from raw if present, else null
-        "fii_net_buy":                None,
+        # FII / main-force fields — populated from T86 (via adapter) where available
+        "fii_net_buy":                raw.get("fii_net_buy"),         # 外資淨買（張）from T86
         "fii_buy_ratio":              None,
         "fii_holding_pct":             None,
         "fii_holding_trend_5d":        None,
-        "fii_sync_count":              None,
+        "fii_sync_count":              raw.get("fii_sync_count"),     # 0–3: how many participants net positive
         "fii_brokers_buying":          [],
         "fii_consecutive_buy_days":    None,
         # main_force_buy: prefer branches' total_buy_vol; fall back to rollup signed buyVol
@@ -121,7 +121,7 @@ def _abstain_stock_record(ticker: str, raw: dict, has_branches: bool) -> dict:
         "main_force_volume_trend":     [],
         "volume_increasing_streak":    None,
         "top5_concentration":          None,
-        "dealer_net_buy":              None,
+        "dealer_net_buy":              raw.get("investment_trust_net_buy"),  # 投信淨買（張）from T86
         "is_day_trader_branch":        False,
 
         "shareholder_count":                  None,

@@ -246,6 +246,21 @@ def adapt_legacy(
             })
         raw_inputs_per_ticker[ticker] = ri
 
+    # --- Merge T86 三大法人 data into per-ticker raw_inputs ---
+    # today.json["t86"] = { code: {foreign, trust, prop, total3} } all in 張
+    t86 = today.get("t86") or {}
+    for ticker, ri in raw_inputs_per_ticker.items():
+        t86_row = t86.get(ticker) or {}
+        ri["fii_net_buy"]              = t86_row.get("foreign")    # 外資淨買（張）
+        ri["investment_trust_net_buy"] = t86_row.get("trust")      # 投信淨買（張）
+        ri["prop_dealer_net_buy"]      = t86_row.get("prop")       # 自營商淨買（張）
+        ri["total3_net_buy"]           = t86_row.get("total3")     # 三大法人合計（張）
+        # fii_sync_count: how many of main_force / foreign / trust are net positive
+        mfb   = ri.get("total_buy_vol") or ri.get("buy_vol_lots")
+        fii   = ri["fii_net_buy"]
+        trust = ri["investment_trust_net_buy"]
+        ri["fii_sync_count"] = sum(1 for v in [mfb, fii, trust] if v is not None and v > 0)
+
     universe = sorted(raw_inputs_per_ticker.keys())
 
     # --- Provenance ---
@@ -267,6 +282,8 @@ def adapt_legacy(
             "provides_fields": [
                 "ticker", "name", "rank", "is_etf",
                 "current_price", "change_pct", "buy_vol_lots",
+                "fii_net_buy", "investment_trust_net_buy",
+                "prop_dealer_net_buy", "total3_net_buy", "fii_sync_count",
             ],
         },
         "legacy_branches": {
