@@ -1,11 +1,9 @@
 name: Maitreya Daily Pipeline
 
-# 19:00 Taiwan time = 11:00 UTC (UTC+8)
-# Runs Mon–Fri on trading days
 on:
   schedule:
     - cron: '0 11 * * 1-5'
-  workflow_dispatch:          # allow manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   daily:
@@ -13,17 +11,15 @@ jobs:
     timeout-minutes: 30
 
     permissions:
-      contents: write         # needed to commit + push data back to repo
+      contents: write
 
     steps:
-      # ── 1. Checkout ────────────────────────────────────────────────────
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── 2. Python setup ────────────────────────────────────────────────
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -31,45 +27,49 @@ jobs:
           cache: 'pip'
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
-      # ── 3. Fetch market pulse (TAIEX / TX futures / 三大法人) ────────────
       - name: Fetch market pulse
-        run: |
-          python tools/fetch_market_pulse.py || echo "fetch-pulse failed (non-trading day?) — continuing"
+        run: python tools/fetch_market_pulse.py || echo "non-trading day, skipping"
 
-      # ── 4. Daily pipeline ──────────────────────────────────────────────
-      # make daily can exit non-zero if replay mismatches exist (P3a-Hardening).
-      # We allow failure here — the snapshot for today is still written.
       - name: Run daily pipeline
-        run: |
-          make daily || echo "daily pipeline exited non-zero (replay mismatch?) — data still saved, continuing"
+        run: make daily || echo "replay mismatch, continuing"
 
-      # ── 5. Verify index integrity ──────────────────────────────────────
       - name: Verify index
         continue-on-error: true
-        run: |
-          make verify-index
+        run: make verify-index
 
-      # ── 6. Fast tests ─────────────────────────────────────────────────
       - name: Run fast tests
         continue-on-error: true
-        run: |
-          make test-fast
+        run: make test-fast
 
-      # ── 7. Commit & push updated data back to repo ────────────────────
       - name: Commit data + reports
         run: |
           git config user.name  "maitreya-bot"
           git config user.email "maitreya-bot@users.noreply.github.com"
-
           git add data/ reports/ || true
-
           if git diff --staged --quiet; then
-            echo "No changes to commit — pipeline produced no new data."
+            echo "No changes to commit."
           else
             DATE=$(date -u +%Y-%m-%d)
             git commit -m "data: daily pipeline ${DATE} [skip ci]"
             git push
           fi
+```
+
+## 步驟
+
+1. 用文字編輯器打開 `/Users/yoncky/SCD engine/Ai stock/.github/workflows/daily.yml`
+2. 全選刪除，貼上上面 yaml 區塊的內容（不包含 ` ``` ` 那兩行）
+3. 存檔
+4. 在 Terminal 執行：
+
+```bash
+cd "/Users/yoncky/SCD engine/Ai stock"
+cat .github/workflows/daily.yml | head -5
+git add .github/workflows/daily.yml
+git commit -m "fix: daily.yml final — correct paths for GitHub Actions"
+git push
+```
+
+5. 確認 push 成功後，去 GitHub Actions Run workflow
