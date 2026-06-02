@@ -45,6 +45,7 @@ from core.watchlists import TIER_A, SECTOR_GROUPS, tier_a_tickers, stock_group, 
 from core import golden as _golden_mod
 from core import confidence as _conf_mod
 from core import state_machine as _sm_mod
+from core import resonance as _resonance_mod
 from core.intelligence_delta import (
     load_for_date as _intel_load,
     DailyIntelligenceReport,
@@ -1354,8 +1355,9 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
 
     key = _snaps_key(snaps)
     with st.spinner("計算黃金名單… computing golden layer…"):
-        result    = _run_golden(key, snaps)
-        sm_states = _run_sm_all(snaps)
+        result        = _run_golden(key, snaps)
+        sm_states     = _run_sm_all(snaps)
+        resonance_map = _resonance_mod.run_all(snaps)
 
     latest_stocks = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
     active_date   = snaps[-1].get("date", "")
@@ -1404,6 +1406,162 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         if acc < -500 or (acc < 0 and vel < 0):
             return "weakening"
         return "stable"
+
+    # ── P1: PRIME category labels (observational, display only) ─────────
+    _CAT_META = {
+        "institutional": ("🏛", "Institutional Prime", "#D4A84B"),
+        "momentum":      ("🔥", "Momentum Prime",      "#52B788"),
+        "emerging":      ("🌱", "Emerging Prime",       "#7EB8D4"),
+        "aging":         ("⚠",  "Aging Prime",          "#E8A838"),
+    }
+
+    def _prime_categories(e: "_golden_mod.GoldenEntry") -> list[str]:
+        """Return observational category labels for a PRIME entry.
+        A ticker may belong to multiple categories."""
+        if e.tier.lower() != "prime":
+            return []
+        cats: list[str] = []
+        vel = e.velocity_3d or 0
+        acc = e.acceleration or 0
+        # Institutional: steady accumulation with strong sponsorship
+        if (e.streak or 0) >= 5 and e.sponsorship_score >= 0.7 and (e.net_cumulative or 0) > 0:
+            cats.append("institutional")
+        # Momentum: velocity + acceleration both positive, in strong state
+        if vel > 0 and acc > 0 and e.sm_state in {"strengthening", "confirmed", "accumulating"}:
+            cats.append("momentum")
+        # Emerging: recently entered current state (proxy for newly PRIME)
+        if (e.days_in_sm_state or 0) <= 3:
+            cats.append("emerging")
+        # Aging: still PRIME but momentum fading
+        if vel < 0 or acc < 0:
+            cats.append("aging")
+        return cats if cats else ["institutional"]  # fallback
+
+    # ── P2: Institutional Checklist ──────────────────────────────────────
+    def _institutional_checklist(e: "_golden_mod.GoldenEntry", stock: dict) -> tuple[int, int, str]:
+        """Returns (passed, total, html_detail) for the institutional checklist."""
+        mf_cost   = getattr(e, "main_force_cost", None)
+        cur_price_val = stock.get("current_price") or getattr(e, "current_price", None)
+        items = []
+
+        # 1. Consecutive accumulation
+        streak_n = e.streak or 0
+        if streak_n >= 5:
+            items.append(("✓", "連續買超", f"{streak_n} 日連續主力買超", True))
+        elif streak_n >= 1:
+            items.append(("△", "連續買超", f"連買 {streak_n} 日（≥5日視為確認）", None))
+        else:
+            items.append(("✗", "連續買超", "無持續買超紀錄", False))
+
+        # 2. Sponsorship strength
+        spon = e.sponsorship_score
+        if spon >= 0.7:
+            items.append(("✓", "贊助強度", f"贊助分數 {spon:.0%}（≥70%）", True))
+        elif spon >= 0.45:
+            items.append(("△", "贊助強度", f"贊助分數 {spon:.0%}（≥70% 視為強）", None))
+        else:
+            items.append(("✗", "贊助強度", f"贊助分數 {spon:.0%}，偏低", False))
+
+        # 3. Institutional alignment (data unavailable in current pipeline)
+        items.append(("—", "法人同向", "資料待補（外資/投信/主力同向確認）", None))
+
+        # 4. Cost support
+        if mf_cost and mf_cost > 0 and cur_price_val and cur_price_val > 0:
+            dist = (cur_price_val - mf_cost) / mf_cost * 100
+            if abs(dist) <= 5:
+                items.append(("✓", "主力成本支撐", f"現價距成本 {dist:+.1f}%，在安全區間 ±5% 內", True))
+            elif dist > 5:
+                items.append(("△", "主力成本支撐", f"現價高於成本 {dist:.1f}%（偏離安全區）", None))
+            else:
+                items.append(("✗", "主力成本支撐", f"現價低於成本 {abs(dist):.1f}%", False))
+        else:
+            items.append(("—", "主力成本支撐", "無主力成本資料", None))
+
+        # 5. Concentration (data unavailable in current pipeline)
+        items.append(("—", "籌碼集中度", "資料待補（大戶持股變化）", None))
+
+        passed = sum(1 for sym, _, _, ok in items if ok is True)
+        total  = sum(1 for sym, _, _, ok in items if ok is not None)
+
+        # Build inline checklist rows (compact)
+        rows = []
+        for sym, label, detail, ok in items:
+            sym_col = {"✓": "#52B788", "✗": "#E05C7A", "△": "#E8A838", "—": "#4A5A6A"}[sym]
+            label_col = "#CDD5E0" if ok is True else ("#8B949E" if ok is False else "#6B8EAA")
+            rows.append(
+                f'<div style="display:flex;gap:6px;align-items:baseline;padding:3px 0;">'
+                f'<span style="color:{sym_col};font-size:12px;width:14px;flex-shrink:0;">{sym}</span>'
+                f'<span style="font-size:12px;color:{label_col};width:80px;flex-shrink:0;">{label}</span>'
+                f'<span style="font-size:11px;color:#4A6A8A;">{detail}</span>'
+                f'</div>'
+            )
+        detail_html = "".join(rows)
+        return passed, total, detail_html
+
+    # ── P3: Learning Layer — load/update checklist history ───────────────
+    import json as _json_ll
+    _HISTORY_PATH = _AI_STOCK / "data" / "checklist_history.json"
+
+    def _load_history() -> dict:
+        if _HISTORY_PATH.exists():
+            try:
+                return _json_ll.loads(_HISTORY_PATH.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        return {}
+
+    def _save_history(h: dict) -> None:
+        try:
+            _HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+            _HISTORY_PATH.write_text(_json_ll.dumps(h, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+
+    def _update_history(history: dict, entries: list) -> dict:
+        """Record today's checklist state; mark past entries as still_active or not."""
+        active_tickers = {e.ticker for e in entries}
+        # Mark past entries
+        for ticker, records in history.items():
+            for rec in records:
+                if rec.get("still_active") is None:  # not yet resolved
+                    rec["still_active"] = ticker in active_tickers
+        # Add today's records for active entries
+        for e in entries:
+            stock = latest_stocks.get(e.ticker, {})
+            _, _, _ = _institutional_checklist(e, stock)  # just compute state
+            streak_ok = (e.streak or 0) >= 5
+            spon_ok   = e.sponsorship_score >= 0.7
+            mf_cost   = getattr(e, "main_force_cost", None)
+            cur_p     = stock.get("current_price") or getattr(e, "current_price", None)
+            cost_ok   = bool(mf_cost and cur_p and abs((cur_p - mf_cost) / mf_cost * 100) <= 5)
+            rec = {
+                "date": active_date,
+                "tier": e.tier,
+                "streak": e.streak,
+                "sponsorship": round(e.sponsorship_score, 3),
+                "checklist": {"consecutive": streak_ok, "sponsorship": spon_ok, "cost_support": cost_ok},
+                "still_active": None,  # resolved on next run
+            }
+            # Only add if not already recorded for this date
+            ticker_records = history.setdefault(e.ticker, [])
+            if not any(r["date"] == active_date for r in ticker_records):
+                ticker_records.append(rec)
+        return history
+
+    def _history_stats(history: dict, ticker: str) -> str:
+        """Return a short HTML stats line if history exists for this ticker."""
+        records = [r for r in history.get(ticker, []) if r.get("still_active") is not None]
+        if len(records) < 3:  # not enough history to show
+            return ""
+        still = sum(1 for r in records if r["still_active"])
+        failed = len(records) - still
+        pct = still / len(records) * 100
+        return (
+            f'<div style="font-size:11px;color:#6B8EAA;margin-top:4px;padding:4px 8px;'
+            f'background:#0D1821;border-radius:5px;">'
+            f'📊 觀測紀錄 {len(records)} 次 · 持續在列 {still} · 離開 {failed} · 留存率 {pct:.0f}%'
+            f'</div>'
+        )
 
     # Build lifecycle timeline HTML from TickerState.transitions
     def _lifecycle_timeline(e: "_golden_mod.GoldenEntry") -> str:
@@ -1520,7 +1678,10 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         "G3": "G3 贊助≥45%", "G4": "G4 風險<臨界", "G5": "G5 淨累計>0",
     }
 
-    # ── Research card renderer ────────────────────────────────────────────
+    # ── Load learning-layer history once, update at end ─────────────────
+    _checklist_history = _load_history()
+
+    # ── Research card renderer (P4: compressed default view) ─────────────
     def _research_card(
         e: "_golden_mod.GoldenEntry",
         is_new: bool = False,
@@ -1533,7 +1694,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         chg_s   = f"{chg:+.2f}%" if chg is not None else "—"
         chg_col = "#52B788" if (chg or 0) > 0 else ("#E05C7A" if (chg or 0) < 0 else "#6B8EAA")
 
-        # Tier badge
+        # Tier / badge
         if near_miss:
             card_cls  = "g5-card g5-qualified"
             badge_cls = "g5-tier-badge g5-tier-qualified"
@@ -1552,126 +1713,150 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
 
         state_col = _state_color(e.sm_state)
         days_txt  = f"{e.days_in_sm_state}日" if e.days_in_sm_state else ""
-
-        vel_s    = f"{e.velocity_3d:+,.0f}" if e.velocity_3d is not None else "—"
-        acc_s    = f"{e.acceleration:+,.0f}" if e.acceleration is not None else "—"
-        net_s    = f"{e.net_cumulative:+,}" if e.net_cumulative else "—"
-        spon_pct = f"{e.sponsorship_score:.0%}"
-        # Sponsorship sub-label: show "連買N/N天" context
         streak_n  = e.streak or 0
-        spon_sub  = f"連買{streak_n}/{streak_n}天" if streak_n > 0 else "無持續買超"
-        streak_s  = f"{streak_n}日" if streak_n else "—"
 
-        # ── Cost / price distance ─────────────────────────────────────────
-        # getattr guards against cached GoldenEntry objects missing new fields
+        # ── P1: PRIME category badges ─────────────────────────────────────
+        prime_cats = _prime_categories(e)
+        cat_badges = ""
+        for cat in prime_cats:
+            icon, label, col = _CAT_META.get(cat, ("", cat, "#6B8EAA"))
+            cat_badges += (
+                f'<span style="font-size:10px;padding:2px 7px;border-radius:10px;'
+                f'background:{col}18;color:{col};border:1px solid {col}40;margin-right:4px;">'
+                f'{icon} {label}</span>'
+            )
+
+        # ── Sprint 2: Resonance badge ─────────────────────────────────────
+        res_state    = resonance_map.get(e.ticker)
+        res_badge    = res_state.badge_html() if res_state and res_state.resonance_level >= 1 else ""
+
+        # ── P4: Three core questions (compressed default view) ────────────
+        # Q1: Why is this ticker here?
+        why_txt = _why_matters(e)
+
+        # Q2: Strengthening or weakening?
+        mom = _momentum(e)
+        mom_map = {
+            "strengthening": ("↑ 動能強化中", "#52B788"),
+            "stable":        ("→ 動能穩定",   "#7EB8D4"),
+            "weakening":     ("↓ 動能衰退",   "#E8A838"),
+        }
+        mom_txt, mom_col = mom_map.get(mom, ("— 未知", "#6B8EAA"))
+
+        # Q3: What invalidates this observation?
+        inval_list = _invalidation(e)
+        inval_txt  = " · ".join(inval_list[:2])
+
+        # ── Key numbers (compact) ─────────────────────────────────────────
+        vel_s = f"{e.velocity_3d:+,.0f}" if e.velocity_3d is not None else "—"
+        acc_s = f"{e.acceleration:+,.0f}" if e.acceleration is not None else "—"
+        net_s = f"{e.net_cumulative:+,}" if e.net_cumulative else "—"
+
+        # Cost distance
         mf_cost   = getattr(e, "main_force_cost", None)
         cur_price = price or getattr(e, "current_price", None)
         if mf_cost and mf_cost > 0 and cur_price and cur_price > 0:
-            cost_s   = f"NT${mf_cost:,.2f}"
             dist_pct = (cur_price - mf_cost) / mf_cost * 100
-            dist_s   = f"{dist_pct:+.1f}%"
-            # Safety: within ±5% = green (price hugging cost = accumulation still cheap)
-            # >+5% = amber (extended), <-5% = red (price below cost, unusual)
             if abs(dist_pct) <= 5:
-                dist_col   = "#52B788"   # green — within safe zone
-                safety_txt = "✓ 安全區間內"
+                cost_line = f'<span style="color:#52B788;font-size:11px;">成本 {dist_pct:+.1f}% ✓</span>'
             elif dist_pct > 5:
-                dist_col   = "#E8A838"   # amber — price extended above cost
-                safety_txt = f"↑ 偏離 {dist_pct:.1f}%"
+                cost_line = f'<span style="color:#E8A838;font-size:11px;">成本 {dist_pct:+.1f}% ↑</span>'
             else:
-                dist_col   = "#E05C7A"   # red — price below cost
-                safety_txt = f"↓ 低於成本 {abs(dist_pct):.1f}%"
+                cost_line = f'<span style="color:#E05C7A;font-size:11px;">成本 {dist_pct:+.1f}% ↓</span>'
         else:
-            cost_s     = "—"
-            dist_s     = "—"
-            dist_col   = "#6B8EAA"
-            safety_txt = ""
+            cost_line = '<span style="color:#6B8EAA;font-size:11px;">成本資料待補</span>'
 
-        cost_kv = (
-            f'<div class="g5-kv" style="min-width:120px;">'
-            f'<div class="g5-kv-label">主力成本</div>'
-            f'<div class="g5-kv-val">{cost_s}</div>'
-            f'<div class="g5-kv-sub" style="color:{dist_col};font-weight:600;">'
-            f'現價 {dist_s} &nbsp;{safety_txt}'
-            f'</div></div>'
-        )
-
-        # Core strip
-        core_strip = (
-            f'<div class="g5-core-strip">'
-            f'<div class="g5-kv"><div class="g5-kv-label">主力連買</div><div class="g5-kv-val val-cyan">{streak_s}</div></div>'
-            f'<div class="g5-kv"><div class="g5-kv-label">主力支持強度</div><div class="g5-kv-val val-amber">{spon_pct}</div>'
-            f'<div class="g5-kv-sub">{spon_sub}</div></div>'
-            f'{cost_kv}'
-            f'<div class="g5-kv"><div class="g5-kv-label">3日動能</div><div class="g5-kv-val">{vel_s}</div></div>'
-            f'<div class="g5-kv"><div class="g5-kv-label">加速度</div><div class="g5-kv-val">{acc_s}</div></div>'
-            f'<div class="g5-kv"><div class="g5-kv-label">淨累計</div><div class="g5-kv-val">{net_s}</div><div class="g5-kv-sub">張</div></div>'
-            f'</div>'
-        )
-
-        # Lifecycle
-        lifecycle_html = _lifecycle_timeline(e)
-
-        # Why It Matters
-        why_html = (
-            f'<div class="g5-section-label">為何值得關注</div>'
-            f'<div class="g5-why-text">{_why_matters(e)}</div>'
-        )
-
-        # Recent Changes
-        changes = _recent_changes(e.ticker)
-        changes_html = ""
-        if changes:
-            tags = "".join(
-                f'<span class="g5-tag g5-tag-change-up">'
-                f'<span style="color:#4A6A8A;font-size:10px;margin-right:4px;">{d}</span>{txt}'
-                f'</span>'
-                for d, txt in changes
-            )
-            changes_html = f'<div class="g5-section-label">近期變化</div><div class="g5-tag-row">{tags}</div>'
-
-        # Watch Next + Invalidation
-        watch_tags  = "".join(f'<span class="g5-tag g5-tag-watch">{t}</span>' for t in _watch_next(e))
-        inval_tags  = "".join(f'<span class="g5-tag g5-tag-inval">{t}</span>' for t in _invalidation(e))
-        next_html = (
-            f'<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;">'
-            f'<div><div class="g5-section-label">觀察重點</div><div class="g5-tag-row">{watch_tags}</div></div>'
-            f'<div><div class="g5-section-label">失效訊號</div><div class="g5-tag-row">{inval_tags}</div></div>'
-            f'</div>'
-        )
-
-        # Sector tag
-        sector_tag = f'<span class="g5-tag g5-tag-neutral">{e.sector}</span>' if e.sector else ""
-
-        # Assemble main card HTML
+        # Main card HTML — P4 compressed layout
         card_html = (
             f'<div class="{card_cls}">'
-            # Header row
+            # ── Row 1: Header ──────────────────────────────────────────
             f'<div class="g5-head">'
             f'<span class="g5-ticker">{e.ticker}</span>'
             f'<span class="g5-name">{e.name}</span>'
             f'<span class="{badge_cls}">{badge_txt}</span>'
             f'<span class="g5-state-badge" style="background:{state_col}20;color:{state_col};border:1px solid {state_col}60;">'
-            f'{e.sm_state_zh} {days_txt}'
-            f'</span>'
+            f'{e.sm_state_zh} {days_txt}</span>'
             f'<span style="margin-left:auto;font-size:16px;font-weight:700;color:{chg_col};">'
             f'{price_s} <span style="font-size:13px;">{chg_s}</span></span>'
             f'</div>'
-            # Lifecycle timeline
-            f'<div class="g5-section-label">狀態演進</div>'
-            f'{lifecycle_html}'
-            # Core strip
-            f'{core_strip}'
-            # Why / Changes / Next
-            f'{why_html}'
-            f'{changes_html}'
-            f'{next_html}'
-            f'{sector_tag}'
+            # ── P1 category badges + resonance badge ───────────────────
+            + (f'<div style="margin:4px 0 2px;">{cat_badges}</div>' if cat_badges else "")
+            + (res_badge if res_badge else "")
+            # ── Row 2: Three questions (P4 compressed) ─────────────────
+            + f'<div style="display:grid;grid-template-columns:1fr;gap:5px;'
+            f'margin:8px 0;padding:8px 10px;background:#0D1821;border-radius:7px;">'
+            # Q1
+            f'<div style="font-size:12px;color:#CDD5E0;line-height:1.5;">'
+            f'<span style="color:#6B8EAA;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-right:6px;">在此原因</span>'
+            f'{why_txt}</div>'
+            # Q2
+            f'<div style="font-size:12px;line-height:1.5;">'
+            f'<span style="color:#6B8EAA;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-right:6px;">趨勢判斷</span>'
+            f'<span style="color:{mom_col};font-weight:600;">{mom_txt}</span>'
+            f'&nbsp;&nbsp;{cost_line}</div>'
+            # Q3
+            f'<div style="font-size:12px;color:#8B949E;line-height:1.5;">'
+            f'<span style="color:#6B8EAA;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-right:6px;">失效條件</span>'
+            f'{inval_txt}</div>'
             f'</div>'
+            # ── Row 3: Compact key metrics ──────────────────────────────
+            f'<div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0;">'
+            f'<span style="font-size:11px;color:#6B8EAA;">連買 <b style="color:#7EB8D4;">{streak_n}日</b></span>'
+            f'<span style="color:#1F2D3D;">|</span>'
+            f'<span style="font-size:11px;color:#6B8EAA;">贊助 <b style="color:#D4A84B;">{e.sponsorship_score:.0%}</b></span>'
+            f'<span style="color:#1F2D3D;">|</span>'
+            f'<span style="font-size:11px;color:#6B8EAA;">動能 <b style="color:#CDD5E0;">{vel_s}</b></span>'
+            f'<span style="color:#1F2D3D;">|</span>'
+            f'<span style="font-size:11px;color:#6B8EAA;">加速 <b style="color:#CDD5E0;">{acc_s}</b></span>'
+            f'<span style="color:#1F2D3D;">|</span>'
+            f'<span style="font-size:11px;color:#6B8EAA;">淨累計 <b style="color:#CDD5E0;">{net_s}</b>張</span>'
+            + (f'<span style="color:#1F2D3D;">|</span>'
+               f'<span style="font-size:11px;color:#6B8EAA;">{e.sector}</span>' if e.sector else "")
+            + '</div></div>'
         )
         st.markdown(card_html, unsafe_allow_html=True)
 
-        # Diagnostics expander (gates hidden here, not upfront)
+        # ── P2: Institutional Checklist — inline on card ─────────────────
+        cl_passed, cl_total, cl_detail = _institutional_checklist(e, stock)
+        history_stats = _history_stats(_checklist_history, e.ticker)
+        st.markdown(
+            f'<div style="margin-top:2px;padding:8px 10px;'
+            f'background:#0A1018;border-radius:7px;border:1px solid #1A2232;">'
+            f'<div style="font-size:10px;color:#4A6A8A;text-transform:uppercase;'
+            f'letter-spacing:.06em;margin-bottom:6px;">'
+            f'機構觀察清單 · 通過 {cl_passed}/{cl_total}</div>'
+            f'{cl_detail}'
+            f'{history_stats}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        # ── Detail expander: lifecycle + recent changes + watch/invalidation
+        changes = _recent_changes(e.ticker)
+        watch_tags = "".join(f'<span class="g5-tag g5-tag-watch">{t}</span>' for t in _watch_next(e))
+        inval_tags = "".join(f'<span class="g5-tag g5-tag-inval">{t}</span>' for t in _invalidation(e))
+        with st.expander(f"↓ 狀態演進 · 近期變化 — {e.ticker}", expanded=False):
+            lifecycle_html = _lifecycle_timeline(e)
+            changes_html = ""
+            if changes:
+                tags = "".join(
+                    f'<span class="g5-tag g5-tag-change-up">'
+                    f'<span style="color:#4A6A8A;font-size:10px;margin-right:4px;">{d}</span>{txt}'
+                    f'</span>'
+                    for d, txt in changes
+                )
+                changes_html = f'<div class="g5-section-label">近期變化</div><div class="g5-tag-row">{tags}</div>'
+            st.markdown(
+                f'<div class="g5-section-label">狀態演進</div>{lifecycle_html}'
+                f'{changes_html}'
+                f'<div style="margin-top:8px;">'
+                f'<div class="g5-section-label">觀察重點</div><div class="g5-tag-row">{watch_tags}</div>'
+                f'<div class="g5-section-label" style="margin-top:6px;">失效訊號</div>'
+                f'<div class="g5-tag-row">{inval_tags}</div></div>',
+                unsafe_allow_html=True,
+            )
+
+        # ── Diagnostics expander (gates + score breakdown) ────────────────
         gate_labels = _GATE_LABELS
         gates_html  = '<div class="gate-row">'
         for gk in ["G1", "G2", "G3", "G4", "G5"]:
@@ -1825,6 +2010,13 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         f'<span class="g5-momentum-count">{len(weakening)} 檔</span>'
         f'</div>',
     )
+
+    # ── P3: Update and persist learning-layer history ────────────────────
+    try:
+        _checklist_history = _update_history(_checklist_history, all_entries)
+        _save_history(_checklist_history)
+    except Exception:
+        pass  # never block rendering on history write failure
 
     # ── SECTION E: Near-miss — compact scout cards, distinct section ─────
     if result.near_miss:
