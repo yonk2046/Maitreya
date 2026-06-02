@@ -31,8 +31,9 @@ jobs:
           cache: 'pip'
 
       - name: Install dependencies
+        working-directory: "Ai stock"
         run: |
-          pip install -r "Ai stock/requirements.txt"
+          pip install -r requirements.txt
 
       # ── 3. Fetch market pulse (TAIEX / TX futures / 三大法人) ────────────
       - name: Fetch market pulse
