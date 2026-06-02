@@ -31,13 +31,11 @@ jobs:
           cache: 'pip'
 
       - name: Install dependencies
-        working-directory: "Ai stock"
         run: |
           pip install -r requirements.txt
 
       # ── 3. Fetch market pulse (TAIEX / TX futures / 三大法人) ────────────
       - name: Fetch market pulse
-        working-directory: "Ai stock"
         run: |
           python tools/fetch_market_pulse.py || echo "fetch-pulse failed (non-trading day?) — continuing"
 
@@ -45,20 +43,17 @@ jobs:
       # make daily can exit non-zero if replay mismatches exist (P3a-Hardening).
       # We allow failure here — the snapshot for today is still written.
       - name: Run daily pipeline
-        working-directory: "Ai stock"
         run: |
           make daily || echo "daily pipeline exited non-zero (replay mismatch?) — data still saved, continuing"
 
       # ── 5. Verify index integrity ──────────────────────────────────────
       - name: Verify index
-        working-directory: "Ai stock"
         continue-on-error: true
         run: |
           make verify-index
 
       # ── 6. Fast tests ─────────────────────────────────────────────────
       - name: Run fast tests
-        working-directory: "Ai stock"
         continue-on-error: true
         run: |
           make test-fast
@@ -69,10 +64,8 @@ jobs:
           git config user.name  "maitreya-bot"
           git config user.email "maitreya-bot@users.noreply.github.com"
 
-          # Stage only the data and reports directories
-          git add "Ai stock/data/" "Ai stock/reports/" || true
+          git add data/ reports/ || true
 
-          # Only commit if there are actual changes
           if git diff --staged --quiet; then
             echo "No changes to commit — pipeline produced no new data."
           else
