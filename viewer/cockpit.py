@@ -340,7 +340,7 @@ def _load_all_snapshots() -> list[dict]:
 def _load_branches_for_ticker(ticker: str) -> dict:
     """Load data/branches/<ticker>.json if it exists."""
     import json as _json
-    branches_dir = _AI_STOCK.parent / "data" / "branches"
+    branches_dir = _AI_STOCK / "data" / "branches"
     path = branches_dir / f"{ticker}.json"
     if path.exists():
         try:
@@ -354,7 +354,7 @@ def _load_branches_for_ticker(ticker: str) -> dict:
 def _load_market_pulse() -> dict:
     """Load data/market_pulse.json written by fetch_market_pulse.py."""
     import json as _json
-    path = _AI_STOCK.parent / "data" / "market_pulse.json"
+    path = _AI_STOCK / "data" / "market_pulse.json"
     if path.exists():
         try:
             return _json.loads(path.read_text(encoding="utf-8"))
