@@ -46,6 +46,7 @@ from core import golden as _golden_mod
 from core import confidence as _conf_mod
 from core import state_machine as _sm_mod
 from core import resonance as _resonance_mod
+from core import chip_score as _chip_mod
 from core.intelligence_delta import (
     load_for_date as _intel_load,
     DailyIntelligenceReport,
@@ -296,6 +297,38 @@ div[data-testid="stExpander"] { border: 1px solid #1F2D3D !important; border-rad
 .g5-scout-bar-bg   { flex:1;background:#1A1232;border-radius:3px;height:4px;overflow:hidden; }
 .g5-scout-bar-fill { height:100%;border-radius:3px;background:#5A4A98; }
 
+/* ── P4 Fixed-height observation cards ── */
+.gc-card { background:#111820;border:1px solid #1F2D3D;border-radius:12px;padding:14px 16px;margin-bottom:10px;border-left:4px solid;box-sizing:border-box; }
+.gc-card.gc-prime     { border-left-color:#D4A84B; }
+.gc-card.gc-strong    { border-left-color:#7EB8D4; }
+.gc-card.gc-qualified { border-left-color:#52B788; }
+.gc-card.gc-new       { border-left-color:#9E8AC8;box-shadow:0 0 0 1px #3A2870; }
+/* Row 1: header */
+.gc-head { display:flex;align-items:center;gap:8px;margin-bottom:8px; }
+.gc-ticker { font-size:18px;font-weight:800;color:#7EB8D4;font-family:monospace; }
+.gc-name   { font-size:13px;color:#8B949E; }
+.gc-badge  { display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:800;letter-spacing:.04em; }
+.gc-badge-prime     { background:#1F1508;color:#D4A84B;border:1px solid #6A5020; }
+.gc-badge-strong    { background:#0A1520;color:#7EB8D4;border:1px solid #253A52; }
+.gc-badge-qualified { background:#0A1F12;color:#52B788;border:1px solid #2E6B4A; }
+.gc-badge-new       { background:#160F22;color:#9E8AC8;border:1px solid #4A3880; }
+.gc-state  { display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;font-weight:600; }
+.gc-price  { margin-left:auto;font-size:15px;font-weight:700;font-family:monospace; }
+/* Row 2: divider */
+.gc-divider { border:none;border-top:1px solid #1F2D3D;margin:6px 0; }
+/* Row 3: key metrics grid */
+.gc-metrics { display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin:6px 0; }
+.gc-metric  { display:flex;justify-content:space-between;align-items:baseline; }
+.gc-metric-label { font-size:11px;color:#6B8EAA; }
+.gc-metric-val   { font-size:13px;font-weight:700;color:#E6EDF3;font-family:monospace; }
+/* Row 4: signal row */
+.gc-signals { display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 4px 0; }
+.gc-signal-pill { display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:12px;white-space:nowrap; }
+/* Tooltip */
+.gc-tooltip-wrap { position:relative;display:inline-block; }
+.gc-tooltip-wrap .gc-tooltip { visibility:hidden;background:#1A2540;color:#CDD5E0;font-size:11px;line-height:1.7;border-radius:7px;padding:8px 12px;position:absolute;z-index:99;bottom:125%;left:50%;transform:translateX(-50%);white-space:nowrap;border:1px solid #2D3F5A;min-width:220px; }
+.gc-tooltip-wrap:hover .gc-tooltip { visibility:visible; }
+.gc-tooltip-icon { color:#4A6A8A;font-size:12px;cursor:help;margin-left:3px; }
 /* ── Sidebar ── */
 [data-testid="stSidebar"] { min-width: 220px !important; max-width: 260px !important; }
 [data-testid="stSidebar"] .block-container { padding: 1rem 0.8rem !important; }
@@ -1695,162 +1728,210 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
     # ── Load learning-layer history once, update at end ─────────────────
     _checklist_history = _load_history()
 
-    # ── Research card renderer (P4: compressed default view) ─────────────
+    # ── Research card renderer (P4 fixed-height observation card) ────────
     def _research_card(
         e: "_golden_mod.GoldenEntry",
         is_new: bool = False,
         near_miss: bool = False,
     ) -> None:
-        stock   = latest_stocks.get(e.ticker, {})
-        price   = stock.get("current_price")
-        chg     = stock.get("change_pct")
-        price_s = f"NT${price:,.2f}" if price else "—"
-        chg_s   = f"{chg:+.2f}%" if chg is not None else "—"
-        chg_col = "#52B788" if (chg or 0) > 0 else ("#E05C7A" if (chg or 0) < 0 else "#6B8EAA")
+        stock     = latest_stocks.get(e.ticker, {})
+        price     = stock.get("current_price")
+        chg       = stock.get("change_pct")
+        price_s   = f"NT${price:,.2f}" if price else "—"
+        chg_s     = f"{chg:+.2f}%" if chg is not None else "—"
+        chg_col   = "#52B788" if (chg or 0) > 0 else ("#E05C7A" if (chg or 0) < 0 else "#6B8EAA")
+        streak_n  = e.streak or 0
 
-        # Tier / badge
+        # Card + badge classes
+        tier_l = e.tier.lower()
         if near_miss:
-            card_cls  = "g5-card g5-qualified"
-            badge_cls = "g5-tier-badge g5-tier-qualified"
+            card_cls = "gc-card gc-qualified"
+            badge_cls = "gc-badge gc-badge-qualified"
             badge_txt = "△ 差一步"
         elif is_new:
-            card_cls  = "g5-card g5-new"
-            badge_cls = "g5-tier-badge g5-tier-new"
-            tier_sym  = {"prime": "★", "strong": "●", "qualified": "◦"}.get(e.tier.lower(), "◦")
-            badge_txt = f"✦ 今日新進 {tier_sym}{e.tier.upper()}"
+            card_cls = "gc-card gc-new"
+            badge_cls = "gc-badge gc-badge-new"
+            tier_sym = {"prime": "★", "strong": "●", "qualified": "◦"}.get(tier_l, "◦")
+            badge_txt = f"✦ 新進 {tier_sym}{e.tier.upper()}"
         else:
-            tier_l    = e.tier.lower()
-            card_cls  = f"g5-card g5-{tier_l}"
-            badge_cls = f"g5-tier-badge g5-tier-{tier_l}"
-            tier_sym  = {"prime": "★", "strong": "●", "qualified": "◦"}.get(tier_l, "◦")
+            card_cls = f"gc-card gc-{tier_l}"
+            badge_cls = f"gc-badge gc-badge-{tier_l}"
+            tier_sym = {"prime": "★", "strong": "●", "qualified": "◦"}.get(tier_l, "◦")
             badge_txt = f"{tier_sym} {e.tier.upper()}"
 
         state_col = _state_color(e.sm_state)
-        days_txt  = f"{e.days_in_sm_state}日" if e.days_in_sm_state else ""
-        streak_n  = e.streak or 0
+        days_txt  = f" Day{e.days_in_sm_state}" if e.days_in_sm_state else ""
 
-        # ── P1: PRIME category badges ─────────────────────────────────────
-        prime_cats = _prime_categories(e)
-        cat_badges = ""
-        for cat in prime_cats:
-            icon, label, col = _CAT_META.get(cat, ("", cat, "#6B8EAA"))
-            cat_badges += (
-                f'<span style="font-size:10px;padding:2px 7px;border-radius:10px;'
-                f'background:{col}18;color:{col};border:1px solid {col}40;margin-right:4px;">'
-                f'{icon} {label}</span>'
-            )
-
-        # ── Sprint 2: Resonance badge ─────────────────────────────────────
-        res_state    = resonance_map.get(e.ticker)
-        res_badge    = res_state.badge_html() if res_state and res_state.resonance_level >= 1 else ""
-
-        # ── P4: Three core questions (compressed default view) ────────────
-        # Q1: Why is this ticker here?
-        why_txt = _why_matters(e)
-
-        # Q2: Strengthening or weakening?
-        mom = _momentum(e)
-        mom_map = {
-            "strengthening": ("↑ 動能強化中", "#52B788"),
-            "stable":        ("→ 動能穩定",   "#7EB8D4"),
-            "weakening":     ("↓ 動能衰退",   "#E8A838"),
-        }
-        mom_txt, mom_col = mom_map.get(mom, ("— 未知", "#6B8EAA"))
-
-        # Q3: What invalidates this observation?
-        inval_list = _invalidation(e)
-        inval_txt  = " · ".join(inval_list[:2])
-
-        # ── Key numbers (compact) ─────────────────────────────────────────
-        vel_s = f"{e.velocity_3d:+,.0f}" if e.velocity_3d is not None else "—"
-        acc_s = f"{e.acceleration:+,.0f}" if e.acceleration is not None else "—"
-        net_s = f"{e.net_cumulative:+,}" if e.net_cumulative else "—"
-
-        # Cost distance
+        # ── Cost / price distance ─────────────────────────────────────────
         mf_cost   = getattr(e, "main_force_cost", None)
         cur_price = price or getattr(e, "current_price", None)
         if mf_cost and mf_cost > 0 and cur_price and cur_price > 0:
-            dist_pct = (cur_price - mf_cost) / mf_cost * 100
+            dist_pct  = (cur_price - mf_cost) / mf_cost * 100
+            cost_s    = f"NT${mf_cost:,.2f}"
             if abs(dist_pct) <= 5:
-                cost_line = f'<span style="color:#52B788;font-size:11px;">成本 {dist_pct:+.1f}% ✓</span>'
+                dist_col, dist_sym = "#52B788", "✓"
             elif dist_pct > 5:
-                cost_line = f'<span style="color:#E8A838;font-size:11px;">成本 {dist_pct:+.1f}% ↑</span>'
+                dist_col, dist_sym = "#E8A838", "↑"
             else:
-                cost_line = f'<span style="color:#E05C7A;font-size:11px;">成本 {dist_pct:+.1f}% ↓</span>'
+                dist_col, dist_sym = "#E05C7A", "↓"
+            dist_s = f'<span style="color:{dist_col};font-weight:700;">{dist_pct:+.1f}% {dist_sym}</span>'
         else:
-            cost_line = '<span style="color:#6B8EAA;font-size:11px;">成本資料待補</span>'
+            cost_s, dist_s, dist_pct = "—", '<span style="color:#6B8EAA;">—</span>', None
 
-        # Main card HTML — P4 compressed layout
+        # ── Resonance (Sprint 2) ──────────────────────────────────────────
+        res = resonance_map.get(e.ticker)
+        if res and res.resonance_level >= 1:
+            res_col  = {1: "#6B8EAA", 2: "#7EB8D4", 3: "#D4A84B"}.get(res.resonance_level, "#6B8EAA")
+            res_stars = res.stars
+            res_label = res.resonance_label_zh
+            # Member checkmarks
+            _p_labels = {"main_force": "主力", "foreign": "外資", "invest_trust": "投信"}
+            members_html = " ".join(
+                f'<span style="color:{"#52B788" if s is True else "#3A4A5A" if s is False else "#4A5A6A"};">'
+                f'{zh}{"✓" if s is True else "✗" if s is False else "—"}</span>'
+                for pid, zh in _p_labels.items()
+                for s in [res.participant_status.get(pid)]
+            )
+            res_html = (
+                f'<div class="gc-signal-pill" style="background:{res_col}15;'
+                f'color:{res_col};border:1px solid {res_col}40;">'
+                f'{res_stars} {res_label}'
+                f'&nbsp;&nbsp;<span style="font-size:10px;font-weight:400;">{members_html}</span>'
+                + (f'&nbsp;<span style="font-size:10px;color:#6B8EAA;">連{res.resonance_streak}日</span>'
+                   if res.resonance_streak >= 2 else "")
+                + f'</div>'
+            )
+        else:
+            res_html = '<div class="gc-signal-pill" style="background:#1A1A2A;color:#4A5A6A;border:1px solid #2A2A3A;">共振 資料待補</div>'
+
+        # ── Chip momentum score ───────────────────────────────────────────
+        mkt_vol = stock.get("market_volume")
+        cs = _chip_mod.compute(
+            streak=streak_n,
+            sponsorship=e.sponsorship_score,
+            fii_sync_count=stock.get("fii_sync_count"),
+            main_force_buy=stock.get("main_force_buy"),
+            market_volume=mkt_vol,
+            main_force_cost=mf_cost,
+            current_price=cur_price,
+        )
+        chip_bar = cs.bar_html()
+
+        # ── Volume ratio ─────────────────────────────────────────────────
+        # Compute from snapshot history
+        vol_ratio: float | None = None
+        if mkt_vol and mkt_vol > 0:
+            vol_hist = [
+                s_snap.get("stocks", [])
+                for s_snap in snaps[-20:]
+            ]
+            vol_vals = []
+            for snap_stocks in vol_hist:
+                sv = next((x.get("market_volume") for x in snap_stocks if x.get("ticker") == e.ticker), None)
+                if sv and sv > 0:
+                    vol_vals.append(sv)
+            if len(vol_vals) >= 3:
+                avg_vol  = sum(vol_vals[:-1]) / len(vol_vals[:-1])
+                vol_ratio = mkt_vol / avg_vol if avg_vol > 0 else None
+
+        vol_label, vol_col = _chip_mod.volume_label(vol_ratio)
+        vol_ratio_s = f"{vol_ratio:.1f}x" if vol_ratio is not None else "—"
+
+        # Tooltip for 量能比
+        tooltip_html = (
+            '<div class="gc-tooltip-wrap">'
+            '<span class="gc-tooltip-icon">ⓘ</span>'
+            '<div class="gc-tooltip">'
+            '主力大買 + 健康放量 → 市場跟進<br>'
+            '主力大買 + 縮量 → 可能默默吸籌<br>'
+            '主力大買 + 爆量 → 留意出貨可能'
+            '</div></div>'
+        )
+
+        # ── PRIME category tags ───────────────────────────────────────────
+        prime_cats = _prime_categories(e)
+        cat_html = ""
+        for cat in prime_cats:
+            icon, label, col = _CAT_META.get(cat, ("", cat, "#6B8EAA"))
+            cat_html += (
+                f'<span style="font-size:10px;padding:1px 6px;border-radius:8px;'
+                f'background:{col}15;color:{col};border:1px solid {col}35;margin-right:3px;">'
+                f'{icon} {label}</span>'
+            )
+
+        # ── Momentum ──────────────────────────────────────────────────────
+        mom = _momentum(e)
+        mom_col = {"strengthening": "#52B788", "stable": "#7EB8D4", "weakening": "#E8A838"}.get(mom, "#6B8EAA")
+        mom_zh  = {"strengthening": "↑ 動能強化", "stable": "→ 穩定", "weakening": "↓ 動能衰退"}.get(mom, "—")
+
+        # ── LAYER 1: Fixed-height card HTML ──────────────────────────────
         card_html = (
             f'<div class="{card_cls}">'
-            # ── Row 1: Header ──────────────────────────────────────────
-            f'<div class="g5-head">'
-            f'<span class="g5-ticker">{e.ticker}</span>'
-            f'<span class="g5-name">{e.name}</span>'
+            # Row 1: header
+            f'<div class="gc-head">'
+            f'<span class="gc-ticker">{e.ticker}</span>'
+            f'<span class="gc-name">{e.name}</span>'
             f'<span class="{badge_cls}">{badge_txt}</span>'
-            f'<span class="g5-state-badge" style="background:{state_col}20;color:{state_col};border:1px solid {state_col}60;">'
-            f'{e.sm_state_zh} {days_txt}</span>'
-            f'<span style="margin-left:auto;font-size:16px;font-weight:700;color:{chg_col};">'
-            f'{price_s} <span style="font-size:13px;">{chg_s}</span></span>'
+            f'<span class="gc-state" style="background:{state_col}20;color:{state_col};border:1px solid {state_col}50;">'
+            f'{e.sm_state_zh}{days_txt}</span>'
+            + (f'<span style="margin-left:2px;">{cat_html}</span>' if cat_html else "")
+            + f'<span class="gc-price" style="color:{chg_col};">{price_s} <span style="font-size:12px;">{chg_s}</span></span>'
             f'</div>'
-            # ── P1 category badges + resonance badge ───────────────────
-            + (f'<div style="margin:4px 0 2px;">{cat_badges}</div>' if cat_badges else "")
-            + (res_badge if res_badge else "")
-            # ── Row 2: Three questions (P4 compressed) ─────────────────
-            + f'<div style="display:grid;grid-template-columns:1fr;gap:5px;'
-            f'margin:8px 0;padding:8px 10px;background:#0D1821;border-radius:7px;">'
-            # Q1
-            f'<div style="font-size:12px;color:#CDD5E0;line-height:1.5;">'
-            f'<span style="color:#6B8EAA;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-right:6px;">在此原因</span>'
-            f'{why_txt}</div>'
-            # Q2
-            f'<div style="font-size:12px;line-height:1.5;">'
-            f'<span style="color:#6B8EAA;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-right:6px;">趨勢判斷</span>'
-            f'<span style="color:{mom_col};font-weight:600;">{mom_txt}</span>'
-            f'&nbsp;&nbsp;{cost_line}</div>'
-            # Q3
-            f'<div style="font-size:12px;color:#8B949E;line-height:1.5;">'
-            f'<span style="color:#6B8EAA;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-right:6px;">失效條件</span>'
-            f'{inval_txt}</div>'
+            # Divider
+            f'<hr class="gc-divider">'
+            # Row 2: key metrics grid
+            f'<div class="gc-metrics">'
+            f'<div class="gc-metric"><span class="gc-metric-label">主力連買</span><span class="gc-metric-val" style="color:#7EB8D4;">{streak_n}日</span></div>'
+            f'<div class="gc-metric"><span class="gc-metric-label">贊助強度</span><span class="gc-metric-val" style="color:#D4A84B;">{e.sponsorship_score:.0%}</span></div>'
+            f'<div class="gc-metric"><span class="gc-metric-label">主力成本</span><span class="gc-metric-val">{cost_s}</span></div>'
+            f'<div class="gc-metric"><span class="gc-metric-label">現價差</span><span class="gc-metric-val">{dist_s}</span></div>'
             f'</div>'
-            # ── Row 3: Compact key metrics ──────────────────────────────
-            f'<div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0;">'
-            f'<span style="font-size:11px;color:#6B8EAA;">連買 <b style="color:#7EB8D4;">{streak_n}日</b></span>'
-            f'<span style="color:#1F2D3D;">|</span>'
-            f'<span style="font-size:11px;color:#6B8EAA;">贊助 <b style="color:#D4A84B;">{e.sponsorship_score:.0%}</b></span>'
-            f'<span style="color:#1F2D3D;">|</span>'
-            f'<span style="font-size:11px;color:#6B8EAA;">動能 <b style="color:#CDD5E0;">{vel_s}</b></span>'
-            f'<span style="color:#1F2D3D;">|</span>'
-            f'<span style="font-size:11px;color:#6B8EAA;">加速 <b style="color:#CDD5E0;">{acc_s}</b></span>'
-            f'<span style="color:#1F2D3D;">|</span>'
-            f'<span style="font-size:11px;color:#6B8EAA;">淨累計 <b style="color:#CDD5E0;">{net_s}</b>張</span>'
-            + (f'<span style="color:#1F2D3D;">|</span>'
-               f'<span style="font-size:11px;color:#6B8EAA;">{e.sector}</span>' if e.sector else "")
-            + '</div></div>'
+            # Divider
+            f'<hr class="gc-divider">'
+            # Row 3: signals
+            f'<div class="gc-signals">'
+            f'{res_html}'
+            f'<div class="gc-signal-pill" style="background:#161B26;color:{cs.grade_color};border:1px solid {cs.grade_color}40;">'
+            f'籌碼動能&nbsp;{chip_bar}'
+            f'</div>'
+            f'<div class="gc-signal-pill" style="background:#161B26;color:{vol_col};border:1px solid {vol_col}40;">'
+            f'量能比&nbsp;<b>{vol_ratio_s}</b>&nbsp;{vol_label}'
+            f'&nbsp;{tooltip_html}'
+            f'</div>'
+            f'<div class="gc-signal-pill" style="background:#161B26;color:{mom_col};border:1px solid {mom_col}40;">'
+            f'{mom_zh}'
+            f'</div>'
+            f'</div>'
+            f'</div>'
         )
         st.markdown(card_html, unsafe_allow_html=True)
 
-        # ── P2: Institutional Checklist — inline on card ─────────────────
-        cl_passed, cl_total, cl_detail = _institutional_checklist(e, stock)
-        history_stats = _history_stats(_checklist_history, e.ticker)
-        st.markdown(
-            f'<div style="margin-top:2px;padding:8px 10px;'
-            f'background:#0A1018;border-radius:7px;border:1px solid #1A2232;">'
-            f'<div style="font-size:10px;color:#4A6A8A;text-transform:uppercase;'
-            f'letter-spacing:.06em;margin-bottom:6px;">'
-            f'機構觀察清單 · 通過 {cl_passed}/{cl_total}</div>'
-            f'{cl_detail}'
-            f'{history_stats}'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-
-        # ── Detail expander: lifecycle + recent changes + watch/invalidation
-        changes = _recent_changes(e.ticker)
-        watch_tags = "".join(f'<span class="g5-tag g5-tag-watch">{t}</span>' for t in _watch_next(e))
-        inval_tags = "".join(f'<span class="g5-tag g5-tag-inval">{t}</span>' for t in _invalidation(e))
-        with st.expander(f"↓ 狀態演進 · 近期變化 — {e.ticker}", expanded=False):
+        # ── LAYER 2: Expandable detail ────────────────────────────────────
+        with st.expander(f"展開詳細 — {e.ticker} {e.name}", expanded=False):
+            # 2a. Institutional checklist
+            cl_passed, cl_total, cl_detail = _institutional_checklist(e, stock)
+            history_stats = _history_stats(_checklist_history, e.ticker)
+            # 2b. Chip score breakdown
+            chip_rows = ""
+            for key, cfg_item in _chip_mod.CHIP_SCORE_CONFIG.items():
+                item = cs.items.get(key, {})
+                s    = item.get("score", 0)
+                m    = item.get("max", cfg_item["max"])
+                d    = item.get("detail", "")
+                avail = item.get("available", False)
+                sym  = "✓" if avail and s >= m * 0.7 else ("△" if avail else "—")
+                sc   = "#52B788" if sym == "✓" else ("#E8A838" if sym == "△" else "#4A5A6A")
+                chip_rows += (
+                    f'<div style="display:flex;gap:8px;align-items:baseline;padding:3px 0;">'
+                    f'<span style="color:{sc};width:14px;flex-shrink:0;">{sym}</span>'
+                    f'<span style="font-size:12px;color:#CDD5E0;width:80px;flex-shrink:0;">{cfg_item["label"]}</span>'
+                    f'<span style="font-size:11px;color:#6B8EAA;flex:1;">{d}</span>'
+                    f'<span style="font-size:12px;font-weight:700;color:{sc};width:40px;text-align:right;">{s}/{m}</span>'
+                    f'</div>'
+                )
+            # 2c. Lifecycle + changes
             lifecycle_html = _lifecycle_timeline(e)
+            changes = _recent_changes(e.ticker)
             changes_html = ""
             if changes:
                 tags = "".join(
@@ -1860,7 +1941,18 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
                     for d, txt in changes
                 )
                 changes_html = f'<div class="g5-section-label">近期變化</div><div class="g5-tag-row">{tags}</div>'
+            watch_tags = "".join(f'<span class="g5-tag g5-tag-watch">{t}</span>' for t in _watch_next(e))
+            inval_tags = "".join(f'<span class="g5-tag g5-tag-inval">{t}</span>' for t in _invalidation(e))
             st.markdown(
+                # Checklist
+                f'<div style="padding:8px 10px;background:#0A1018;border-radius:7px;border:1px solid #1A2232;margin-bottom:8px;">'
+                f'<div style="font-size:10px;color:#4A6A8A;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">🏛 機構觀察清單 · 通過 {cl_passed}/{cl_total}</div>'
+                f'{cl_detail}{history_stats}</div>'
+                # Chip breakdown
+                f'<div style="padding:8px 10px;background:#0A1018;border-radius:7px;border:1px solid #1A2232;margin-bottom:8px;">'
+                f'<div style="font-size:10px;color:#4A6A8A;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">籌碼動能 {cs.total}/{cs.max_total}</div>'
+                f'{chip_rows}</div>'
+                # Lifecycle + Changes
                 f'<div class="g5-section-label">狀態演進</div>{lifecycle_html}'
                 f'{changes_html}'
                 f'<div style="margin-top:8px;">'

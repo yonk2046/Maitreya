@@ -246,6 +246,17 @@ def adapt_legacy(
             })
         raw_inputs_per_ticker[ticker] = ri
 
+    # --- Merge volRows market volume into per-ticker raw_inputs ---
+    # today.json["volRows"] = [{code, name, todayVol, close, chgPct, ...}]
+    # todayVol is in shares (股); convert to 張 (÷1000)
+    vol_map = {
+        str(r.get("code", "")).strip(): int(round(r.get("todayVol", 0) / 1000))
+        for r in (today.get("volRows") or [])
+        if r.get("code") and r.get("todayVol")
+    }
+    for ticker, ri in raw_inputs_per_ticker.items():
+        ri["market_volume"] = vol_map.get(ticker)  # 市場成交量（張），None if not in top list
+
     # --- Merge T86 三大法人 data into per-ticker raw_inputs ---
     # today.json["t86"] = { code: {foreign, trust, prop, total3} } all in 張
     t86 = today.get("t86") or {}

@@ -104,6 +104,7 @@ def _abstain_stock_record(ticker: str, raw: dict, has_branches: bool) -> dict:
         "volume":        volume_field,
         "volume_5d_avg": None,
         "volume_ratio":  None,
+        "market_volume": raw.get("market_volume"),   # 市場總成交量（張），from volRows
 
         # FII / main-force fields — populated from T86 (via adapter) where available
         "fii_net_buy":                raw.get("fii_net_buy"),         # 外資淨買（張）from T86
