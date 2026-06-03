@@ -124,21 +124,44 @@ def _fetch_taiex(date_str: str | None = None) -> dict[str, Any]:
     if date_str is None:
         date_str = datetime.now(TW_TZ).strftime("%Y%m%d")
 
-    # 1. Yahoo Finance — primary
-    for host in ("query1", "query2"):
+    # 1. Yahoo Finance — try multiple endpoints and add cookie to bypass rate limit
+    yf_urls = [
+        f"https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?interval=1d&range=2d",
+        f"https://query2.finance.yahoo.com/v8/finance/chart/%5ETWII?interval=1d&range=2d",
+        f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/%5ETWII?modules=price",
+    ]
+    for url in yf_urls:
         try:
-            yf = _get_json(
-                f"https://{host}.finance.yahoo.com/v8/finance/chart/%5ETWII"
-                "?interval=1d&range=2d",
-                timeout=12,
-                referer="https://finance.yahoo.com/",
-            )
-            meta  = yf["chart"]["result"][0]["meta"]
-            close = meta.get("regularMarketPrice") or meta.get("previousClose")
-            prev  = meta.get("chartPreviousClose") or meta.get("previousClose")
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+                "Accept": "application/json",
+                "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Referer": "https://finance.yahoo.com/quote/%5ETWII/",
+                "Cookie": "A1=d=AQABBFu; A3=d=AQABBFu",
+            })
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                raw = resp.read()
+            if not raw.strip():
+                continue
+            yf = json.loads(raw.decode("utf-8-sig"))
+            # v8 chart response
+            if "chart" in yf:
+                meta  = yf["chart"]["result"][0]["meta"]
+                close = meta.get("regularMarketPrice") or meta.get("previousClose")
+                prev  = meta.get("chartPreviousClose") or meta.get("previousClose")
+            # v10 quoteSummary response
+            elif "quoteSummary" in yf:
+                p = yf["quoteSummary"]["result"][0]["price"]
+                close = p.get("regularMarketPrice", {}).get("raw")
+                prev  = p.get("regularMarketPreviousClose", {}).get("raw")
+                meta  = {}
+            else:
+                continue
+            if not close:
+                continue
             change = round(close - prev, 2) if (close and prev) else None
             change_pct = round(change / prev * 100, 2) if (change and prev) else None
-            vol_yf = meta.get("regularMarketVolume")
+            vol_yf = meta.get("regularMarketVolume") if meta else None
             vol_b  = round(vol_yf / 1e8, 1) if vol_yf else None
             result = {"close": close, "change": change,
                       "change_pct": change_pct, "volume_b_ntd": vol_b,
@@ -146,11 +169,39 @@ def _fetch_taiex(date_str: str | None = None) -> dict[str, Any]:
             _save_taiex_cache(result)
             return result
         except Exception:
-            time.sleep(1)
+            time.sleep(2)
 
-    print("  [taiex] Yahoo rate-limited, trying TWSE STOCK_DAY_INDEX…", flush=True)
+    print("  [taiex] Yahoo failed, trying TWSE MI_INDEX tables…", flush=True)
 
-    # 2. TWSE STOCK_DAY_INDEX
+    # 2. TWSE MI_INDEX — tables format (most reliable)
+    try:
+        mi = _get_json(
+            f"https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX"
+            f"?response=json&date={date_str}&type=IND",
+            referer="https://www.twse.com.tw/",
+        )
+        if mi.get("stat") == "OK":
+            for table in mi.get("tables", []):
+                for row in table.get("data", []):
+                    if "發行量加權股價指數" in (row[0] if row else ""):
+                        def _n(s):
+                            try: return float(str(s).replace(",", "").strip())
+                            except: return None
+                        close = _n(row[1]) if len(row) > 1 else None
+                        change = _n(row[3]) if len(row) > 3 else None
+                        change_pct = _n(row[4]) if len(row) > 4 else None
+                        if close and close > 5000:
+                            result = {"close": close, "change": change,
+                                      "change_pct": change_pct, "volume_b_ntd": None,
+                                      "source": "twse-MI_INDEX-tables"}
+                            _save_taiex_cache(result)
+                            return result
+    except Exception as e:
+        print(f"  [taiex] MI_INDEX tables failed: {e}", flush=True)
+
+    print("  [taiex] trying TWSE STOCK_DAY_INDEX…", flush=True)
+
+    # 3. TWSE STOCK_DAY_INDEX
     try:
         sd = _get_json(
             f"https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY_INDEX"

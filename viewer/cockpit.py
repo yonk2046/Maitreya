@@ -763,66 +763,59 @@ def _render_strengthening(snaps: list[dict]) -> None:
             all_tickers.add(s.get("ticker", ""))
     all_tickers.discard("")
 
-    strengthening = []
+    rows = []
+    latest_stocks = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
+
     for ticker in sorted(all_tickers):
         ctx = full_ticker_context(ticker, snaps)
-        acc = ctx["accumulation"]
-        if acc["streak"] >= 2:
-            strengthening.append((ticker, ctx))
+        acc  = ctx["accumulation"]
+        spon = ctx["sponsorship"]
+        if acc["streak"] < 2:
+            continue
+        stock = latest_stocks.get(ticker, {})
+        name  = stock.get("name") or _short_name(ticker)
+        price = stock.get("current_price")
+        chg   = stock.get("change_pct")
+        cost  = stock.get("main_force_cost")
+        vel   = acc.get("velocity_3d")
+        net   = acc.get("net_cumulative") or 0
+        streak = acc["streak"]
+        spon_score = spon.get("persistence_score") or 0
+        rows.append({
+            "代號": ticker,
+            "名稱": name,
+            "現價": f"NT${price:,.2f}" if price else "—",
+            "漲跌": f"{chg:+.2f}%" if chg is not None else "—",
+            "連買(日)": streak,
+            "累計(張)": net,
+            "速度(張/日)": round(vel) if vel is not None else None,
+            "贊助分": round(spon_score, 2),
+            "成本": f"NT${cost:,.2f}" if cost else "—",
+            "Tier A": "★" if ticker in TIER_A else "",
+        })
 
-    strengthening.sort(key=lambda x: (-x[1]["accumulation"]["streak"],
-                                       -(x[1]["accumulation"]["net_cumulative"] or 0)))
+    _section_header("↑", "轉強訊號", "Strengthening Signals", len(rows))
 
-    _section_header("↑", "轉強訊號", "Strengthening Signals", len(strengthening))
-
-    if not strengthening:
+    if not rows:
         st.markdown(
-            '<div class="data-gap-notice">目前無連續2日以上買超的標的。 '
-            'No tickers with 2+ consecutive buy days.</div>',
+            '<div class="data-gap-notice">目前無連續2日以上買超的標的。</div>',
             unsafe_allow_html=True,
         )
         return
 
-    latest_stocks = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
-
-    for ticker, ctx in strengthening:
-        acc  = ctx["accumulation"]
-        spon = ctx["sponsorship"]
-        stock = latest_stocks.get(ticker, {})
-        meta  = TIER_A.get(ticker, {})
-        name  = stock.get("name") or _short_name(ticker)
-
-        price = stock.get("current_price")
-        chg   = stock.get("change_pct")
-        mfb   = stock.get("main_force_buy")
-        cost  = stock.get("main_force_cost")
-        tier_badge = ' <span class="signal-tag fii">Tier A</span>' if ticker in TIER_A else ""
-
-        price_str = f"NT${price:,.2f}" if price else "—"
-        chg_str   = f"{chg:+.2f}%" if chg is not None else "—"
-        chg_cls   = _chg_cls(chg)
-
-        vel_str = f"速度 {acc['velocity_3d']:+,.0f}張/日" if acc.get("velocity_3d") is not None else ""
-        spon_str = (f"贊助分 {spon['persistence_score']:.2f}" if spon.get("days_with_branches") else "")
-        broker_str = (f"主力分點 {spon['top_persistent_broker']}×{spon['top_broker_days']}日"
-                      if spon.get("top_persistent_broker") else "")
-
-        st.markdown(
-            f'<div class="stock-card">'
-            f'<div class="stock-card-header">'
-            f'<div><span class="stock-ticker">{ticker}</span>'
-            f'<span class="stock-name">{name}</span>{tier_badge}</div>'
-            f'<div><span class="stock-price">{price_str}</span>&nbsp;'
-            f'<span class="{chg_cls}">{chg_str}</span></div>'
-            f'</div>'
-            f'<span class="signal-tag mf">連買 {acc["streak"]}日 · 累計 {acc["net_cumulative"]:+,}張</span>'
-            + (f'<span class="signal-tag">{vel_str}</span>' if vel_str else "")
-            + (f'<span class="signal-tag fii">{spon_str}</span>' if spon_str else "")
-            + (f'<span class="signal-tag cost">{broker_str}</span>' if broker_str else "")
-            + (f'<span class="signal-tag cost">成本 NT${cost:,.2f}</span>' if cost else "")
-            + '</div>',
-            unsafe_allow_html=True,
-        )
+    import pandas as _pd
+    df = _pd.DataFrame(rows).sort_values("連買(日)", ascending=False)
+    st.dataframe(
+        df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "連買(日)":   st.column_config.NumberColumn("連買(日)", format="%d 日"),
+            "累計(張)":   st.column_config.NumberColumn("累計(張)", format="%+,d"),
+            "速度(張/日)": st.column_config.NumberColumn("速度(張/日)", format="%+,d"),
+            "贊助分":     st.column_config.NumberColumn("贊助分",  format="%.2f"),
+        },
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -930,39 +923,38 @@ def _render_persistent_accumulation(snaps: list[dict]) -> None:
 
     latest_stocks = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
 
+    rows_pa = []
     for ticker, ctx in candidates:
         spon  = ctx["sponsorship"]
         acc   = ctx["accumulation"]
         stock = latest_stocks.get(ticker, {})
-        meta  = TIER_A.get(ticker, {})
         name  = stock.get("name") or _short_name(ticker)
         cost  = stock.get("main_force_cost")
+        rows_pa.append({
+            "代號": ticker,
+            "名稱": name,
+            "累計(張)": acc.get("net_cumulative") or 0,
+            "買超(日)": acc.get("buy_days") or 0,
+            "贊助分": round(spon.get("persistence_score", 0), 2),
+            "主力分點": spon.get("top_persistent_broker") or "—",
+            "分點(日)": spon.get("top_broker_days") or 0,
+            "成本": f"NT${cost:,.2f}" if cost else "—",
+            "Tier A": "★" if ticker in TIER_A else "",
+        })
 
-        score_pct = int(spon["persistence_score"] * 100)
-        bar_fill  = "#7EB8D4" if score_pct >= 60 else "#D4A84B"
-
-        top_broker = spon.get("top_persistent_broker") or "—"
-        top_days   = spon.get("top_broker_days", 0)
-
-        st.markdown(
-            f'<div class="stock-card">'
-            f'<div class="stock-card-header">'
-            f'<div><span class="stock-ticker">{ticker}</span>'
-            f'<span class="stock-name">{name}</span></div>'
-            f'<div style="font-size:12px;color:#6B8EAA;">贊助分 {spon["persistence_score"]:.2f}</div>'
-            f'</div>'
-            f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
-            f'<div style="flex:1;background:#1A2030;border-radius:4px;height:8px;overflow:hidden;">'
-            f'<div style="width:{score_pct}%;height:100%;background:{bar_fill};border-radius:4px;"></div>'
-            f'</div>'
-            f'<span style="font-size:12px;color:{bar_fill};">{score_pct}%</span>'
-            f'</div>'
-            f'<span class="signal-tag fii">主力分點 {top_broker} × {top_days}日</span>'
-            f'<span class="signal-tag mf">累計 {acc["net_cumulative"]:+,}張 · 買 {acc["buy_days"]}日</span>'
-            + (f'<span class="signal-tag cost">成本 NT${cost:,.2f}</span>' if cost else "")
-            + '</div>',
-            unsafe_allow_html=True,
-        )
+    import pandas as _pd
+    df_pa = _pd.DataFrame(rows_pa).sort_values("贊助分", ascending=False)
+    st.dataframe(
+        df_pa,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "累計(張)":  st.column_config.NumberColumn("累計(張)",  format="%+,d"),
+            "買超(日)":  st.column_config.NumberColumn("買超(日)",  format="%d 日"),
+            "贊助分":    st.column_config.NumberColumn("贊助分",    format="%.2f"),
+            "分點(日)":  st.column_config.NumberColumn("分點(日)",  format="%d 日"),
+        },
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1848,14 +1840,14 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
             '</div></div>'
         )
 
-        # ── PRIME category tags ───────────────────────────────────────────
+        # ── PRIME category tags — unified gray, emoji carries the color ────
         prime_cats = _prime_categories(e)
         cat_html = ""
         for cat in prime_cats:
-            icon, label, col = _CAT_META.get(cat, ("", cat, "#6B8EAA"))
+            icon, label, _ = _CAT_META.get(cat, ("", cat, "#6B8EAA"))
             cat_html += (
                 f'<span style="font-size:10px;padding:1px 6px;border-radius:8px;'
-                f'background:{col}15;color:{col};border:1px solid {col}35;margin-right:3px;">'
+                f'background:#1A2030;color:#8B949E;border:1px solid #2D3748;margin-right:3px;">'
                 f'{icon} {label}</span>'
             )
 
@@ -1879,12 +1871,14 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
             f'</div>'
             # Divider
             f'<hr class="gc-divider">'
-            # Row 2: key metrics grid
-            f'<div class="gc-metrics">'
+            # Row 2: key metrics grid (3-column, 6 items)
+            + f'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px;margin:6px 0;">'
             f'<div class="gc-metric"><span class="gc-metric-label">主力連買</span><span class="gc-metric-val" style="color:#7EB8D4;">{streak_n}日</span></div>'
             f'<div class="gc-metric"><span class="gc-metric-label">贊助強度</span><span class="gc-metric-val" style="color:#D4A84B;">{e.sponsorship_score:.0%}</span></div>'
             f'<div class="gc-metric"><span class="gc-metric-label">主力成本</span><span class="gc-metric-val">{cost_s}</span></div>'
-            f'<div class="gc-metric"><span class="gc-metric-label">現價差</span><span class="gc-metric-val">{dist_s}</span></div>'
+            f'<div class="gc-metric"><span class="gc-metric-label">3日速度</span><span class="gc-metric-val">{f"{e.velocity_3d:+,.0f}" if e.velocity_3d is not None else "—"}</span></div>'
+            f'<div class="gc-metric"><span class="gc-metric-label">加速度</span><span class="gc-metric-val">{f"{e.acceleration:+,.0f}" if e.acceleration is not None else "—"}</span></div>'
+            f'<div class="gc-metric"><span class="gc-metric-label">淨累計</span><span class="gc-metric-val">{f"{e.net_cumulative:+,}" if e.net_cumulative else "—"}張</span></div>'
             f'</div>'
             # Divider
             f'<hr class="gc-divider">'
