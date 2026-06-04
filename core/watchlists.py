@@ -113,6 +113,15 @@ def all_watched_tickers() -> frozenset[str]:
     return frozenset(tickers)
 
 
+# Name corrections for tickers whose names arrive garbled from the data source
+# (Big5 / CP950 encoding mismatch causes U+FFFD replacement characters)
+NAME_CORRECTIONS: dict[str, str] = {
+    "2353": "宏碁",    # 碁 (U+7881) garbles in some source encodings
+    "2049": "上銀",
+    "3673": "TPK-KY",
+}
+
+
 def build_name_map(snapshots: list[dict[str, Any]]) -> dict[str, str]:
     """Build a {ticker: name} mapping from loaded snapshot records.
 
@@ -134,6 +143,10 @@ def build_name_map(snapshots: list[dict[str, Any]]) -> dict[str, str]:
     # Tier A always overrides with canonical names
     for t, meta in TIER_A.items():
         out[t] = meta["name"]
+    # Apply encoding corrections (overrides garbled names from data source)
+    for t, corrected in NAME_CORRECTIONS.items():
+        if t not in TIER_A:  # don't override TIER_A entries
+            out[t] = corrected
     return out
 
 
