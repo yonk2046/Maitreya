@@ -124,10 +124,10 @@ temporal-report:  # run all four toolkit views in sequence
 # ----- Daily auto-ingest scheduler -----
 
 daily:  # run the full daily flow once: fetch -> ingest+archive -> verify-all-replay
-	$(PY) -m tools.daily
+	SCD_PROJECT_ROOT="$(CURDIR)" $(PY) -m tools.daily
 
 daily-skip-fetch:  # same, but use the existing data/today.json instead of refetching
-	$(PY) -m tools.daily --skip-fetch
+	SCD_PROJECT_ROOT="$(CURDIR)" $(PY) -m tools.daily --skip-fetch
 
 daily-install:  # macOS only — install ~/Library/LaunchAgents/com.scd.daily.plist (weekdays 19:00)
 	bash deploy/install_launchd.sh install
@@ -145,16 +145,16 @@ daily-tail:  # tail today's daily log (or pass DATE=YYYY-MM-DD)
 	  else echo "no log at $$f"; fi
 
 fetch:  # run upstream fetch only (fubon+twse+sinotrade) → writes data/today.json + data/branches/
-	cd .. && $(PY) tools/fetch_daily.py
+	SCD_PROJECT_ROOT="$(CURDIR)" $(PY) tools/fetch_daily.py
 
 fetch-dry-run:  # dry-run fetch (prints plan, no writes)
-	cd .. && $(PY) tools/fetch_daily.py --dry-run
+	SCD_PROJECT_ROOT="$(CURDIR)" $(PY) tools/fetch_daily.py --dry-run
 
 fetch-pulse:  # fetch TAIEX + TX futures + 三大法人台指期未平倉 → data/market_pulse.json
-	cd .. && $(PY) tools/fetch_market_pulse.py
+	$(PY) tools/fetch_market_pulse.py
 
 fetch-pulse-dry-run:  # dry-run market pulse fetch (prints, no writes)
-	cd .. && $(PY) tools/fetch_market_pulse.py --dry-run
+	$(PY) tools/fetch_market_pulse.py --dry-run
 
 fix-index:  # idempotent: link supersedes chain in reports/index.json
 	$(PY) tools/fix_index_supersedes.py

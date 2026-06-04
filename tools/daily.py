@@ -43,8 +43,18 @@ _PROJECT_ROOT = _AI_STOCK.parent                      # SCD engine/  (parent of 
 
 REPORTS_DIR = _AI_STOCK / "reports"
 DAILY_LOGS = REPORTS_DIR / "_daily_logs"
-UPSTREAM_FETCH = _PROJECT_ROOT / "tools" / "fetch_daily.py"
-TODAY_JSON = _PROJECT_ROOT / "data" / "today.json"
+# fetch_daily.py is now in the same tools/ dir (repo-local copy for CI).
+# Fall back to the legacy parent-dir location for local dev compatibility.
+UPSTREAM_FETCH = (
+    _HERE / "fetch_daily.py"
+    if (_HERE / "fetch_daily.py").exists()
+    else _PROJECT_ROOT / "tools" / "fetch_daily.py"
+)
+TODAY_JSON = (
+    _AI_STOCK / "data" / "today.json"
+    if (_HERE / "fetch_daily.py").exists()
+    else _PROJECT_ROOT / "data" / "today.json"
+)
 
 
 # ---------------------------------------------------------------------------

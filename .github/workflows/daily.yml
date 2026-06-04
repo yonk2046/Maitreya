@@ -3,6 +3,8 @@ on:
   schedule:
     - cron: '0 11 * * 1-5'
   workflow_dispatch:
+env:
+  TZ: Asia/Taipei
 jobs:
   daily:
     runs-on: ubuntu-latest
@@ -22,15 +24,6 @@ jobs:
           cache: 'pip'
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Fetch market pulse
-        run: |
-          TODAY=$(date -u +%Y-%m-%d)
-          PULSE_DATE=$(python3 -c "import json; d=json.load(open('data/market_pulse.json')); print(d.get('date',''))" 2>/dev/null || echo "")
-          if [ "$PULSE_DATE" = "$TODAY" ]; then
-            echo "market_pulse.json already has today's data ($TODAY) — skipping fetch"
-          else
-            python tools/fetch_market_pulse.py || echo "non-trading day, skipping"
-          fi
       - name: Run daily pipeline
         run: make daily || echo "replay mismatch, continuing"
       - name: Verify index
@@ -47,7 +40,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
-          git commit -m "data: daily pipeline $(date -u +%Y-%m-%d) [skip ci]"
+            git commit -m "data: daily pipeline $(date +%Y-%m-%d) [skip ci]"
             git pull --rebase origin main
             git push
           fi

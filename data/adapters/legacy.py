@@ -26,49 +26,58 @@ from data.adapters.contract import validate_adapter_output
 # ---- Path resolution ------------------------------------------------------
 
 def _project_root() -> pathlib.Path:
-    """Find the parent SCD engine folder (one level up from 'Ai stock').
+    """Find the project root that contains the data/ directory.
 
     Resolution order:
       1. $SCD_PROJECT_ROOT env var (explicit override — wins everything).
-         Must point at a dir containing 'Ai stock' and 'data' siblings.
+         Accepts any dir that has a 'data' subdirectory. This includes:
+           - The classic 'SCD engine/' parent layout (local dev)
+           - The repo root itself (GitHub Actions / devcontainer)
       2. Walk up from __file__ looking for a parent with both
-         'Ai stock' and 'data' as children. This is the normal case on the
-         user's machine, where the file lives at
-         /Users/.../SCD engine/Ai stock/data/adapters/legacy.py.
+         'Ai stock' and 'data' as children. Normal case on the user's
+         machine: /Users/.../SCD engine/Ai stock/data/adapters/legacy.py
       3. Walk up looking for a sibling 'data' dir adjacent to an 'Ai stock'
-         peer at any depth — handles the Cowork dual-mount case where
-         'Ai stock' and 'SCD engine' are both top-level mounts and the
-         parent walk from /mnt/Ai stock/ never sees 'data'.
+         peer at any depth — handles the Cowork dual-mount case.
+      4. Repo-as-root: walk up looking for a dir that has both 'data/'
+         and 'tools/fetch_daily.py' as children. Used in GitHub Actions
+         where the checkout IS the project root (no parent SCD engine/).
 
     Raises RuntimeError if none of the above resolves.
     """
     env_override = os.environ.get("SCD_PROJECT_ROOT")
     if env_override:
         p = pathlib.Path(env_override).resolve()
-        if (p / "Ai stock").is_dir() and (p / "data").is_dir():
+        # Relaxed check: just needs data/ to exist (works for both classic
+        # parent layout and repo-as-root layout in CI).
+        if (p / "data").is_dir():
             return p
         raise RuntimeError(
-            f"SCD_PROJECT_ROOT={env_override} does not contain both "
-            "'Ai stock' and 'data' subdirs."
+            f"SCD_PROJECT_ROOT={env_override} does not contain a 'data' subdir."
         )
 
     here = pathlib.Path(__file__).resolve()
-    # Case 2: standard parent walk.
+    # Case 2: standard parent walk — classic SCD engine/ layout.
     for parent in here.parents:
         if (parent / "Ai stock").is_dir() and (parent / "data").is_dir():
             return parent
 
-    # Case 3: Cowork dual-mount fallback. Look for a 'SCD engine' dir as a
-    # peer at any ancestor level — it has the real data/ inside.
+    # Case 3: Cowork dual-mount fallback.
     for parent in here.parents:
         candidate = parent / "SCD engine"
         if (candidate / "Ai stock").is_dir() and (candidate / "data").is_dir():
             return candidate
 
+    # Case 4: Repo-as-root (GitHub Actions / devcontainer).
+    # The repo checkout itself is the project root; fetch_daily.py is
+    # co-located in tools/ and data/ is a direct child of the repo root.
+    for parent in here.parents:
+        if (parent / "tools" / "fetch_daily.py").is_file() and (parent / "data").is_dir():
+            return parent
+
     raise RuntimeError(
-        f"Could not locate 'SCD engine' project root from {here}. "
-        "Expected to find both 'Ai stock' and 'data' as sibling subdirs, "
-        "or set $SCD_PROJECT_ROOT to override."
+        f"Could not locate project root from {here}. "
+        "Expected a parent dir with 'data/' as a child, or set "
+        "$SCD_PROJECT_ROOT to the project root explicitly."
     )
 
 
