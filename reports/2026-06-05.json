@@ -1,11 +1,11 @@
 {
   "schema_version": "1.4.0",
   "date": "2026-06-05",
-  "generated_at": "2026-06-05T11:08:16Z",
+  "generated_at": "2026-06-05T13:52:55Z",
   "config_hash": "sha256:aa4b089663c92dec8309b5048475fe48fcb1c18be0fd42e17500fa23f58026ed",
   "core_version": "core@0.1.0-p3a",
   "environment": {
-    "core_commit_sha": "c055125727fcf1a71da9ad49c0b7414d8a0ce40a",
+    "core_commit_sha": "ecfb05bdb66c49649f66a37917f4fa35b20afad5",
     "core_version": "core@0.1.0-p3a",
     "python": "3.11.15",
     "numpy": "2.4.6",
@@ -35,9 +35,9 @@
       "legacy_today_json": {
         "dataset": "SCD.legacy.today_json",
         "url": "file://data/today.json",
-        "fetched_at": "2026-06-05T11:08:15Z",
+        "fetched_at": "2026-06-05T13:52:55Z",
         "raw_file": "data/today.json",
-        "raw_sha256": "sha256:1aa8c082f0b73f130737559f9e60d206f4ffa26e118fc5faa496f30c58a22b1c",
+        "raw_sha256": "sha256:4176eee219b1416af8471bae2a26c843370358b870833fcbb1c20789072ad5e7",
         "row_count": 36,
         "vendor_id": null,
         "report_date": "2026-06-05",
@@ -57,15 +57,15 @@
           "fii_sync_count"
         ],
         "archived_copy_path": "_raw_archive/2026-06-05/legacy_today_json",
-        "archived_sha256": "sha256:1aa8c082f0b73f130737559f9e60d206f4ffa26e118fc5faa496f30c58a22b1c"
+        "archived_sha256": "sha256:4176eee219b1416af8471bae2a26c843370358b870833fcbb1c20789072ad5e7"
       },
       "legacy_branches": {
         "dataset": "SCD.legacy.branches_dir",
         "url": "file://data/branches/",
-        "fetched_at": "2026-06-05T11:08:12Z",
+        "fetched_at": "2026-06-05T13:52:51Z",
         "raw_file": "data/branches/",
-        "raw_sha256": "sha256:313f67c7da2aa8ad2b708c673368c94396d6f71069bc89d8f8441262addee493",
-        "row_count": 41,
+        "raw_sha256": "sha256:f8ad0dee55f0f110a3f529e5ecd5c6a1c5027a1d5e2c98910a3b729f2e719008",
+        "row_count": 43,
         "vendor_id": null,
         "report_date": "2026-06-05",
         "data_lag_days": 0,
@@ -77,7 +77,7 @@
           "avg_sell_cost"
         ],
         "archived_copy_path": "_raw_archive/2026-06-05/legacy_branches/",
-        "archived_sha256": "sha256:313f67c7da2aa8ad2b708c673368c94396d6f71069bc89d8f8441262addee493"
+        "archived_sha256": "sha256:f8ad0dee55f0f110a3f529e5ecd5c6a1c5027a1d5e2c98910a3b729f2e719008"
       }
     },
     "field_to_source": {
@@ -1567,9 +1567,40 @@
       "fii_sync_count": 2,
       "fii_brokers_buying": [],
       "fii_consecutive_buy_days": null,
-      "main_force_buy": 5209,
-      "top5_branches": [],
-      "main_force_cost": null,
+      "main_force_buy": 10099,
+      "top5_branches": [
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 7028,
+          "sell": 2924,
+          "net": 4104
+        },
+        {
+          "branch": "元大證券",
+          "buy": 9538,
+          "sell": 7820,
+          "net": 1718
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 3173,
+          "sell": 2091,
+          "net": 1082
+        },
+        {
+          "branch": "凱基-信義",
+          "buy": 832,
+          "sell": 15,
+          "net": 817
+        },
+        {
+          "branch": "美林",
+          "buy": 1309,
+          "sell": 576,
+          "net": 733
+        }
+      ],
+      "main_force_cost": 165.85,
       "main_force_consecutive_days": null,
       "main_force_volume_trend": [],
       "volume_increasing_streak": null,
@@ -3768,9 +3799,40 @@
       "fii_sync_count": 2,
       "fii_brokers_buying": [],
       "fii_consecutive_buy_days": null,
-      "main_force_buy": 3248,
-      "top5_branches": [],
-      "main_force_cost": null,
+      "main_force_buy": 5370,
+      "top5_branches": [
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 918,
+          "sell": 58,
+          "net": 860
+        },
+        {
+          "branch": "凱基-台北",
+          "buy": 844,
+          "sell": 147,
+          "net": 697
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 732,
+          "sell": 107,
+          "net": 625
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 686,
+          "sell": 93,
+          "net": 593
+        },
+        {
+          "branch": "台新",
+          "buy": 590,
+          "sell": 49,
+          "net": 541
+        }
+      ],
+      "main_force_cost": 23.37,
       "main_force_consecutive_days": null,
       "main_force_volume_trend": [],
       "volume_increasing_streak": null,
@@ -4579,12 +4641,6 @@
       "step": "adapters.legacy.branches"
     },
     {
-      "ticker": "2481",
-      "event": "DATA_WARNING",
-      "reason": "no branches file for 2481; top5_branches abstained",
-      "step": "adapters.legacy.branches"
-    },
-    {
       "ticker": "2002",
       "event": "DATA_WARNING",
       "reason": "no branches file for 2002; top5_branches abstained",
@@ -4606,12 +4662,6 @@
       "ticker": "1409",
       "event": "DATA_WARNING",
       "reason": "no branches file for 1409; top5_branches abstained",
-      "step": "adapters.legacy.branches"
-    },
-    {
-      "ticker": "2903",
-      "event": "DATA_WARNING",
-      "reason": "no branches file for 2903; top5_branches abstained",
       "step": "adapters.legacy.branches"
     },
     {
