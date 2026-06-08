@@ -33,14 +33,22 @@ def _project_root() -> pathlib.Path:
          Accepts any dir that has a 'data' subdirectory. This includes:
            - The classic 'SCD engine/' parent layout (local dev)
            - The repo root itself (GitHub Actions / devcontainer)
-      2. Walk up from __file__ looking for a parent with both
-         'Ai stock' and 'data' as children. Normal case on the user's
-         machine: /Users/.../SCD engine/Ai stock/data/adapters/legacy.py
-      3. Walk up looking for a sibling 'data' dir adjacent to an 'Ai stock'
+      2. Anchor-file walk (MOST SPECIFIC — checked first): walk up from
+         __file__ looking for the nearest parent that directly contains
+         both 'tools/fetch_daily.py' and 'data/'. This uniquely identifies
+         the actual project root regardless of what its parent directories
+         are named, so it correctly resolves to '.../SCD engine/Ai stock'
+         on the user's machine (NOT '.../SCD engine', which also happens to
+         contain an 'Ai stock' dir AND its own stale leftover 'data/' dir
+         from an old prototype layout — matching that broader, looser
+         condition first was the root cause of a local/cloud data-sync bug,
+         see [[scd_distribution_layer_plan]]). Also correctly handles
+         GitHub Actions / devcontainer checkouts where the repo IS the root.
+      3. Walk up from __file__ looking for a parent with both
+         'Ai stock' and 'data' as children — fallback for unusual layouts
+         where case 2's anchor file might be missing.
+      4. Walk up looking for a sibling 'data' dir adjacent to an 'Ai stock'
          peer at any depth — handles the Cowork dual-mount case.
-      4. Repo-as-root: walk up looking for a dir that has both 'data/'
-         and 'tools/fetch_daily.py' as children. Used in GitHub Actions
-         where the checkout IS the project root (no parent SCD engine/).
 
     Raises RuntimeError if none of the above resolves.
     """
@@ -56,23 +64,27 @@ def _project_root() -> pathlib.Path:
         )
 
     here = pathlib.Path(__file__).resolve()
-    # Case 2: standard parent walk — classic SCD engine/ layout.
+
+    # Case 2: anchor-file walk — most specific, checked FIRST so it wins
+    # over the looser name-based checks below. 'tools/fetch_daily.py' +
+    # 'data/' as direct siblings uniquely identifies the real project root
+    # (whether that's '.../SCD engine/Ai stock' locally or the repo
+    # checkout root in CI), and stops us from matching a parent directory
+    # that merely *contains* an 'Ai stock' folder and an unrelated 'data' dir.
+    for parent in here.parents:
+        if (parent / "tools" / "fetch_daily.py").is_file() and (parent / "data").is_dir():
+            return parent
+
+    # Case 3: standard parent walk — classic SCD engine/ layout fallback.
     for parent in here.parents:
         if (parent / "Ai stock").is_dir() and (parent / "data").is_dir():
             return parent
 
-    # Case 3: Cowork dual-mount fallback.
+    # Case 4: Cowork dual-mount fallback.
     for parent in here.parents:
         candidate = parent / "SCD engine"
         if (candidate / "Ai stock").is_dir() and (candidate / "data").is_dir():
             return candidate
-
-    # Case 4: Repo-as-root (GitHub Actions / devcontainer).
-    # The repo checkout itself is the project root; fetch_daily.py is
-    # co-located in tools/ and data/ is a direct child of the repo root.
-    for parent in here.parents:
-        if (parent / "tools" / "fetch_daily.py").is_file() and (parent / "data").is_dir():
-            return parent
 
     raise RuntimeError(
         f"Could not locate project root from {here}. "
