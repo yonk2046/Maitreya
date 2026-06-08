@@ -191,18 +191,28 @@ def run(dry_run=False):
          f"三榜共現 {len(triple)} 支，外資+主力雙榜 {len(double)} 支",
          status="done", detail=",".join(detail_codes))
 
-    # ── Step 7: Sinotrade 分點資料 (top cross-signal tickers) ─────────────────
-    emit(7, TOTAL_STEPS, f"抓取分點資料 (三榜共現 + 外資/主力前10，共 {min(25, len(cross) + 20)} 支)...", status="running")
+    # ── Step 7: Sinotrade 分點資料 (top cross-signal + buy/sell-side tickers) ──
+    emit(7, TOTAL_STEPS, "抓取分點資料 (三榜共現 + 外資/主力買超前10 + 外資/主力賣超前10)...", status="running")
     branches_dir = os.path.join(DATA_DIR, "branches")
     branch_fetch_summary = {"fetched": [], "failed": [], "skipped": []}
-    # Cross-signal top 10 + FII/主力 top 10 + Tier A regime anchors (always)
+    # Cross-signal top 10 + FII/主力 top 10 (買超) + FII/主力 top 10 (賣超)
+    # + Tier A regime anchors (always).
     # Tier A guarantees regime anchors get fresh branch data every day regardless
     # of whether they appear in cross-signal rankings.
+    #
+    # 賣超 tickers are included so Sinotrade's avgSellCost/sellBranches get
+    # populated for sell-side names too — this feeds core/distribution.py's
+    # 安全邊際 (current price vs main force cost) for tickers that only show
+    # up in the sell-side rankings and would otherwise have no cost basis.
     TIER_A_ANCHORS = ["2330", "2317", "2382", "2454", "2308", "2881", "2882", "2891"]
-    fii_top = [s["code"] for s in buy_list[:10]]
-    mf_top  = [s["code"] for s in main_force_buy[:10]]
-    sino_set = list(dict.fromkeys(cross[:10] + fii_top + mf_top + TIER_A_ANCHORS))
-    sino_tickers = sino_set[:30]  # cap at 30
+    fii_top      = [s["code"] for s in buy_list[:10]]
+    mf_top       = [s["code"] for s in main_force_buy[:10]]
+    fii_sell_top = [s["code"] for s in sell_list[:10]]
+    mf_sell_top  = [s["code"] for s in main_force_sell[:10]]
+    sino_set = list(dict.fromkeys(
+        cross[:10] + fii_top + mf_top + fii_sell_top + mf_sell_top + TIER_A_ANCHORS
+    ))
+    sino_tickers = sino_set[:40]  # cap at 40 (raised from 30 to make room for 賣超 coverage)
 
     if not sino_tickers:
         emit(7, TOTAL_STEPS, "無三榜/雙榜共現股，跳過分點抓取", status="skip")

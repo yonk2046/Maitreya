@@ -47,6 +47,7 @@ from core import confidence as _conf_mod
 from core import state_machine as _sm_mod
 from core import resonance as _resonance_mod
 from core import chip_score as _chip_mod
+from core.distribution import load_for_date as _dist_load
 from core.intelligence_delta import (
     load_for_date as _intel_load,
     DailyIntelligenceReport,
@@ -1388,6 +1389,14 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
     active_date   = snaps[-1].get("date", "")
     intel         = _intel_load(active_date)  # may be None
 
+    # Distribution Intelligence Layer (display-only; parallel to Golden, never
+    # affects Golden scoring/tiers — see core/distribution.py docstring + the
+    # "scd-distribution-layer-plan" memory for the architectural contract).
+    dist_result = _dist_load(active_date)  # may be None
+    dist_map: dict[str, "_dist_mod.DistributionEntry"] = (
+        {entry.ticker: entry for entry in dist_result.entries} if dist_result else {}
+    )
+
     prime_n  = len(result.prime)
     strong_n = len(result.strong)
     qual_n   = len(result.qualified)
@@ -1856,6 +1865,41 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         mom_col = {"strengthening": "#52B788", "stable": "#7EB8D4", "weakening": "#E8A838"}.get(mom, "#6B8EAA")
         mom_zh  = {"strengthening": "↑ 動能強化", "stable": "→ 穩定", "weakening": "↓ 動能衰退"}.get(mom, "—")
 
+        # ── Distribution Intelligence Layer (display-only, parallel system) ──
+        # Shows 籌碼一致性 / 安全邊際 / 建議動作 from core/distribution.py.
+        # This NEVER feeds into Golden tier/score — purely supplemental risk
+        # display per the user's "Golden 邏輯保持不變" requirement.
+        dist_e = dist_map.get(e.ticker)
+        if dist_e is not None:
+            dist_html = (
+                f'<div class="gc-signal-pill" style="background:{dist_e.consistency_color}15;'
+                f'color:{dist_e.consistency_color};border:1px solid {dist_e.consistency_color}40;" '
+                f'title="{dist_e.consistency_reason}">'
+                f'籌碼一致性&nbsp;<b>{dist_e.consistency_grade}</b>'
+                f'&nbsp;({dist_e.consistency_score:+d})'
+                f'</div>'
+                f'<div class="gc-signal-pill" style="background:{dist_e.safety_color}15;'
+                f'color:{dist_e.safety_color};border:1px solid {dist_e.safety_color}40;" '
+                f'title="{dist_e.safety_hint}">'
+                f'安全邊際&nbsp;<b>{dist_e.safety_label}</b>'
+                + (f'&nbsp;{dist_e.safety_margin:.2f}x' if dist_e.safety_margin is not None else "")
+                + f'</div>'
+                f'<div class="gc-signal-pill" style="background:#161B26;color:#9E8AC8;'
+                f'border:1px solid #9E8AC840;" title="{dist_e.suggested_detail}">'
+                f'建議動作&nbsp;<b>{dist_e.suggested_action}</b>'
+                f'</div>'
+            )
+            if dist_e.flagged_for_removal:
+                dist_html += (
+                    f'<div class="gc-signal-pill" style="background:#E05C7A20;color:#E05C7A;'
+                    f'border:1px solid #E05C7A60;font-weight:700;" '
+                    f'title="{dist_e.flag_reason or ""}">'
+                    f'⚠ 建議自黃金名單移出（display-only）'
+                    f'</div>'
+                )
+        else:
+            dist_html = ""
+
         # ── LAYER 1: Fixed-height card HTML ──────────────────────────────
         card_html = (
             f'<div class="{card_cls}">'
@@ -1895,6 +1939,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
             f'<div class="gc-signal-pill" style="background:#161B26;color:{mom_col};border:1px solid {mom_col}40;">'
             f'{mom_zh}'
             f'</div>'
+            + dist_html +
             f'</div>'
             f'</div>'
         )
