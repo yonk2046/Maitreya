@@ -1,79 +1,49 @@
-"""Fetch TDCC stockholder distribution data for a list of stock codes.
+"""Fetch TDCC 集保股權分散表 and cache to data/tdcc/<YYYYMMDD>.json.
 
-Source: TDCC opendata id=1-5 — full market weekly distribution (UTF-8 CSV, ~2.2MB).
-Returns per-stock: totalHolders, bigHolderPct (tier 13+: 600K+ shares = ~600 lots)
+Usage:
+    python -m tools.fetch_tdcc            # fetch latest (skip if cached)
+    python -m tools.fetch_tdcc --force    # re-download even if cached
+
+TDCC publishes data every Friday after market close.
+This script is called from fetch_daily.py on Fridays (or run manually).
+
+Delegates all fetch/parse logic to data/adapters/tdcc_adapter.py.
+Grade mapping (1 lot = 1,000 shares):
+  large_holder_400_pct  = sum % of grades 12–15 (≥ 400 lots)
+  large_holder_1000_pct = % of grade 15 only   (≥ 1000 lots)
+  shareholder_count     = headcount from grade-17 total row
 """
+from __future__ import annotations
 
-import json
+import argparse
+import pathlib
 import sys
-import csv
-import io
-import urllib.request
-from _common import log, parse_int_safe, parse_float_safe
 
-TDCC_URL = "https://opendata.tdcc.com.tw/getOD.ashx?id=1-5&key=anonymous"
-BIG_HOLDER_TIER = 13  # tier ≥ 13 → 600,001+ shares (≈600 lots), considered institutional/big player
+_HERE = pathlib.Path(__file__).resolve().parent
+_AI_STOCK = _HERE.parent
+if str(_AI_STOCK) not in sys.path:
+    sys.path.insert(0, str(_AI_STOCK))
+
+from data.adapters import tdcc_adapter
+from data.adapters.legacy import _project_root
 
 
-def fetch(target_codes=None):
-    """
-    Download TDCC distribution CSV and compute per-stock stockholder stats.
-    target_codes: list of stock codes to extract (None = all, slow)
-    Returns { code: { date, totalHolders, bigHolderPct } }
-    """
-    log("[tdcc] downloading stockholder distribution (~2.2MB)...")
-    req = urllib.request.Request(TDCC_URL, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=40) as r:
-        raw = r.read()
-    html = raw.decode("utf-8-sig", errors="replace")
-    log(f"[tdcc] downloaded {len(raw)//1024} KB")
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Fetch TDCC weekly distribution data")
+    parser.add_argument("--force", action="store_true", help="Re-download even if cached")
+    args = parser.parse_args()
 
-    target_set = set(c.strip() for c in target_codes) if target_codes else None
+    root     = _project_root()
+    tdcc_dir = root / "data" / "tdcc"
 
-    # Aggregate by stock code
-    totals = {}   # code → { date, holders, bigHolders, totalShares, bigShares }
-    reader = csv.DictReader(io.StringIO(html))
-    for row in reader:
-        code = row.get("證券代號", "").strip()
-        if not code:
-            continue
-        if target_set and code not in target_set:
-            continue
-        date = row.get("資料日期", "").strip()
-        tier = parse_int_safe(row.get("持股分級", 0))
-        holders = parse_int_safe(row.get("人數", 0))
-        pct = parse_float_safe(row.get("占集保庫存數比例%", 0))
-
-        if code not in totals:
-            totals[code] = {"date": date, "totalHolders": 0, "bigHolders": 0, "bigSharePct": 0.0}
-
-        if tier == 17:
-            # tier 17 is the aggregate total row — use its 人數 as definitive total holder count
-            totals[code]["totalHolders"] = holders
-        elif BIG_HOLDER_TIER <= tier <= 16:
-            # tiers 13-16: 600K+ shares = large institutional/whale players
-            totals[code]["bigHolders"] += holders
-            totals[code]["bigSharePct"] = round(totals[code]["bigSharePct"] + pct, 2)
-
-    result = {}
-    for code, d in totals.items():
-        result[code] = {
-            "date": d["date"],
-            "totalHolders": d["totalHolders"],
-            "bigHolderCount": d["bigHolders"],
-            "bigHolderPct": round(d["bigSharePct"], 2),
-        }
-
-    log(f"[tdcc] extracted {len(result)} stocks")
-    return result
+    print(f"[fetch_tdcc] downloading from {tdcc_adapter.TDCC_URL} …", file=sys.stderr)
+    try:
+        out = tdcc_adapter.fetch_and_save(tdcc_dir, force=args.force)
+        print(f"[fetch_tdcc] ✅ saved → {out.relative_to(root)}", file=sys.stderr)
+    except Exception as e:
+        print(f"[fetch_tdcc] ❌ failed: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    codes = sys.argv[1:] if len(sys.argv) > 1 else ["3481", "2344", "2317", "6770"]
-    try:
-        result = fetch(target_codes=codes)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-    except Exception as e:
-        log(f"[tdcc] FAILED: {e}")
-        print(json.dumps({"error": str(e)}))
-        sys.exit(1)
+    main()

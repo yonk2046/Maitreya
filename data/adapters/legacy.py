@@ -293,6 +293,56 @@ def adapt_legacy(
         trust = ri["investment_trust_net_buy"]
         ri["fii_sync_count"] = sum(1 for v in [mfb, fii, trust] if v is not None and v > 0)
 
+    # --- Merge TDCC weekly shareholder / large-holder data ---
+    # data/tdcc/<YYYYMMDD>.json files are written by tools/fetch_tdcc.py (or
+    # fetch_daily.py on Fridays).  This block is read-only — no writes here,
+    # so WORM integrity of data/ is never at risk.
+    tdcc_provenance: dict | None = None
+    try:
+        from data.adapters import tdcc_adapter as _tdcc
+        tdcc_dir = paths["root"] / "data" / "tdcc"
+        tdcc_map = _tdcc.load_for_date(target_date, tdcc_dir)
+        if tdcc_map:
+            _tdcc.enrich_universe(raw_inputs_per_ticker, tdcc_map)
+            # Use an arbitrary entry's metadata to build provenance
+            sample = next(iter(tdcc_map.values()))
+            tdcc_provenance = {
+                "dataset":         "TDCC.weekly.distribution",
+                "url":             "https://opendata.tdcc.com.tw/getOD.ashx?id=1-5&key=Open",
+                "fetched_at":      sample["tdcc_fetched_at"],
+                "raw_file":        f"data/tdcc/{sample['tdcc_date']}.json",
+                "raw_sha256":      None,   # individual entry, not a single file hash
+                "row_count":       len(tdcc_map),
+                "vendor_id":       "TDCC",
+                "report_date":     _tdcc._tdcc_yyyymmdd_to_iso(sample["tdcc_date"]),
+                "data_lag_days":   (
+                    dt.date.fromisoformat(target_date)
+                    - dt.date.fromisoformat(_tdcc._tdcc_yyyymmdd_to_iso(sample["tdcc_date"]))
+                ).days,
+                "provides_fields": [
+                    "shareholder_count", "shareholder_count_delta_pct",
+                    "large_holder_400_pct", "large_holder_400_delta_pct",
+                    "large_holder_1000_pct", "large_holder_1000_delta_pct",
+                ],
+            }
+        else:
+            audit_events.append({
+                "ticker": None,
+                "event":  "DATA_WARNING",
+                "reason": f"No TDCC cache file found for date ≤ {target_date} in {tdcc_dir}; "
+                          "shareholder/large-holder fields will be None. "
+                          "Run tools/fetch_tdcc.py to populate.",
+                "step":   "adapters.legacy.tdcc",
+            })
+    except Exception as _e:
+        audit_events.append({
+            "ticker": None,
+            "event":  "DATA_WARNING",
+            "reason": f"TDCC enrichment failed ({type(_e).__name__}: {_e}); "
+                      "shareholder/large-holder fields will be None.",
+            "step":   "adapters.legacy.tdcc",
+        })
+
     universe = sorted(raw_inputs_per_ticker.keys())
 
     # --- Provenance ---
@@ -334,6 +384,8 @@ def adapt_legacy(
             ],
         },
     }
+    if tdcc_provenance is not None:
+        provenance_sources["tdcc_weekly"] = tdcc_provenance
 
     out = {
         "date":                  target_date,

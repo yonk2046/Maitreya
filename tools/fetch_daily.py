@@ -151,22 +151,29 @@ def run(dry_run=False):
         emit(4, TOTAL_STEPS, f"TWSE 成交量 {len(vol_top20)} 支，融資 {market_meta.get('marginBalance',0):,} 張",
              status="done")
 
-    # ── Step 5: TDCC 股東人數 ──────────────────────────────────────────────────
-    emit(5, TOTAL_STEPS, "抓取 TDCC 股東人數分佈 (~2MB)...", status="running")
-    # Use union of 外資 + 主力 top codes for TDCC lookup
-    all_top_codes = list({s["code"] for s in (buy_list[:8] + main_force_buy[:8])})
-    from fetch_tdcc import fetch as tdcc_fetch
-    tdcc_result, tdcc_err = safe_fetch("tdcc", tdcc_fetch, all_top_codes)
-    stage3_prefill = {}
-    if tdcc_err:
-        emit(5, TOTAL_STEPS, f"TDCC 失敗: {tdcc_err}", status="warn", detail=tdcc_err)
-    else:
-        for code, d in (tdcc_result or {}).items():
-            stage3_prefill[code] = {
-                "holderNow": d.get("totalHolders", 0),
-                "bigHolderPct": d.get("bigHolderPct", 0),
-            }
-        emit(5, TOTAL_STEPS, f"TDCC 股東資料 {len(stage3_prefill)} 支", status="done")
+    # ── Step 5: TDCC 集保股權分散表 ────────────────────────────────────────────
+    # Downloads the FULL market CSV from TDCC OpenData (id=1-5, ~2MB) and caches
+    # it to data/tdcc/<YYYYMMDD>.json.  The pipeline (adapt_legacy) then reads
+    # the cached file directly — no per-ticker filtering here.
+    # fetch_and_save() is idempotent: if this week's file already exists it skips
+    # the download entirely, so it's safe to call every trading day.
+    emit(5, TOTAL_STEPS, "抓取 TDCC 集保股權分散表 (全市場 ~2MB，自動跳過已快取)...", status="running")
+    stage3_prefill = {}  # kept for today.json backward compat (not consumed by pipeline)
+    try:
+        import pathlib as _pl
+        import sys as _sys
+        _ai_stock_root = _pl.Path(ROOT_DIR)
+        if str(_ai_stock_root) not in _sys.path:
+            _sys.path.insert(0, str(_ai_stock_root))
+        from data.adapters import tdcc_adapter as _tdcc_mod
+        _tdcc_dir = _ai_stock_root / "data" / "tdcc"
+        if not dry_run:
+            _out = _tdcc_mod.fetch_and_save(_tdcc_dir, force=False)
+            emit(5, TOTAL_STEPS, f"TDCC 快取 → {_out.name}", status="done")
+        else:
+            emit(5, TOTAL_STEPS, "DRY RUN: TDCC 跳過 (不寫入)", status="skip")
+    except Exception as _e:
+        emit(5, TOTAL_STEPS, f"TDCC 失敗 (非阻斷): {_e}", status="warn", detail=str(_e))
 
     # ── Step 6: Cross-link & double-signal detection ───────────────────────────
     emit(6, TOTAL_STEPS, "比對外資 × 主力 × 成交量三榜...", status="running")
