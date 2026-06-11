@@ -1609,6 +1609,17 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
     miss_n   = len(result.near_miss)
     all_entries = result.prime + result.strong + result.qualified
 
+    # ── Weakening cross-check (display-only, parallel to Golden) ─────────
+    # Calls the same deterministic core detector as the 轉弱出貨 panel.
+    # NEVER affects tier/score/gates — purely a contradiction witness.
+    _golden_universe = {e.ticker for e in all_entries} | {e.ticker for e in result.near_miss}
+    weak_map: dict[str, dict] = {}
+    for _t in _golden_universe:
+        _bd = _load_branches_for_ticker(_t)
+        _w = weakening_profile(_t, snaps, _bd or None)
+        if _w["severity"] != "none":
+            weak_map[_t] = _w
+
     # ── Helpers ──────────────────────────────────────────────────────────
 
     # State display metadata
@@ -1966,6 +1977,24 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
             tier_sym = {"prime": "★", "strong": "●", "qualified": "◦"}.get(tier_l, "◦")
             badge_txt = f"{tier_sym} {e.tier.upper()}"
 
+        # ── Weakening cross-check pill (display-only) ────────────────────
+        _wk = weak_map.get(e.ticker)
+        card_style = ""
+        weak_html = ""
+        if _wk and _wk["severity"] in ("red", "orange"):
+            _wc = "#E05C7A" if _wk["severity"] == "red" else "#E8A33D"
+            _wdot = "🔴" if _wk["severity"] == "red" else "🟠"
+            _wcodes = "·".join(f["code"] for f in _wk["flags"])
+            _wdetail = "｜".join(f'{f["zh"]}: {f["detail"]}' for f in _wk["flags"])
+            weak_html = (
+                f'<div class="gc-signal-pill" style="background:{_wc}20;color:{_wc};'
+                f'border:1px solid {_wc}60;font-weight:700;" title="{_wdetail}">'
+                f'{_wdot} {_wk["label_zh"]}警示 {_wcodes}'
+                f'</div>'
+            )
+            if _wk["severity"] == "red":
+                card_style = ' style="border-color:#E05C7A;"'
+
         state_col = _state_color(e.sm_state)
         days_txt  = f" Day{e.days_in_sm_state}" if e.days_in_sm_state else ""
 
@@ -2108,7 +2137,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
 
         # ── LAYER 1: Fixed-height card HTML ──────────────────────────────
         card_html = (
-            f'<div class="{card_cls}">'
+            f'<div class="{card_cls}"{card_style}>'
             # Row 1: header
             f'<div class="gc-head">'
             f'<span class="gc-ticker">{e.ticker}</span>'
@@ -2145,7 +2174,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
             f'<div class="gc-signal-pill" style="background:#161B26;color:{mom_col};border:1px solid {mom_col}40;">'
             f'{mom_zh}'
             f'</div>'
-            + dist_html +
+            + dist_html + weak_html +
             f'</div>'
             f'</div>'
         )
@@ -2238,10 +2267,11 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
     # Priority: New Entrant > Strengthening > Stable > Weakening
     shown: set[str] = set()
 
-    new_entrants     = [e for e in all_entries if e.ticker in _new_entrant_tickers]
-    strengthening    = [e for e in all_entries if e.ticker not in _new_entrant_tickers and _momentum(e) == "strengthening"]
-    stable           = [e for e in all_entries if e.ticker not in _new_entrant_tickers and _momentum(e) == "stable"]
-    weakening        = [e for e in all_entries if e.ticker not in _new_entrant_tickers and _momentum(e) == "weakening"]
+    _red = {t for t, w in weak_map.items() if w["severity"] == "red"}
+    new_entrants     = [e for e in all_entries if e.ticker in _new_entrant_tickers and e.ticker not in _red]
+    strengthening    = [e for e in all_entries if e.ticker not in _new_entrant_tickers and e.ticker not in _red and _momentum(e) == "strengthening"]
+    stable           = [e for e in all_entries if e.ticker not in _new_entrant_tickers and e.ticker not in _red and _momentum(e) == "stable"]
+    weakening        = [e for e in all_entries if e.ticker in _red or (e.ticker not in _new_entrant_tickers and _momentum(e) == "weakening")]
 
     for e in new_entrants:
         shown.add(e.ticker)
@@ -2258,7 +2288,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
     new_entrants  = sorted(new_entrants,  key=lambda e: e.conviction, reverse=True)
     strengthening = sorted(strengthening, key=lambda e: e.conviction, reverse=True)
     stable        = sorted(stable,        key=lambda e: e.conviction, reverse=True)
-    weakening     = sorted(weakening,     key=lambda e: e.conviction, reverse=True)
+    weakening     = sorted(weakening,     key=lambda e: (e.ticker not in _red, -e.conviction))
 
     # ── Summary metric strip ──────────────────────────────────────────────
     _metric_strip([
@@ -2267,6 +2297,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         ("● STRONG",         str(strong_n), "強勢",      "val-cyan"),
         ("◦ QUALIFIED",      str(qual_n),   "合格",      "val-green"),
         ("差一步 Near-miss",  str(miss_n),   "僅差1個門", "val-dim"),
+        ("🔴 出貨警示",        str(len(_red)), "轉弱偵測紅燈", "val-red" if _red else "val-dim"),
     ])
     st.markdown("<br>", unsafe_allow_html=True)
 
