@@ -413,6 +413,13 @@ def run(snapshots: list[dict]) -> GoldenResult:
 
         tier = _tier_from_score(conviction)
 
+        # SKELETON gate (Schema v1.5): data-deficient tickers cannot reach PRIME.
+        # confidence_tier == "SKELETON" means < 50% of key scoring fields are
+        # populated; capping at STRONG prevents promotions on thin evidence.
+        stock_data = latest_stock_map.get(ticker, {})
+        if stock_data.get("confidence_tier") == "SKELETON" and tier == TIER_PRIME_KEY:
+            tier = TIER_STRONG_KEY
+
         entry = GoldenEntry(
             ticker=ticker,
             name=cr.name,

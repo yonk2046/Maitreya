@@ -225,12 +225,32 @@ class TestEnrichUniverse:
 # adapt_legacy integration: graceful degradation without cache
 # ---------------------------------------------------------------------------
 
-def test_adapt_legacy_emits_data_warning_when_no_tdcc_cache():
+def test_adapt_legacy_emits_data_warning_when_no_tdcc_cache(tmp_path):
     """adapt_legacy must not crash when data/tdcc/ is empty or missing.
     It should emit a DATA_WARNING audit event and continue normally.
+
+    We use paths_override to point at a temp dir that has no tdcc/ cache,
+    while still pointing at the real today.json and branches so the adapter
+    can build a valid output.
     """
-    from data.adapters.legacy import adapt_legacy
-    out = adapt_legacy()
+    import pathlib
+    from data.adapters.legacy import adapt_legacy, legacy_paths
+
+    real_paths = legacy_paths()
+
+    # Empty tdcc dir — no cache files
+    fake_tdcc_dir = tmp_path / "tdcc"
+    fake_tdcc_dir.mkdir()
+
+    # Override only root so the tdcc search lands in our empty dir;
+    # today_json and branches_dir keep pointing at real data.
+    paths_override = {
+        "root":         fake_tdcc_dir.parent,   # tmp_path as root
+        "today_json":   real_paths["today_json"],
+        "branches_dir": real_paths["branches_dir"],
+    }
+
+    out = adapt_legacy(paths_override=paths_override)
     tdcc_warnings = [
         e for e in out["audit_events"]
         if "tdcc" in e.get("step", "").lower()

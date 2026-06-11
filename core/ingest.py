@@ -28,8 +28,45 @@ import yaml
 from core.hashing import canonical_sha256
 
 
-SCHEMA_VERSION = "1.4.0"
+SCHEMA_VERSION = "1.5.0"
 CORE_VERSION = "core@0.1.0-p3a"
+
+
+# ── Data completeness ─────────────────────────────────────────────────────────
+
+# Fields that will matter for scoring/gates when P3b activates.
+# We measure completeness over these to assign confidence_tier.
+_COMPLETENESS_FIELDS: tuple[str, ...] = (
+    "current_price",
+    "volume",
+    "change_pct",
+    "fii_net_buy",
+    "main_force_buy",
+    "large_holder_400_pct",
+    "large_holder_1000_pct",
+    "shareholder_count",
+    "margin_balance",
+    "broker_count_diff",
+    "top5_concentration",
+)
+
+CONFIDENCE_TIER_FULL     = "FULL"      # ≥ 0.80
+CONFIDENCE_TIER_PARTIAL  = "PARTIAL"   # 0.50 – 0.80
+CONFIDENCE_TIER_SKELETON = "SKELETON"  # < 0.50  — blocked from PRIME in golden layer
+
+
+def _compute_completeness(rec: dict) -> tuple[float, str]:
+    """Return (data_completeness fraction, confidence_tier string)."""
+    n = len(_COMPLETENESS_FIELDS)
+    present = sum(1 for f in _COMPLETENESS_FIELDS if rec.get(f) is not None)
+    frac = round(present / n, 4) if n else 0.0
+    if frac >= 0.80:
+        tier = CONFIDENCE_TIER_FULL
+    elif frac >= 0.50:
+        tier = CONFIDENCE_TIER_PARTIAL
+    else:
+        tier = CONFIDENCE_TIER_SKELETON
+    return frac, tier
 SCORING_RUBRIC_VERSION = "1.1.0"
 
 # Tier enum — schema requires non-null even when abstained
@@ -92,7 +129,7 @@ def _abstain_stock_record(ticker: str, raw: dict, has_branches: bool) -> dict:
     else:
         volume_field = buy_vol     # int >= 0 or None
 
-    return {
+    rec = {
         "ticker":        ticker,
         "name":          raw.get("name", ""),
         "market":        "TWSE",  # default; not verified by adapter
@@ -125,14 +162,15 @@ def _abstain_stock_record(ticker: str, raw: dict, has_branches: bool) -> dict:
         "dealer_net_buy":              raw.get("investment_trust_net_buy"),  # 投信淨買（張）from T86
         "is_day_trader_branch":        False,
 
-        "shareholder_count":                  None,
-        "shareholder_count_delta_pct":        None,
+        # TDCC weekly — populated by data/adapters/tdcc_adapter.py via enrich_universe()
+        "shareholder_count":                  raw.get("shareholder_count"),
+        "shareholder_count_delta_pct":        raw.get("shareholder_count_delta_pct"),
         "broker_count_diff":                  None,
         "broker_count_diff_negative_streak":  None,
-        "large_holder_400_pct":               None,
-        "large_holder_400_delta_pct":         None,
-        "large_holder_1000_pct":              None,
-        "large_holder_1000_delta_pct":        None,
+        "large_holder_400_pct":               raw.get("large_holder_400_pct"),
+        "large_holder_400_delta_pct":         raw.get("large_holder_400_delta_pct"),
+        "large_holder_1000_pct":              raw.get("large_holder_1000_pct"),
+        "large_holder_1000_delta_pct":        raw.get("large_holder_1000_delta_pct"),
 
         "margin_balance":                    None,
         "margin_change":                     None,
@@ -182,6 +220,17 @@ def _abstain_stock_record(ticker: str, raw: dict, has_branches: bool) -> dict:
             },
         },
     }
+
+    # ── Schema v1.5: data-quality fields ─────────────────────────────────────
+    completeness, conf_tier = _compute_completeness(rec)
+    rec["data_completeness"]  = completeness
+    rec["confidence_tier"]    = conf_tier
+    # momentum_direction and delta_vs_yesterday activate with P3b scoring;
+    # stub as "unknown" / "—" for now so the fields exist in every record.
+    rec["momentum_direction"] = "unknown"  # activates: accelerating/decelerating/reversing/steady
+    rec["signal_age_days"]    = rec["temporal_state"]["tier_in_current_state_days"]
+    rec["delta_vs_yesterday"] = "—"        # activates: +N / -N / NEW / —
+    return rec
 
 
 def _field_to_source_map(provenance_sources: dict) -> dict[str, str]:

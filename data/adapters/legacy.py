@@ -311,7 +311,7 @@ def adapt_legacy(
                 "url":             "https://opendata.tdcc.com.tw/getOD.ashx?id=1-5&key=Open",
                 "fetched_at":      sample["tdcc_fetched_at"],
                 "raw_file":        f"data/tdcc/{sample['tdcc_date']}.json",
-                "raw_sha256":      None,   # individual entry, not a single file hash
+                "raw_sha256":      file_sha256(tdcc_dir / f"{sample['tdcc_date']}.json"),
                 "row_count":       len(tdcc_map),
                 "vendor_id":       "TDCC",
                 "report_date":     _tdcc._tdcc_yyyymmdd_to_iso(sample["tdcc_date"]),
