@@ -19,9 +19,20 @@ For each real ISO date in the index:
 A mismatch means real corruption: the snapshot bytes, the archive bytes,
 the ingest logic, or the canonical hashing rule has drifted.
 
+EPOCH-AWARE VERIFICATION (B1 fix, 2026-06-11):
+Full replay re-runs ingest with HEAD code, so it can only legitimately
+reproduce snapshots generated under the CURRENT schema version. Snapshots
+from older schema epochs (e.g. 1.4.0 history after the 1.5.0 bump) would
+mismatch by construction — that is schema evolution, not corruption.
+
+  - schema_version == current  → FULL replay (adapter + ingest + hash compare)
+  - schema_version != current  → LEGACY check: on-disk canonical hash must
+    still equal index.current_hash (detects byte tampering / index drift,
+    which is the only corruption class that applies to a frozen epoch).
+
 Exit codes:
-  0 — every date passes
-  1 — at least one date does not match its recorded current_hash
+  0 — every date passes its applicable check
+  1 — at least one date fails (replay mismatch or legacy hash drift)
 """
 from __future__ import annotations
 
@@ -37,7 +48,7 @@ import yaml  # noqa: E402
 
 from core.archive import archive_raw_inputs  # noqa: E402
 from core.hashing import canonical_sha256  # noqa: E402
-from core.ingest import ingest  # noqa: E402
+from core.ingest import SCHEMA_VERSION, ingest  # noqa: E402
 from data.adapters.legacy import adapt_legacy, legacy_paths  # noqa: E402
 from data.adapters.rollup import adapt_rollup  # noqa: E402
 
@@ -130,9 +141,30 @@ def main() -> int:
 
     failures: list[str] = []
     passes = 0
+    legacy_passes = 0
     for d in dates:
         entry = index["snapshots"][d]
         on_disk_snap = json.loads((REPORTS_DIR / entry["current"]).read_text(encoding="utf-8"))
+
+        snap_schema = on_disk_snap.get("schema_version")
+        if snap_schema != SCHEMA_VERSION:
+            # Frozen epoch: HEAD code cannot legitimately reproduce this
+            # snapshot. Verify the bytes haven't drifted from the index.
+            h_disk = canonical_sha256(on_disk_snap)
+            if h_disk == entry["current_hash"]:
+                legacy_passes += 1
+                print(
+                    f"  🔒 {d}  epoch {snap_schema} — disk hash matches index "
+                    f"{h_disk[:20]}...",
+                    file=sys.stderr,
+                )
+            else:
+                failures.append(
+                    f"{d}: LEGACY EPOCH HASH DRIFT disk={h_disk[:20]}... "
+                    f"index={entry['current_hash'][:20]}..."
+                )
+                print(f"  ❌ {d}  legacy epoch hash drift!", file=sys.stderr)
+            continue
 
         try:
             adapter_out = _replay_adapter(d, on_disk_snap, repo_root)
@@ -161,8 +193,9 @@ def main() -> int:
             print(f"  ❌ {d}  current={h_current[:20]}... replay={h_replay[:20]}...", file=sys.stderr)
 
     print(
-        f"\n[verify-all] {passes}/{len(dates)} dates replay-clean; "
-        f"{len(failures)} mismatch(es)",
+        f"\n[verify-all] {passes} full-replay-clean + {legacy_passes} legacy-epoch-clean "
+        f"of {len(dates)} dates; {len(failures)} failure(s) "
+        f"(current schema {SCHEMA_VERSION})",
         file=sys.stderr,
     )
     if failures:

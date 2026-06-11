@@ -24,13 +24,16 @@ jobs:
           cache: 'pip'
       - name: Install dependencies
         run: pip install -r requirements.txt
+      # H3 stability proof requires failures to be VISIBLE — do not mask
+      # make daily / verify-index. If either fails, suspect data must NOT
+      # be auto-committed. (B1 epoch-aware verify landed 2026-06-11;
+      # replay mismatches now indicate real corruption, not schema drift.)
       - name: Run daily pipeline
-        run: make daily || echo "replay mismatch, continuing"
+        run: make daily
       - name: Verify index
-        continue-on-error: true
         run: make verify-index
       - name: Run fast tests
-        continue-on-error: true
+        continue-on-error: true  # visibility only; must not block data commit
         run: make test-fast
       - name: Commit data and reports
         run: |
