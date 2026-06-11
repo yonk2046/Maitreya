@@ -512,3 +512,157 @@ def full_ticker_context(
         "sponsorship":   sponsorship_persistence(ticker, records),
         "failed_breakout": failed_breakout_memory(ticker, records),
     }
+
+
+# ===========================================================================
+# 6.  Weakening / Distribution Detection  轉弱出貨偵測
+# ===========================================================================
+# Deterministic observation-layer detector (same pattern as failed_breakout).
+# Does NOT touch composite_score / tier / gates — AI_GOVERNANCE compliant.
+
+_W2_FII_RATIO      = 0.30   # FII sell must be ≥30% of main-force buy to flag
+_W5_SELL_RATIO     = 1.00   # branch totalSellVol > totalBuyVol
+_W5_CHURN_RATIO    = 0.60   # top-3 buy branches selling ≥60% of what they buy
+
+
+def weakening_profile(
+    ticker: str,
+    snapshots: list[dict[str, Any]],
+    branch_data: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Detect distribution / weakening behaviour for one ticker.
+
+    Five deterministic flags:
+      W1 momentum_decay   — buy streak ≥3 but velocity_3d < 0 and F(n) < F(n-1)
+      W2 engine_divergence— main force buying while FII net-selling (≥30%)
+      W3 vanished         — had streak ≥3 in window, absent from latest snapshot
+      W4 retail_takeover  — broker_count_diff > 0 OR price-down-margin-up ≥3d/10d
+      W5 branch_pressure  — sellVol > buyVol at branch level, or top buyers churning
+
+    Severity: red (W3 or ≥3 flags) > orange (2) > yellow (1) > none (0).
+    """
+    if not snapshots:
+        return _empty_weakening(ticker)
+
+    records: list[dict[str, Any]] = []
+    for snap in snapshots:
+        rec = next((s for s in snap.get("stocks", []) if s.get("ticker") == ticker), None)
+        records.append({
+            "date":           snap.get("date", "?"),
+            "main_force_buy": rec.get("main_force_buy") if rec else None,
+            "present":        rec is not None,
+            "stock":          rec,
+        })
+
+    latest       = records[-1]
+    latest_stock = latest["stock"] or {}
+
+    # Recency gate: how many snapshots since last seen
+    snaps_since_seen = 0
+    for r in reversed(records):
+        if r["present"]:
+            break
+        snaps_since_seen += 1
+    if snaps_since_seen > 3:
+        # vanished long ago — stale, not an active weakening signal
+        return _empty_weakening(ticker)
+
+    acc          = accumulation_velocity(
+        ticker,
+        [{"date": r["date"], "main_force_buy": r["main_force_buy"],
+          "volume": None, "change_pct": None} for r in records],
+    )
+
+    real_buys = [r["main_force_buy"] for r in records if r["main_force_buy"] is not None]
+
+    # max historical streak inside window (for W3)
+    max_streak = 0
+    cur = 0
+    for r in records:
+        v = r["main_force_buy"]
+        if v is not None and v > 0:
+            cur += 1
+            max_streak = max(max_streak, cur)
+        elif v is not None:
+            cur = 0
+
+    flags: list[dict[str, str]] = []
+
+    # W1 momentum decay
+    if (acc["streak"] >= 3 and (acc.get("velocity_3d") or 0) < 0
+            and len(real_buys) >= 2 and real_buys[-1] < real_buys[-2]):
+        flags.append({"code": "W1", "zh": "動能衰竭",
+                      "detail": f"連買{acc['streak']}日但速度 {round(acc['velocity_3d']):+,}/日"})
+
+    # W2 dual-engine divergence
+    mfb = latest_stock.get("main_force_buy") or 0
+    fii = latest_stock.get("fii_net_buy")
+    if mfb > 0 and fii is not None and fii < 0 and abs(fii) >= _W2_FII_RATIO * mfb:
+        flags.append({"code": "W2", "zh": "雙引擎分歧",
+                      "detail": f"主力 +{mfb:,} vs 外資 {fii:,}"})
+
+    # W3 vanished after accumulation
+    if max_streak >= 3 and not latest["present"]:
+        last_seen = next((r["date"] for r in reversed(records) if r["present"]), "?")
+        flags.append({"code": "W3", "zh": "主力消失",
+                      "detail": f"曾連買{max_streak}日，缺席{snaps_since_seen}日（最後 {last_seen[5:]}）"})
+
+    # W4 retail takeover
+    bcd = latest_stock.get("broker_count_diff")
+    pdmu = latest_stock.get("price_down_margin_up_days_10d") or 0
+    if (bcd is not None and bcd > 0) or pdmu >= 3:
+        parts = []
+        if bcd is not None and bcd > 0:
+            parts.append(f"家數差 +{bcd}")
+        if pdmu >= 3:
+            parts.append(f"價跌融資增 {pdmu}日/10日")
+        flags.append({"code": "W4", "zh": "散戶接盤", "detail": "、".join(parts)})
+
+    # W5 branch-level sell pressure
+    if branch_data:
+        tb = branch_data.get("totalBuyVol") or 0
+        ts = branch_data.get("totalSellVol") or 0
+        churn_flag = False
+        bb = branch_data.get("buyBranches") or []
+        top3 = bb[:3]
+        if top3:
+            t3b = sum(b.get("buyVol") or 0 for b in top3)
+            t3s = sum(b.get("sellVol") or 0 for b in top3)
+            churn_flag = t3b > 0 and (t3s / t3b) >= _W5_CHURN_RATIO
+        if (tb > 0 and ts > _W5_SELL_RATIO * tb) or churn_flag:
+            detail = f"分點賣 {ts:,} vs 買 {tb:,}"
+            if churn_flag:
+                detail += "、前三買點邊買邊倒"
+            flags.append({"code": "W5", "zh": "分點賣壓", "detail": detail})
+
+    n = len(flags)
+    has_w3 = any(f["code"] == "W3" for f in flags)
+    if (has_w3 and n >= 2) or n >= 3:
+        severity, label_zh, label_en = "red", "出貨確認", "Distribution Confirmed"
+    elif n == 2 or (has_w3 and n == 1):
+        severity, label_zh, label_en = "orange", "轉弱", "Weakening"
+    elif n == 1:
+        severity, label_zh, label_en = "yellow", "失速", "Stalling"
+    else:
+        severity, label_zh, label_en = "none", "—", "—"
+
+    return {
+        "ticker": ticker,
+        "flags": flags,
+        "flag_count": n,
+        "severity": severity,
+        "label_zh": label_zh,
+        "label_en": label_en,
+        "streak": acc["streak"],
+        "max_streak": max_streak,
+        "velocity_3d": acc.get("velocity_3d"),
+        "net_cumulative": acc.get("net_cumulative") or 0,
+        "present_latest": latest["present"],
+        "snaps_since_seen": snaps_since_seen,
+    }
+
+
+def _empty_weakening(ticker: str) -> dict[str, Any]:
+    return dict(ticker=ticker, flags=[], flag_count=0, severity="none",
+                label_zh="—", label_en="—", streak=0, max_streak=0,
+                velocity_3d=None, net_cumulative=0, present_latest=False)

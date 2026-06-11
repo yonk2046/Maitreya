@@ -40,6 +40,7 @@ from core.market_context import (
     failed_breakout_memory,
     leadership_rotation,
     full_ticker_context,
+    weakening_profile,
 )
 from core.watchlists import TIER_A, SECTOR_GROUPS, tier_a_tickers, stock_group, build_name_map, RADAR_TICKERS
 from core import golden as _golden_mod
@@ -753,6 +754,95 @@ def _render_watchlist_radar(snaps: list[dict]) -> None:
 # PANEL 3 — Strengthening Signals  轉強訊號
 # ─────────────────────────────────────────────────────────────────────────────
 
+_MOMENTUM_GREEN = "#52B788"
+_MOMENTUM_RED   = "#E05C7A"
+_MOMENTUM_DIM   = "#8B93A3"
+
+
+def _presence_dates(snaps: list[dict]) -> tuple[dict, dict]:
+    """Map ticker → first / last snapshot date where it was present.
+
+    Pure presentation lookup over already-computed snapshot data —
+    no scoring, ranking, or gate logic (AI_GOVERNANCE compliant).
+    """
+    first: dict[str, str] = {}
+    last:  dict[str, str] = {}
+    for snap in snaps:
+        d = snap.get("date", "?")
+        for s in snap.get("stocks", []):
+            t = s.get("ticker", "")
+            if not t:
+                continue
+            first.setdefault(t, d)
+            last[t] = d
+    return first, last
+
+
+def _momentum_glyph(vel, accel) -> tuple[str, int]:
+    """Render core-computed velocity_3d / acceleration as a direction glyph.
+
+    Returns (display_text, sort_rank) — rank 0 is strongest.
+    Formatting only; the numbers come straight from accumulation_velocity().
+    """
+    if vel is None:
+        return "—", 2
+    if vel > 0 and (accel or 0) > 0:
+        return "▲▲ 加速", 0
+    if vel > 0:
+        return "▲ 增溫", 1
+    if vel < 0:
+        return "▼ 減速", 3
+    return "─ 持平", 2
+
+
+def _freshness_label(ticker: str, first: dict, last: dict, latest_date: str) -> tuple[str, int]:
+    """(display, sort_rank): NEW > current > stale."""
+    f = first.get(ticker)
+    l = last.get(ticker)
+    if f == latest_date:
+        return "NEW", 0
+    if l == latest_date:
+        return latest_date[5:], 1
+    return f"⚠ {l[5:] if l else '?'}", 2
+
+
+def _style_signal_df(df, color_cols: list[str], text_cols: list[str], fmt: dict):
+    """Shared Styler: green/red on numeric sign, momentum text coloring."""
+    def _num_color(v):
+        if v is None or (isinstance(v, float) and v != v):
+            return ""
+        try:
+            x = float(str(v).replace("%", "").replace(",", "").replace("+", ""))
+        except (ValueError, TypeError):
+            return ""
+        if x > 0:
+            return f"color: {_MOMENTUM_GREEN}"
+        if x < 0:
+            return f"color: {_MOMENTUM_RED}"
+        return ""
+
+    def _text_color(v):
+        s = str(v)
+        if s.startswith("▲"):
+            return f"color: {_MOMENTUM_GREEN}; font-weight: 600"
+        if s.startswith("▼"):
+            return f"color: {_MOMENTUM_RED}"
+        if s == "NEW":
+            return "color: #4A9EFF; font-weight: 700"
+        if s.startswith("⚠"):
+            return f"color: {_MOMENTUM_DIM}"
+        return ""
+
+    sty = df.style.format(fmt, na_rep="—")
+    cc = [c for c in color_cols if c in df.columns]
+    tc = [c for c in text_cols if c in df.columns]
+    if cc:
+        sty = sty.map(_num_color, subset=cc)
+    if tc:
+        sty = sty.map(_text_color, subset=tc)
+    return sty
+
+
 def _render_strengthening(snaps: list[dict]) -> None:
     if not snaps:
         st.info("無快照資料")
@@ -766,6 +856,8 @@ def _render_strengthening(snaps: list[dict]) -> None:
 
     rows = []
     latest_stocks = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
+    latest_date = snaps[-1].get("date", "?")
+    first_seen, last_seen = _presence_dates(snaps)
 
     for ticker in sorted(all_tickers):
         ctx = full_ticker_context(ticker, snaps)
@@ -782,9 +874,13 @@ def _render_strengthening(snaps: list[dict]) -> None:
         net   = acc.get("net_cumulative") or 0
         streak = acc["streak"]
         spon_score = spon.get("persistence_score") or 0
+        mom_txt, mom_rank = _momentum_glyph(vel, acc.get("acceleration"))
+        fresh_txt, fresh_rank = _freshness_label(ticker, first_seen, last_seen, latest_date)
         rows.append({
+            "資料": fresh_txt,
             "代號": ticker,
             "名稱": name,
+            "動能": mom_txt,
             "現價": f"NT${price:,.2f}" if price else "—",
             "漲跌": f"{chg:+.2f}%" if chg is not None else "—",
             "連買(日)": streak,
@@ -793,6 +889,8 @@ def _render_strengthening(snaps: list[dict]) -> None:
             "贊助分": round(spon_score, 2),
             "成本": f"NT${cost:,.2f}" if cost else "—",
             "Tier A": "★" if ticker in TIER_A else "",
+            "_mom": mom_rank,
+            "_fresh": fresh_rank,
         })
 
     _section_header("↑", "轉強訊號", "Strengthening Signals", len(rows))
@@ -805,18 +903,115 @@ def _render_strengthening(snaps: list[dict]) -> None:
         return
 
     import pandas as _pd
-    df = _pd.DataFrame(rows).sort_values("連買(日)", ascending=False)
+    df = (
+        _pd.DataFrame(rows)
+        .sort_values(["_mom", "_fresh", "累計(張)"], ascending=[True, True, False])
+        .drop(columns=["_mom", "_fresh"])
+    )
+    st.caption("排序：動能方向 → 資料新鮮度 → 累計買超 ｜ ▼ 減速中的標的代表動能衰竭，連買天數高也應降權看待")
     st.dataframe(
-        df,
+        _style_signal_df(
+            df,
+            color_cols=["漲跌", "速度(張/日)"],
+            text_cols=["動能", "資料"],
+            fmt={"累計(張)": "{:+,.0f}", "速度(張/日)": "{:+,.0f}",
+                 "連買(日)": "{:d} 日", "贊助分": "{:.2f}"},
+        ),
         use_container_width=True,
         hide_index=True,
-        column_config={
-            "連買(日)":   st.column_config.NumberColumn("連買(日)", format="%d 日"),
-            "累計(張)":   st.column_config.NumberColumn("累計(張)", format="%+,d"),
-            "速度(張/日)": st.column_config.NumberColumn("速度(張/日)", format="%+,d"),
-            "贊助分":     st.column_config.NumberColumn("贊助分",  format="%.2f"),
-        },
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PANEL 3b — Weakening / Distribution Signals  轉弱出貨
+# ─────────────────────────────────────────────────────────────────────────────
+
+_SEV_STYLE = {
+    "red":    ("#E05C7A", "🔴"),
+    "orange": ("#E8A33D", "🟠"),
+    "yellow": ("#D4C95A", "🟡"),
+}
+
+
+def _render_weakening(snaps: list[dict]) -> None:
+    if not snaps:
+        st.info("無快照資料")
+        return
+
+    all_tickers: set[str] = set()
+    for snap in snaps:
+        for s in snap.get("stocks", []):
+            all_tickers.add(s.get("ticker", ""))
+    all_tickers.discard("")
+
+    results = []
+    for ticker in sorted(all_tickers):
+        branch = _load_branches_for_ticker(ticker)
+        w = weakening_profile(ticker, snaps, branch or None)
+        if w["severity"] != "none":
+            results.append(w)
+
+    _order = {"red": 0, "orange": 1, "yellow": 2}
+    results.sort(key=lambda w: (_order[w["severity"]], -w["flag_count"], -w["net_cumulative"]))
+
+    _section_header("🔻", "轉弱出貨", "Weakening / Distribution", len(results))
+
+    n_red = sum(1 for r in results if r["severity"] == "red")
+    n_org = sum(1 for r in results if r["severity"] == "orange")
+    n_yel = sum(1 for r in results if r["severity"] == "yellow")
+    st.caption(
+        f"🔴 出貨確認 {n_red} ｜ 🟠 轉弱 {n_org} ｜ 🟡 失速 {n_yel} ｜ "
+        "規則：紅 = 主力消失+佐證 或 ≥3旗標；橙 = 2旗標；黃 = 1旗標。"
+        "缺席 >3 個快照的標的自動移出（陳舊訊號）。"
+    )
+
+    if not results:
+        st.markdown(
+            '<div class="data-gap-notice" style="border-left-color:#52B788;background:#0A1F12;color:#52B788;">'
+            '✓ 目前追蹤範圍內無轉弱訊號。 No weakening signals detected.</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    latest_stocks = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
+
+    for w in results:
+        ticker = w["ticker"]
+        stock  = latest_stocks.get(ticker, {})
+        name   = stock.get("name") or _short_name(ticker)
+        color, dot = _SEV_STYLE[w["severity"]]
+
+        price = stock.get("current_price")
+        chg   = stock.get("change_pct")
+        price_str = f"NT${price:,.2f}" if price else "—"
+        chg_str   = f"{chg:+.2f}%" if chg is not None else "—"
+        chg_cls   = _chg_cls(chg)
+
+        flag_tags = "".join(
+            f'<span class="signal-tag warn" title="{f["detail"]}">{f["code"]} {f["zh"]}</span>'
+            for f in w["flags"]
+        )
+        detail_line = " ｜ ".join(f["detail"] for f in w["flags"])
+
+        absent_note = ""
+        if not w["present_latest"]:
+            absent_note = (f'<span class="signal-tag red">缺席 {w["snaps_since_seen"]} 個快照</span>')
+
+        st.markdown(
+            f'<div class="stock-card" style="border-left: 3px solid {color};">'
+            f'<div class="stock-card-header">'
+            f'<div><span class="stock-ticker">{ticker}</span>'
+            f'<span class="stock-name">{name}</span>&nbsp;'
+            f'<span style="color:{color};font-weight:700;">{dot} {w["label_zh"]}</span></div>'
+            f'<div><span class="stock-price">{price_str}</span>&nbsp;'
+            f'<span class="{chg_cls}">{chg_str}</span></div>'
+            f'</div>'
+            f'<span class="signal-tag">窗口累計 {w["net_cumulative"]:+,} 張</span>'
+            f'{flag_tags}{absent_note}'
+            f'<div style="margin-top:6px;font-size:12.5px;color:#8B93A3;">{detail_line}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -923,6 +1118,8 @@ def _render_persistent_accumulation(snaps: list[dict]) -> None:
         return
 
     latest_stocks = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
+    latest_date = snaps[-1].get("date", "?")
+    first_seen, last_seen = _presence_dates(snaps)
 
     rows_pa = []
     for ticker, ctx in candidates:
@@ -931,30 +1128,39 @@ def _render_persistent_accumulation(snaps: list[dict]) -> None:
         stock = latest_stocks.get(ticker, {})
         name  = stock.get("name") or _short_name(ticker)
         cost  = stock.get("main_force_cost")
+        mom_txt, mom_rank = _momentum_glyph(acc.get("velocity_3d"), acc.get("acceleration"))
+        fresh_txt, fresh_rank = _freshness_label(ticker, first_seen, last_seen, latest_date)
         rows_pa.append({
+            "資料": fresh_txt,
             "代號": ticker,
             "名稱": name,
+            "動能": mom_txt,
             "累計(張)": acc.get("net_cumulative") or 0,
             "買超(日)": acc.get("buy_days") or 0,
-            "贊助分": round(spon.get("persistence_score", 0), 2),
             "主力分點": spon.get("top_persistent_broker") or "—",
             "分點(日)": spon.get("top_broker_days") or 0,
             "成本": f"NT${cost:,.2f}" if cost else "—",
             "Tier A": "★" if ticker in TIER_A else "",
+            "_mom": mom_rank,
+            "_fresh": fresh_rank,
         })
 
     import pandas as _pd
-    df_pa = _pd.DataFrame(rows_pa).sort_values("贊助分", ascending=False)
+    df_pa = (
+        _pd.DataFrame(rows_pa)
+        .sort_values(["_mom", "_fresh", "累計(張)"], ascending=[True, True, False])
+        .drop(columns=["_mom", "_fresh"])
+    )
+    st.caption("排序：動能方向 → 資料新鮮度 → 累計買超 ｜ 贊助分已移除（全名單同值無鑑別度），明細請見個股展開")
     st.dataframe(
-        df_pa,
+        _style_signal_df(
+            df_pa,
+            color_cols=[],
+            text_cols=["動能", "資料"],
+            fmt={"累計(張)": "{:+,.0f}", "買超(日)": "{:d} 日", "分點(日)": "{:d} 日"},
+        ),
         use_container_width=True,
         hide_index=True,
-        column_config={
-            "累計(張)":  st.column_config.NumberColumn("累計(張)",  format="%+,d"),
-            "買超(日)":  st.column_config.NumberColumn("買超(日)",  format="%d 日"),
-            "贊助分":    st.column_config.NumberColumn("贊助分",    format="%.2f"),
-            "分點(日)":  st.column_config.NumberColumn("分點(日)",  format="%d 日"),
-        },
     )
 
 
@@ -1403,6 +1609,17 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
     miss_n   = len(result.near_miss)
     all_entries = result.prime + result.strong + result.qualified
 
+    # ── Weakening cross-check (display-only, parallel to Golden) ─────────
+    # Calls the same deterministic core detector as the 轉弱出貨 panel.
+    # NEVER affects tier/score/gates — purely a contradiction witness.
+    _golden_universe = {e.ticker for e in all_entries} | {e.ticker for e in result.near_miss}
+    weak_map: dict[str, dict] = {}
+    for _t in _golden_universe:
+        _bd = _load_branches_for_ticker(_t)
+        _w = weakening_profile(_t, snaps, _bd or None)
+        if _w["severity"] != "none":
+            weak_map[_t] = _w
+
     # ── Helpers ──────────────────────────────────────────────────────────
 
     # State display metadata
@@ -1760,6 +1977,24 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
             tier_sym = {"prime": "★", "strong": "●", "qualified": "◦"}.get(tier_l, "◦")
             badge_txt = f"{tier_sym} {e.tier.upper()}"
 
+        # ── Weakening cross-check pill (display-only) ────────────────────
+        _wk = weak_map.get(e.ticker)
+        card_style = ""
+        weak_html = ""
+        if _wk and _wk["severity"] in ("red", "orange"):
+            _wc = "#E05C7A" if _wk["severity"] == "red" else "#E8A33D"
+            _wdot = "🔴" if _wk["severity"] == "red" else "🟠"
+            _wcodes = "·".join(f["code"] for f in _wk["flags"])
+            _wdetail = "｜".join(f'{f["zh"]}: {f["detail"]}' for f in _wk["flags"])
+            weak_html = (
+                f'<div class="gc-signal-pill" style="background:{_wc}20;color:{_wc};'
+                f'border:1px solid {_wc}60;font-weight:700;" title="{_wdetail}">'
+                f'{_wdot} {_wk["label_zh"]}警示 {_wcodes}'
+                f'</div>'
+            )
+            if _wk["severity"] == "red":
+                card_style = ' style="border-color:#E05C7A;"'
+
         state_col = _state_color(e.sm_state)
         days_txt  = f" Day{e.days_in_sm_state}" if e.days_in_sm_state else ""
 
@@ -1902,7 +2137,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
 
         # ── LAYER 1: Fixed-height card HTML ──────────────────────────────
         card_html = (
-            f'<div class="{card_cls}">'
+            f'<div class="{card_cls}"{card_style}>'
             # Row 1: header
             f'<div class="gc-head">'
             f'<span class="gc-ticker">{e.ticker}</span>'
@@ -1939,7 +2174,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
             f'<div class="gc-signal-pill" style="background:#161B26;color:{mom_col};border:1px solid {mom_col}40;">'
             f'{mom_zh}'
             f'</div>'
-            + dist_html +
+            + dist_html + weak_html +
             f'</div>'
             f'</div>'
         )
@@ -2032,10 +2267,11 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
     # Priority: New Entrant > Strengthening > Stable > Weakening
     shown: set[str] = set()
 
-    new_entrants     = [e for e in all_entries if e.ticker in _new_entrant_tickers]
-    strengthening    = [e for e in all_entries if e.ticker not in _new_entrant_tickers and _momentum(e) == "strengthening"]
-    stable           = [e for e in all_entries if e.ticker not in _new_entrant_tickers and _momentum(e) == "stable"]
-    weakening        = [e for e in all_entries if e.ticker not in _new_entrant_tickers and _momentum(e) == "weakening"]
+    _red = {t for t, w in weak_map.items() if w["severity"] == "red"}
+    new_entrants     = [e for e in all_entries if e.ticker in _new_entrant_tickers and e.ticker not in _red]
+    strengthening    = [e for e in all_entries if e.ticker not in _new_entrant_tickers and e.ticker not in _red and _momentum(e) == "strengthening"]
+    stable           = [e for e in all_entries if e.ticker not in _new_entrant_tickers and e.ticker not in _red and _momentum(e) == "stable"]
+    weakening        = [e for e in all_entries if e.ticker in _red or (e.ticker not in _new_entrant_tickers and _momentum(e) == "weakening")]
 
     for e in new_entrants:
         shown.add(e.ticker)
@@ -2052,7 +2288,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
     new_entrants  = sorted(new_entrants,  key=lambda e: e.conviction, reverse=True)
     strengthening = sorted(strengthening, key=lambda e: e.conviction, reverse=True)
     stable        = sorted(stable,        key=lambda e: e.conviction, reverse=True)
-    weakening     = sorted(weakening,     key=lambda e: e.conviction, reverse=True)
+    weakening     = sorted(weakening,     key=lambda e: (e.ticker not in _red, -e.conviction))
 
     # ── Summary metric strip ──────────────────────────────────────────────
     _metric_strip([
@@ -2061,6 +2297,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         ("● STRONG",         str(strong_n), "強勢",      "val-cyan"),
         ("◦ QUALIFIED",      str(qual_n),   "合格",      "val-green"),
         ("差一步 Near-miss",  str(miss_n),   "僅差1個門", "val-dim"),
+        ("🔴 出貨警示",        str(len(_red)), "轉弱偵測紅燈", "val-red" if _red else "val-dim"),
     ])
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -2774,12 +3011,13 @@ def main() -> None:
     _render_market_pulse_banner()
 
     # ── Eleven tabs ───────────────────────────────────────────────────────
-    (tab_regime, tab_radar, tab_strong, tab_fb, tab_accum,
+    (tab_regime, tab_radar, tab_strong, tab_weak, tab_fb, tab_accum,
      tab_rot, tab_chain, tab_narrative, tab_golden, tab_conf,
      tab_intel) = st.tabs([
         "📊 市場體制",
         "🎯 雷達觀察",
         "↑ 轉強訊號",
+        "🔻 轉弱出貨",
         "⚠ 假突破",
         "◉ 持續吸籌",
         "⟳ 資金輪動",
@@ -2798,6 +3036,9 @@ def main() -> None:
 
     with tab_strong:
         _render_strengthening(snaps_to_date)
+
+    with tab_weak:
+        _render_weakening(snaps_to_date)
 
     with tab_fb:
         _render_failed_breakouts(snaps_to_date)
