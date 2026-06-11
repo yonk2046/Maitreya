@@ -40,15 +40,28 @@ _SHA256_RE = re.compile(r"^sha256:[a-f0-9]{64}$")
 
 
 def _snapshot_files() -> list[pathlib.Path]:
-    """All <date>.json snapshots in reports/, excluding index.json and proposals."""
+    """All <date>.json snapshots in reports/, excluding index.json and proposals.
+
+    `*.intelligence.json` sidecars are EXCLUDED: they are Distribution Layer
+    outputs (a different schema family), not canonical snapshots, and must not
+    be validated against the canonical schema or hash/index invariants.
+    See test_intelligence_sidecars_are_valid_json for their (lighter) check.
+    """
     out: list[pathlib.Path] = []
     for f in sorted(REPORTS_DIR.glob("*.json")):
         if f.name == "index.json":
             continue
         if f.name.startswith("score_breakdown"):
             continue
+        if f.name.endswith(".intelligence.json"):
+            continue
         out.append(f)
     return out
+
+
+def _intelligence_sidecar_files() -> list[pathlib.Path]:
+    """Distribution Layer sidecars (`*.intelligence.json`)."""
+    return sorted(REPORTS_DIR.glob("*.intelligence.json"))
 
 
 @pytest.fixture(scope="module")
@@ -85,6 +98,30 @@ def test_every_snapshot_matches_canonical_schema(schema):
             msgs = [f"{p}: {e.message}" for p, e in zip(paths, errors[:3])]
             failures.append(f"{f.name}: {len(errors)} error(s) — {'; '.join(msgs)}")
     assert not failures, "Schema violations:\n  " + "\n  ".join(failures)
+
+
+# ----------------------------------------------------------------------
+# H7b — intelligence sidecars: lighter sanity check (different schema family)
+# ----------------------------------------------------------------------
+
+def test_intelligence_sidecars_are_valid_json():
+    """Intelligence sidecars are NOT canonical snapshots — they only need to
+    be parseable JSON objects keyed to a real snapshot date."""
+    failures: list[str] = []
+    for f in _intelligence_sidecar_files():
+        try:
+            obj = json.loads(f.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            failures.append(f"{f.name}: invalid JSON — {e}")
+            continue
+        if not isinstance(obj, dict):
+            failures.append(f"{f.name}: top-level is not an object")
+            continue
+        # Sidecar must sit next to its canonical snapshot
+        base = f.name.replace(".intelligence.json", ".json")
+        if not (REPORTS_DIR / base).is_file():
+            failures.append(f"{f.name}: no matching canonical snapshot {base}")
+    assert not failures, "Intelligence sidecar issues:\n  " + "\n  ".join(failures)
 
 
 # ----------------------------------------------------------------------
