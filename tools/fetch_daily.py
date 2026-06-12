@@ -159,6 +159,7 @@ def run(dry_run=False):
     # the download entirely, so it's safe to call every trading day.
     emit(5, TOTAL_STEPS, "抓取 TDCC 集保股權分散表 (全市場 ~2MB，自動跳過已快取)...", status="running")
     stage3_prefill = {}  # kept for today.json backward compat (not consumed by pipeline)
+    tdcc_err = None  # must exist before try — referenced at Step 10 sources list
     try:
         import pathlib as _pl
         import sys as _sys
@@ -173,6 +174,7 @@ def run(dry_run=False):
         else:
             emit(5, TOTAL_STEPS, "DRY RUN: TDCC 跳過 (不寫入)", status="skip")
     except Exception as _e:
+        tdcc_err = str(_e)
         emit(5, TOTAL_STEPS, f"TDCC 失敗 (非阻斷): {_e}", status="warn", detail=str(_e))
 
     # ── Step 6: Cross-link & double-signal detection ───────────────────────────
