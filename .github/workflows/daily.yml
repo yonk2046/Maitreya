@@ -1,7 +1,12 @@
 name: Maitreya Daily Pipeline
+# BACKUP writer (OPS-1, 2026-06-12). The PRIMARY writer is the local
+# launchd job (deploy/daily_and_push.sh) at 19:00 Asia/Taipei. This
+# workflow runs one hour later and SKIPS itself when the primary already
+# committed today's snapshot — the two pipelines no longer race on main.
+# workflow_dispatch always runs the full pipeline (manual override).
 on:
   schedule:
-    - cron: '0 11 * * 1-5'
+    - cron: '0 12 * * 1-5'   # 20:00 Asia/Taipei (primary runs 19:00)
   workflow_dispatch:
 env:
   TZ: Asia/Taipei
@@ -17,25 +22,47 @@ jobs:
         with:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Skip if primary pipeline already ran today
+        id: guard
+        if: github.event_name == 'schedule'
+        run: |
+          TODAY=$(date +%F)   # Asia/Taipei via env.TZ
+          if [ -f "reports/${TODAY}.json" ]; then
+            echo "Primary (launchd) already produced reports/${TODAY}.json — backup not needed."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No snapshot for ${TODAY} yet — running backup pipeline."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Set up Python
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
       - name: Install dependencies
+        if: steps.guard.outputs.skip != 'true'
         run: pip install -r requirements.txt
+      - name: Fetch market pulse (non-blocking)
+        if: steps.guard.outputs.skip != 'true'
+        continue-on-error: true  # fails on non-trading days; parity with primary
+        run: python3 tools/fetch_market_pulse.py
       # H3 stability proof requires failures to be VISIBLE — do not mask
       # make daily / verify-index. If either fails, suspect data must NOT
       # be auto-committed. (B1 epoch-aware verify landed 2026-06-11;
       # replay mismatches now indicate real corruption, not schema drift.)
       - name: Run daily pipeline
+        if: steps.guard.outputs.skip != 'true'
         run: make daily
       - name: Verify index
+        if: steps.guard.outputs.skip != 'true'
         run: make verify-index
       - name: Run fast tests
+        if: steps.guard.outputs.skip != 'true'
         continue-on-error: true  # visibility only; must not block data commit
         run: make test-fast
       - name: Commit data and reports
+        if: steps.guard.outputs.skip != 'true'
         run: |
           git config user.name "maitreya-bot"
           git config user.email "maitreya-bot@users.noreply.github.com"
