@@ -2263,41 +2263,46 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
                 unsafe_allow_html=True,
             )
 
-    # ── De-duplication: each ticker in exactly ONE section ───────────────
-    # Priority: New Entrant > Strengthening > Stable > Weakening
-    shown: set[str] = set()
-
+    # ── P2: Action grouping (行動分組) — logic lives in core.golden ──────
+    # Each ticker lands in exactly ONE group; new entrants render first as
+    # their own section then rejoin their action group next session.
     _red = {t for t, w in weak_map.items() if w["severity"] == "red"}
-    new_entrants     = [e for e in all_entries if e.ticker in _new_entrant_tickers and e.ticker not in _red]
-    strengthening    = [e for e in all_entries if e.ticker not in _new_entrant_tickers and e.ticker not in _red and _momentum(e) == "strengthening"]
-    stable           = [e for e in all_entries if e.ticker not in _new_entrant_tickers and e.ticker not in _red and _momentum(e) == "stable"]
-    weakening        = [e for e in all_entries if e.ticker in _red or (e.ticker not in _new_entrant_tickers and _momentum(e) == "weakening")]
+    action_of: dict[str, str] = {
+        e.ticker: _golden_mod.action_group(
+            e, weak_map.get(e.ticker, {}).get("severity", "none"))
+        for e in all_entries
+    }
 
-    for e in new_entrants:
-        shown.add(e.ticker)
-    strengthening = [e for e in strengthening if e.ticker not in shown]
-    for e in strengthening:
-        shown.add(e.ticker)
-    stable = [e for e in stable if e.ticker not in shown]
-    for e in stable:
-        shown.add(e.ticker)
-    weakening = [e for e in weakening if e.ticker not in shown]
-    for e in weakening:
-        shown.add(e.ticker)
-    # Sort each section: conviction desc (highest evidence first)
-    new_entrants  = sorted(new_entrants,  key=lambda e: e.conviction, reverse=True)
-    strengthening = sorted(strengthening, key=lambda e: e.conviction, reverse=True)
-    stable        = sorted(stable,        key=lambda e: e.conviction, reverse=True)
-    weakening     = sorted(weakening,     key=lambda e: (e.ticker not in _red, -e.conviction))
+    new_entrants = sorted(
+        [e for e in all_entries if e.ticker in _new_entrant_tickers
+         and action_of[e.ticker] != _golden_mod.ACTION_WEAKENING],
+        key=lambda e: e.conviction, reverse=True)
+    _shown_new = {e.ticker for e in new_entrants}
 
-    # ── Summary metric strip ──────────────────────────────────────────────
+    action_groups: dict[str, list] = {k: [] for k in _golden_mod.ACTION_ORDER}
+    for e in all_entries:
+        if e.ticker in _shown_new:
+            continue
+        action_groups[action_of[e.ticker]].append(e)
+    for k in action_groups:
+        # Within group: conviction desc; weakening group puts red lights first
+        if k == _golden_mod.ACTION_WEAKENING:
+            action_groups[k].sort(key=lambda e: (e.ticker not in _red, -e.conviction))
+        else:
+            action_groups[k].sort(key=lambda e: e.conviction, reverse=True)
+
+    _n_of = {k: len(v) for k, v in action_groups.items()}
+
+    # ── Summary metric strip — action-first (P2) ─────────────────────────
     _metric_strip([
-        ("黃金總覽 Total",    str(prime_n + strong_n + qual_n), "通過所有門檻", "val-cyan"),
-        ("★ PRIME",          str(prime_n),  "高信念",    "val-amber"),
-        ("● STRONG",         str(strong_n), "強勢",      "val-cyan"),
-        ("◦ QUALIFIED",      str(qual_n),   "合格",      "val-green"),
-        ("差一步 Near-miss",  str(miss_n),   "僅差1個門", "val-dim"),
-        ("🔴 出貨警示",        str(len(_red)), "轉弱偵測紅燈", "val-red" if _red else "val-dim"),
+        ("黃金總覽 Total", str(prime_n + strong_n + qual_n),
+         f"★{prime_n} ●{strong_n} ◦{qual_n}", "val-cyan"),
+        ("🟢 可執行",   str(_n_of[_golden_mod.ACTION_EXECUTABLE]),    "價格在保守錨容忍內", "val-green"),
+        ("🟡 等回檔",   str(_n_of[_golden_mod.ACTION_WAIT_PULLBACK]), "結構好、價格延伸",   "val-amber"),
+        ("🔵 資料待補", str(_n_of[_golden_mod.ACTION_DATA_PENDING]),  "SKELETON/缺錨點",   "val-cyan"),
+        ("🔻 動能轉弱", str(_n_of[_golden_mod.ACTION_WEAKENING]),
+         "紅橙燈/疑似出貨", "val-red" if _n_of[_golden_mod.ACTION_WEAKENING] else "val-dim"),
+        ("⊘ 差一步",    str(miss_n), "僅差1個門檻", "val-dim"),
     ])
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -2312,12 +2317,14 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         tickers_s = "、".join(f"{e.ticker} {e.name}" for e in new_entrants[:3])
         suffix = f"等{len(new_entrants)}檔" if len(new_entrants) > 3 else ""
         bullets.append(f"今日新進名單：{tickers_s}{suffix}。")
-    if strengthening:
-        tickers_s = "、".join(f"{e.ticker} {e.name}" for e in strengthening[:3])
-        bullets.append(f"動能強化中：{tickers_s}{'等' if len(strengthening) > 3 else ''}。")
-    if weakening:
-        tickers_s = "、".join(f"{e.ticker} {e.name}" for e in weakening[:2])
-        bullets.append(f"需注意動能衰退：{tickers_s}。")
+    _exec_list = action_groups[_golden_mod.ACTION_EXECUTABLE]
+    if _exec_list:
+        tickers_s = "、".join(f"{e.ticker} {e.name}" for e in _exec_list[:3])
+        bullets.append(f"🟢 可執行：{tickers_s}{'等' if len(_exec_list) > 3 else ''}。")
+    _weak_list = action_groups[_golden_mod.ACTION_WEAKENING]
+    if _weak_list:
+        tickers_s = "、".join(f"{e.ticker} {e.name}" for e in _weak_list[:2])
+        bullets.append(f"🔻 需注意動能轉弱：{tickers_s}。")
     if intel and intel.market_story:
         story_txt = intel.market_story[0] if isinstance(intel.market_story, list) else str(intel.market_story)
         bullets.append(story_txt[:80] + ("…" if len(story_txt) > 80 else ""))
@@ -2363,35 +2370,18 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         is_new=True,
     )
 
-    # ── SECTION B: Strengthening ──────────────────────────────────────────
-    _render_section(
-        strengthening,
-        f'<div class="g5-momentum-head g5-momentum-strengthening">'
-        f'<span class="g5-momentum-icon">🔥</span>'
-        f'<span class="g5-momentum-label" style="color:#52B788;">動能強化  Strengthening</span>'
-        f'<span class="g5-momentum-count">{len(strengthening)} 檔</span>'
-        f'</div>',
-    )
-
-    # ── SECTION C: Stable ─────────────────────────────────────────────────
-    _render_section(
-        stable,
-        f'<div class="g5-momentum-head g5-momentum-stable">'
-        f'<span class="g5-momentum-icon">⭐</span>'
-        f'<span class="g5-momentum-label" style="color:#7EB8D4;">穩定持續  Stable</span>'
-        f'<span class="g5-momentum-count">{len(stable)} 檔</span>'
-        f'</div>',
-    )
-
-    # ── SECTION D: Weakening ─────────────────────────────────────────────
-    _render_section(
-        weakening,
-        f'<div class="g5-momentum-head g5-momentum-weakening">'
-        f'<span class="g5-momentum-icon">⚠️</span>'
-        f'<span class="g5-momentum-label" style="color:#D4A84B;">動能衰退  Weakening</span>'
-        f'<span class="g5-momentum-count">{len(weakening)} 檔</span>'
-        f'</div>',
-    )
+    # ── SECTIONS B–E: Action groups in execution-priority order (P2) ─────
+    for _ak in _golden_mod.ACTION_ORDER:
+        _meta = _golden_mod.ACTION_META[_ak]
+        _render_section(
+            action_groups[_ak],
+            f'<div class="g5-momentum-head">'
+            f'<span class="g5-momentum-icon">{_meta["icon"]}</span>'
+            f'<span class="g5-momentum-label" style="color:{_meta["color"]};">'
+            f'{_meta["zh"]}  {_meta["en"]}</span>'
+            f'<span class="g5-momentum-count">{len(action_groups[_ak])} 檔</span>'
+            f'</div>',
+        )
 
     # ── P3: Update and persist learning-layer history ────────────────────
     try:

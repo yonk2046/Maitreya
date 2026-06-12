@@ -693,3 +693,74 @@ if __name__ == "__main__":
         _print_tier(gr.near_miss, "○", "", "", near=True)
 
     print()
+
+
+# ── P2: Action grouping (行動分組) ────────────────────────────────────────────
+# Business logic for the golden-list redesign lives HERE per the AI_GOVERNANCE
+# red line (UI renders, core decides). The viewer maps each entry to exactly
+# one action group and sorts groups by execution priority, not score.
+
+ACTION_EXECUTABLE    = "executable"      # 🟢 可執行 — 結構好且價格在保守錨容忍內
+ACTION_WAIT_PULLBACK = "wait_pullback"   # 🟡 等回檔 — 結構好但現價超出成本容忍
+ACTION_DATA_PENDING  = "data_pending"    # 🔵 資料待補 — SKELETON / 缺價格或成本錨
+ACTION_WEAKENING     = "weakening"       # 🔻 動能轉弱 — 轉弱紅橙燈或疑似出貨
+
+ACTION_ORDER = [ACTION_EXECUTABLE, ACTION_WAIT_PULLBACK,
+                ACTION_DATA_PENDING, ACTION_WEAKENING]
+
+ACTION_META = {
+    ACTION_EXECUTABLE:    {"icon": "🟢", "zh": "可執行",   "en": "Executable",    "color": "#52B788"},
+    ACTION_WAIT_PULLBACK: {"icon": "🟡", "zh": "等回檔",   "en": "Wait Pullback", "color": "#D4C84B"},
+    ACTION_DATA_PENDING:  {"icon": "🔵", "zh": "資料待補", "en": "Data Pending",  "color": "#7EB8D4"},
+    ACTION_WEAKENING:     {"icon": "🔻", "zh": "動能轉弱", "en": "Weakening",     "color": "#E05C7A"},
+}
+
+
+def _load_cost_safety_cfg() -> dict:
+    try:
+        import yaml
+        cfg = yaml.safe_load(
+            (_AI_STOCK / "config" / "scd.example.yaml").read_text(encoding="utf-8")) or {}
+        cs = cfg.get("gates", {}).get("cost_safety", {}) or {}
+        return {"max_premium_ratio": float(cs.get("max_premium_ratio", 1.05))}
+    except Exception:
+        return {"max_premium_ratio": 1.05}
+
+
+_COST_SAFETY_CFG: dict | None = None
+
+
+def _cost_safety_cfg() -> dict:
+    global _COST_SAFETY_CFG
+    if _COST_SAFETY_CFG is None:
+        _COST_SAFETY_CFG = _load_cost_safety_cfg()
+    return _COST_SAFETY_CFG
+
+
+def action_group(entry: "GoldenEntry", weakening_severity: str = "none") -> str:
+    """Assign one action group to a gate-passing golden entry.
+
+    Priority (first match wins):
+      1. WEAKENING     — weakening severity red/orange, or SM 疑似出貨
+      2. DATA_PENDING  — SKELETON-capped / thin data / missing price or anchor
+      3. EXECUTABLE    — price ≤ cost_conservative × max_premium_ratio
+      4. WAIT_PULLBACK — otherwise (structure fine, price extended)
+
+    Note: 動能減速 (decelerating) is a yellow NEUTRAL state — it does not
+    force the weakening group; its badge still shows on the card.
+    """
+    if weakening_severity in ("red", "orange") or entry.sm_state == "distributing":
+        return ACTION_WEAKENING
+
+    if "CAP_skeleton_data" in (entry.tier_caps or []):
+        return ACTION_DATA_PENDING
+
+    price  = entry.current_price
+    anchor = entry.cost_conservative if entry.cost_conservative is not None \
+        else entry.main_force_cost
+    if not price or not anchor or anchor <= 0:
+        return ACTION_DATA_PENDING
+
+    if price <= anchor * _cost_safety_cfg()["max_premium_ratio"]:
+        return ACTION_EXECUTABLE
+    return ACTION_WAIT_PULLBACK
