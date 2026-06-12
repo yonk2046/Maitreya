@@ -956,6 +956,23 @@ def _render_weakening(snaps: list[dict]) -> None:
 
     _section_header("🔻", "轉弱出貨", "Weakening / Distribution", len(results))
 
+    # W1–W5 flag legend (hover ⓘ, same pattern as the 量能比 tooltip)
+    st.markdown(
+        '<div style="margin:-6px 0 10px 2px;font-size:12px;color:#8B949E;">'
+        '五旗標偵測'
+        '<div class="gc-tooltip-wrap">'
+        '<span class="gc-tooltip-icon">ⓘ</span>'
+        '<div class="gc-tooltip" style="width:340px;">'
+        '<b>W1 動能衰竭</b> — 連買≥3日但速度轉負、買量遞減<br>'
+        '<b>W2 雙引擎分歧</b> — 主力買超但外資賣超達主力買量30%<br>'
+        '<b>W3 主力消失</b> — 曾連買≥3日，從買超榜缺席（≠賣出；缺席1日可能只是輪動，缺席≥2日才可合成紅燈）<br>'
+        '<b>W4 散戶接盤</b> — 券商家數差轉正，或價跌融資增≥3日/10日<br>'
+        '<b>W5 分點賣壓</b> — 分點總賣&gt;總買，或前三買點邊買邊倒（賣出自身買量≥60%）<br>'
+        '<span style="color:#D4A84B;">嚴重度：紅 = 實錘W3+佐證 或 ≥3旗標；橙 = 2旗標 或 W3單獨；黃 = 1旗標</span>'
+        '</div></div></div>',
+        unsafe_allow_html=True,
+    )
+
     n_red = sum(1 for r in results if r["severity"] == "red")
     n_org = sum(1 for r in results if r["severity"] == "orange")
     n_yel = sum(1 for r in results if r["severity"] == "yellow")

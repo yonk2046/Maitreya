@@ -43,8 +43,10 @@ def test_weakening_on_red_severity():
     assert golden.action_group(_entry(), weakening_severity="red") == golden.ACTION_WEAKENING
 
 
-def test_weakening_on_orange_severity():
-    assert golden.action_group(_entry(), weakening_severity="orange") == golden.ACTION_WEAKENING
+def test_orange_severity_stays_price_based():
+    # 2026-06-13 revision: only RED forces the weakening group (handoff 1.4
+    # contract); a 1-day W3 orange must not dominate the golden view.
+    assert golden.action_group(_entry(), weakening_severity="orange") == golden.ACTION_EXECUTABLE
 
 
 def test_yellow_severity_does_not_force_weakening():

@@ -741,15 +741,17 @@ def action_group(entry: "GoldenEntry", weakening_severity: str = "none") -> str:
     """Assign one action group to a gate-passing golden entry.
 
     Priority (first match wins):
-      1. WEAKENING     — weakening severity red/orange, or SM 疑似出貨
+      1. WEAKENING     — weakening severity RED, or SM 疑似出貨
       2. DATA_PENDING  — SKELETON-capped / thin data / missing price or anchor
       3. EXECUTABLE    — price ≤ cost_conservative × max_premium_ratio
       4. WAIT_PULLBACK — otherwise (structure fine, price extended)
 
-    Note: 動能減速 (decelerating) is a yellow NEUTRAL state — it does not
-    force the weakening group; its badge still shows on the card.
+    Per the handoff 1.4 contract, only RED forces the weakening group;
+    orange/yellow stay in their price-based group with a badge (2026-06-13
+    revision — a 1-day W3 orange was dominating the golden view).
+    動能減速 (decelerating) likewise stays price-based.
     """
-    if weakening_severity in ("red", "orange") or entry.sm_state == "distributing":
+    if weakening_severity == "red" or entry.sm_state == "distributing":
         return ACTION_WEAKENING
 
     if "CAP_skeleton_data" in (entry.tier_caps or []):

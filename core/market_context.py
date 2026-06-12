@@ -637,9 +637,14 @@ def weakening_profile(
 
     n = len(flags)
     has_w3 = any(f["code"] == "W3" for f in flags)
-    if (has_w3 and n >= 2) or n >= 3:
+    # W3 absence weighting (2026-06-13): 1-day absence from the buy-rank
+    # universe is often mere rotation (the universe is a top-N list, not the
+    # whole market). Only a SOLID W3 (absent ≥2 snapshots) may combine into
+    # red; a fresh 1-day W3 caps at orange even with corroborating flags.
+    w3_solid = has_w3 and snaps_since_seen >= 2
+    if (w3_solid and n >= 2) or n >= 3:
         severity, label_zh, label_en = "red", "出貨確認", "Distribution Confirmed"
-    elif n == 2 or (has_w3 and n == 1):
+    elif n == 2 or has_w3:
         severity, label_zh, label_en = "orange", "轉弱", "Weakening"
     elif n == 1:
         severity, label_zh, label_en = "yellow", "失速", "Stalling"
