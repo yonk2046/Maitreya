@@ -140,6 +140,9 @@ class GoldenEntry:
     # Gate pass/fail detail  (for transparency / debugging)
     gates_passed:    list[str] = field(default_factory=list)
     score_breakdown: dict[str, float] = field(default_factory=dict)
+    # P0.7: hard tier caps applied after scoring (audit trail; separate from
+    # gates_fail so near-miss semantics are unaffected)
+    tier_caps:       list[str] = field(default_factory=list)
 
     # Days tracking
     days_in_sm_state: int = 0
@@ -176,6 +179,7 @@ class GoldenEntry:
             "sm_state_entered":   self.sm_state_entered,
             "gates_passed":       self.gates_passed,
             "score_breakdown":    self.score_breakdown,
+            "tier_caps":          self.tier_caps,
             "main_force_cost":    self.main_force_cost,
             "current_price":      self.current_price,
         }
@@ -316,6 +320,93 @@ def _tier_from_score(conviction: float) -> str:
     return TIER_QUALIFIED_KEY
 
 
+# ── Tier caps — hard gates applied AFTER scoring ──────────────────────────────
+
+def _load_fii_alignment_cfg() -> dict:
+    """gates.fii_alignment from config/scd.example.yaml (P0.7).
+
+    Reference-data load with safe defaults — golden layer must not crash
+    when the config file is absent (e.g. minimal test environments).
+    """
+    try:
+        import yaml
+        cfg_file = _AI_STOCK / "config" / "scd.example.yaml"
+        cfg = yaml.safe_load(cfg_file.read_text(encoding="utf-8")) or {}
+        fa = cfg.get("gates", {}).get("fii_alignment", {}) or {}
+        return {
+            "enabled": bool(fa.get("enabled", True)),
+            "contra_days_cap": int(fa.get("contra_days_cap", 2)),
+        }
+    except Exception:
+        return {"enabled": True, "contra_days_cap": 2}
+
+
+_FII_ALIGNMENT_CFG: dict | None = None
+
+
+def _fii_alignment_cfg() -> dict:
+    global _FII_ALIGNMENT_CFG
+    if _FII_ALIGNMENT_CFG is None:
+        _FII_ALIGNMENT_CFG = _load_fii_alignment_cfg()
+    return _FII_ALIGNMENT_CFG
+
+
+def _reset_fii_alignment_cfg() -> None:
+    """Test hook."""
+    global _FII_ALIGNMENT_CFG
+    _FII_ALIGNMENT_CFG = None
+
+
+def _fii_contra_streak(ticker: str, snapshots: list[dict]) -> int:
+    """Consecutive trailing snapshots with fii_net_buy < 0 for this ticker.
+
+    None (no data) and absence both BREAK the streak — missing data is not
+    evidence of foreign-investor selling (cf. SKELETON philosophy: thin data
+    must not be treated as a signal in either direction).
+    """
+    n = 0
+    for snap in reversed(snapshots):
+        rec = next((s for s in snap.get("stocks", [])
+                    if s.get("ticker") == ticker), None)
+        if rec is None:
+            break
+        fii = rec.get("fii_net_buy")
+        if fii is None or fii >= 0:
+            break
+        n += 1
+    return n
+
+
+def _apply_tier_caps(
+    tier: str,
+    stock_data: dict,
+    fii_contra: int,
+) -> tuple[str, list[str]]:
+    """Hard caps applied after _tier_from_score. Returns (tier, cap_reasons).
+
+    1. SKELETON gate (Schema v1.5): confidence_tier == SKELETON (< 50% of key
+       fields populated) cannot reach PRIME — thin evidence caps at STRONG.
+    2. FII alignment gate (P0.7, SCD 雙引擎 V3 章程): foreign investors
+       net-selling for ≥ gates.fii_alignment.contra_days_cap consecutive
+       snapshots vetoes PRIME — 外資與主力同向 is a NECESSARY condition for
+       top tier, not a 2/3 soft vote.
+    """
+    reasons: list[str] = []
+
+    if tier == TIER_PRIME_KEY and stock_data.get("confidence_tier") == "SKELETON":
+        tier = TIER_STRONG_KEY
+        reasons.append("CAP_skeleton_data")
+
+    fa = _fii_alignment_cfg()
+    if (tier == TIER_PRIME_KEY
+            and fa["enabled"]
+            and fii_contra >= fa["contra_days_cap"]):
+        tier = TIER_STRONG_KEY
+        reasons.append(f"CAP_fii_contra_{fii_contra}d")
+
+    return tier, reasons
+
+
 # ── Sector rank helper ────────────────────────────────────────────────────────
 
 def _latest_sector_rank(snapshots: list[dict]) -> list[str]:
@@ -413,12 +504,12 @@ def run(snapshots: list[dict]) -> GoldenResult:
 
         tier = _tier_from_score(conviction)
 
-        # SKELETON gate (Schema v1.5): data-deficient tickers cannot reach PRIME.
-        # confidence_tier == "SKELETON" means < 50% of key scoring fields are
-        # populated; capping at STRONG prevents promotions on thin evidence.
+        # Hard tier caps (SKELETON data gate + P0.7 FII alignment gate).
+        # Recorded in entry.tier_caps for auditability — kept OUT of
+        # gates_fail so near-miss (len==1) semantics are unaffected.
         stock_data = latest_stock_map.get(ticker, {})
-        if stock_data.get("confidence_tier") == "SKELETON" and tier == TIER_PRIME_KEY:
-            tier = TIER_STRONG_KEY
+        tier, cap_reasons = _apply_tier_caps(
+            tier, stock_data, _fii_contra_streak(ticker, snapshots))
 
         entry = GoldenEntry(
             ticker=ticker,
@@ -446,6 +537,7 @@ def run(snapshots: list[dict]) -> GoldenResult:
             sm_state_entered=ts.state_entered,
             gates_passed=gates_pass,
             score_breakdown=breakdown,
+            tier_caps=cap_reasons,
             main_force_cost=latest_stock_map.get(ticker, {}).get("main_force_cost"),
             current_price=latest_stock_map.get(ticker, {}).get("current_price"),
         )

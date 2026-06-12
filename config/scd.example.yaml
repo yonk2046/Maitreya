@@ -160,6 +160,11 @@ gates:
     min_brokers: 2                      # 同步買進至少幾家
     min_consecutive_days: 3             # 連續同步天數
 
+  fii_alignment:                        # P0.7 — 外資同向 PRIME 硬閘門（SCD 雙引擎 V3 章程）
+    enabled: true
+    contra_days_cap: 2                  # 外資反向(fii_net_buy<0)連續 ≥N 日 → tier 封頂 STRONG
+                                        # fii_net_buy 為 None 視為「無證據」中斷計數，不觸發封頂
+
   main_force:
     min_consecutive_days: 3
     volume_increasing_min_streaks: 2
