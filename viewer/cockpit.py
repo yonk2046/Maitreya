@@ -962,7 +962,7 @@ def _render_weakening(snaps: list[dict]) -> None:
         '五旗標偵測'
         '<div class="gc-tooltip-wrap">'
         '<span class="gc-tooltip-icon">ⓘ</span>'
-        '<div class="gc-tooltip" style="width:340px;">'
+        '<div class="gc-tooltip" style="white-space:normal;width:340px;">'
         '<b>W1 動能衰竭</b> — 連買≥3日但速度轉負、買量遞減<br>'
         '<b>W2 雙引擎分歧</b> — 主力買超但外資賣超達主力買量30%<br>'
         '<b>W3 主力消失</b> — 曾連買≥3日，從買超榜缺席（≠賣出；缺席1日可能只是輪動，缺席≥2日才可合成紅燈）<br>'
@@ -2388,8 +2388,21 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
     )
 
     # ── SECTIONS B–E: Action groups in execution-priority order (P2) ─────
+    _W_LEGEND = (
+        '<div class="gc-tooltip-wrap">'
+        '<span class="gc-tooltip-icon">ⓘ</span>'
+        '<div class="gc-tooltip" style="white-space:normal;width:340px;">'
+        '<b>W1 動能衰竭</b> — 連買≥3日但速度轉負、買量遞減<br>'
+        '<b>W2 雙引擎分歧</b> — 主力買超但外資賣超達主力買量30%<br>'
+        '<b>W3 主力消失</b> — 曾連買≥3日，從買超榜缺席（≠賣出；缺席≥2日才可合成紅燈）<br>'
+        '<b>W4 散戶接盤</b> — 券商家數差轉正，或價跌融資增≥3日/10日<br>'
+        '<b>W5 分點賣壓</b> — 分點總賣&gt;總買，或前三買點邊買邊倒<br>'
+        '<span style="color:#D4A84B;">紅 = 實錘W3+佐證 或 ≥3旗標；只有紅燈會強制移入本組</span>'
+        '</div></div>'
+    )
     for _ak in _golden_mod.ACTION_ORDER:
         _meta = _golden_mod.ACTION_META[_ak]
+        _legend = _W_LEGEND if _ak == _golden_mod.ACTION_WEAKENING else ""
         _render_section(
             action_groups[_ak],
             f'<div class="g5-momentum-head">'
@@ -2397,6 +2410,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
             f'<span class="g5-momentum-label" style="color:{_meta["color"]};">'
             f'{_meta["zh"]}  {_meta["en"]}</span>'
             f'<span class="g5-momentum-count">{len(action_groups[_ak])} 檔</span>'
+            f'{_legend}'
             f'</div>',
         )
 
