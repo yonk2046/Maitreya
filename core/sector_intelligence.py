@@ -23,6 +23,8 @@ Design principles
 """
 from __future__ import annotations
 
+import json
+import pathlib
 from collections import defaultdict
 from typing import Any
 
@@ -65,7 +67,7 @@ SECTOR_TAXONOMY: dict[str, dict[str, Any]] = {
             "2449",  # 京元電子
             "3034",  # 聯詠
             "3006",  # 晶豪科
-            "2385",  # 群光
+            # 2385 群光 removed 2026-06-12 — 電腦及週邊, resolves via official map (25)
             "3697",  # 晨星半導體 (delisted, kept for history)
         ],
     },
@@ -91,7 +93,7 @@ SECTOR_TAXONOMY: dict[str, dict[str, Any]] = {
             "2367",  # 燿華
             "3037",  # 欣興
             "2316",  # 楠梓電
-            "6505",  # 台塑化
+            # 6505 台塑化 removed 2026-06-12 — 油電燃氣, resolves via official map (23)
             "2379",  # 瑞昱半導體
             "3105",  # 穩懋
         ],
@@ -135,7 +137,7 @@ SECTOR_TAXONOMY: dict[str, dict[str, Any]] = {
             "2610",  # 華航
             "2603",  # 長榮
             "2615",  # 萬海
-            "5880",  # 合庫金 (kept from original; may be misclassified)
+            # 5880 合庫金 removed 2026-06-12 — financial, resolves via official map (17)
         ],
     },
     # ── Heavy Industry / Steel ────────────────────────────────────────────
@@ -158,11 +160,9 @@ SECTOR_TAXONOMY: dict[str, dict[str, Any]] = {
         "color": "#B8A052", "icon": "⚡",
         "tickers": [
             "6505",  # 台塑化
-            "1301",  # 台塑
-            "1303",  # 南亞塑膠
-            "1326",  # 台化
-            "9945",  # 潤泰全
-            "5347",  # 世界先進
+            # 2026-06-12 cleanup: 1301/1303/1326 belong to materials (curated below);
+            # 9945 潤泰全 → consumer via official map (18); 5347 世界先進 → semiconductor
+            # via official map (24). Removed from this list.
         ],
     },
     # ── Materials / Chemicals ─────────────────────────────────────────────
@@ -188,6 +188,72 @@ SECTOR_TAXONOMY: dict[str, dict[str, Any]] = {
             "006208", # 富邦台50
         ],
     },
+    # ── Optoelectronics (panels / lenses / LED) ───────────────────────────
+    "optoelectronics": {
+        "zh": "光電", "en": "Optoelectronics",
+        "color": "#C88A5A", "icon": "◐",
+        "tickers": [],
+    },
+    # ── Electronic Components (passive / connectors / batteries) ─────────
+    "components": {
+        "zh": "電子零組件", "en": "Components",
+        "color": "#8AA86A", "icon": "▫",
+        "tickers": [],
+    },
+    # ── Tech Services / Distribution / Cloud ─────────────────────────────
+    "tech_services": {
+        "zh": "資訊服務/通路", "en": "Tech Services",
+        "color": "#5A8AC8", "icon": "☁",
+        "tickers": [],
+    },
+    # ── Machinery / Electrical Equipment ──────────────────────────────────
+    "machinery": {
+        "zh": "電機機械", "en": "Machinery / Electrical",
+        "color": "#A8825A", "icon": "⚙",
+        "tickers": [],
+    },
+    # ── Automotive / Parts ────────────────────────────────────────────────
+    "automotive": {
+        "zh": "汽車", "en": "Automotive",
+        "color": "#7A6A9A", "icon": "◈",
+        "tickers": [],
+    },
+    # ── Textiles ──────────────────────────────────────────────────────────
+    "textiles": {
+        "zh": "紡織", "en": "Textiles",
+        "color": "#B87A8A", "icon": "✂",
+        "tickers": [],
+    },
+    # ── Food / Agriculture ────────────────────────────────────────────────
+    "food_agri": {
+        "zh": "食品/農業", "en": "Food / Agri",
+        "color": "#9AA85A", "icon": "☘",
+        "tickers": [],
+    },
+    # ── Biotech / Healthcare ──────────────────────────────────────────────
+    "biotech": {
+        "zh": "生技醫療", "en": "Biotech / Healthcare",
+        "color": "#5AB89A", "icon": "✚",
+        "tickers": [],
+    },
+    # ── Consumer / Retail / Tourism / Lifestyle ───────────────────────────
+    "consumer": {
+        "zh": "消費/觀光", "en": "Consumer / Tourism",
+        "color": "#C8A06A", "icon": "◍",
+        "tickers": [],
+    },
+    # ── Construction / Cement ─────────────────────────────────────────────
+    "construction": {
+        "zh": "營建/水泥", "en": "Construction / Cement",
+        "color": "#8A8A7A", "icon": "▤",
+        "tickers": [],
+    },
+    # ── Conglomerates / Misc ──────────────────────────────────────────────
+    "conglomerate": {
+        "zh": "綜合/其他", "en": "Conglomerate / Misc",
+        "color": "#6A7A8A", "icon": "◌",
+        "tickers": [],
+    },
     # ── Catch-all ─────────────────────────────────────────────────────────
     "other": {
         "zh": "其他", "en": "Other",
@@ -195,6 +261,85 @@ SECTOR_TAXONOMY: dict[str, dict[str, Any]] = {
         "tickers": [],
     },
 }
+
+# ---------------------------------------------------------------------------
+# Official TWSE/TPEx industry code → sector group (mid-granularity)
+# ---------------------------------------------------------------------------
+# Both exchanges share one code family. Source: TWSE/TPEx company-basics
+# open data, cached at data/industry/industry_map.json by tools/fetch_industry.
+# Curated SECTOR_TAXONOMY ticker lists act as a thematic OVERLAY (e.g.
+# ai_server, memory) and always win over the official code.
+
+INDUSTRY_CODE_TO_SECTOR: dict[str, str] = {
+    "01": "construction",    # 水泥
+    "02": "food_agri",       # 食品
+    "03": "materials",       # 塑膠
+    "04": "textiles",        # 紡織纖維
+    "05": "machinery",       # 電機機械
+    "06": "machinery",       # 電器電纜
+    "08": "materials",       # 玻璃陶瓷
+    "09": "materials",       # 造紙
+    "10": "heavy_industry",  # 鋼鐵
+    "11": "materials",       # 橡膠
+    "12": "automotive",      # 汽車
+    "14": "construction",    # 建材營造
+    "15": "shipping",        # 航運
+    "16": "consumer",        # 觀光餐旅
+    "17": "financials",      # 金融保險
+    "18": "consumer",        # 貿易百貨
+    "19": "conglomerate",    # 綜合
+    "20": "conglomerate",    # 其他
+    "21": "materials",       # 化學
+    "22": "biotech",         # 生技醫療
+    "23": "energy_power",    # 油電燃氣
+    "24": "semiconductor",   # 半導體
+    "25": "electronics",     # 電腦及週邊設備
+    "26": "optoelectronics", # 光電
+    "27": "networking",      # 通信網路
+    "28": "components",      # 電子零組件
+    "29": "tech_services",   # 電子通路
+    "30": "tech_services",   # 資訊服務
+    "31": "electronics",     # 其他電子
+    "32": "consumer",        # 文化創意
+    "33": "food_agri",       # 農業科技
+    "34": "tech_services",   # 電子商務
+    "35": "energy_power",    # 綠能環保
+    "36": "tech_services",   # 數位雲端
+    "37": "consumer",        # 運動休閒
+    "38": "consumer",        # 居家生活
+}
+
+_INDUSTRY_MAP_FILE = (
+    pathlib.Path(__file__).resolve().parent.parent
+    / "data" / "industry" / "industry_map.json"
+)
+_industry_sector_cache: dict[str, str] | None = None
+
+
+def _industry_map() -> dict[str, str]:
+    """Lazy-loaded {ticker: sector_key} from the official industry cache.
+
+    Reference-data load (same nature as the static taxonomy above) — read
+    once per process, deterministic given the cache file. Returns {} when
+    the cache is absent so the curated taxonomy remains the sole source.
+    """
+    global _industry_sector_cache
+    if _industry_sector_cache is None:
+        try:
+            raw = json.loads(_INDUSTRY_MAP_FILE.read_text(encoding="utf-8"))
+            _industry_sector_cache = {
+                t: INDUSTRY_CODE_TO_SECTOR.get(str(code), "other")
+                for t, code in raw.get("tickers", {}).items()
+            }
+        except (OSError, json.JSONDecodeError):
+            _industry_sector_cache = {}
+    return _industry_sector_cache
+
+
+def _reset_industry_cache() -> None:
+    """Test hook — force re-read of the industry cache file."""
+    global _industry_sector_cache
+    _industry_sector_cache = None
 
 # Build ticker → sector lookup (first assignment wins, most-specific sector listed first)
 _TICKER_TO_SECTOR: dict[str, str] = {}
@@ -205,8 +350,17 @@ for _sector, _smeta in SECTOR_TAXONOMY.items():
 
 
 def ticker_sector(ticker: str) -> str:
-    """Return the primary sector key for a ticker.  Falls back to 'other'."""
-    return _TICKER_TO_SECTOR.get(ticker, "other")
+    """Return the primary sector key for a ticker.
+
+    Resolution order:
+      1. Curated SECTOR_TAXONOMY overlay (thematic groups like ai_server win)
+      2. Official TWSE/TPEx industry code via data/industry/industry_map.json
+      3. "other"
+    """
+    explicit = _TICKER_TO_SECTOR.get(ticker)
+    if explicit is not None:
+        return explicit
+    return _industry_map().get(ticker, "other")
 
 
 def sector_meta(sector: str) -> dict[str, Any]:
@@ -255,7 +409,7 @@ def build_sector_map(snapshots: list[dict[str, Any]]) -> SectorMap:
             if t:
                 all_tickers.add(t)
 
-    mapping = {t: _TICKER_TO_SECTOR.get(t, "other") for t in all_tickers}
+    mapping = {t: ticker_sector(t) for t in all_tickers}
     return SectorMap(mapping, all_tickers)
 
 

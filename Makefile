@@ -162,6 +162,9 @@ fix-index:  # idempotent: link supersedes chain in reports/index.json
 verify-index:  # integrity scan over reports/index.json (no writes)
 	$(PY) -m pytest tests/test_contracts.py -v
 
+fetch-industry:  # refresh TWSE/TPEx industry classification cache (skips if < 30d old)
+	$(PY) -m tools.fetch_industry
+
 clean-pycache:
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +
 	find . -type d -name .pytest_cache -prune -exec rm -rf {} +
