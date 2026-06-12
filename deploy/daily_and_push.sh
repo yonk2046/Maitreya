@@ -41,6 +41,16 @@ if ! git rebase --autostash origin/main; then
     exit 1
 fi
 
+# ── 1.5 Skip if the backup (GHA) already produced today's snapshot ─────────
+# Mac asleep at 19:00 → launchd fires this on wake, possibly AFTER the GHA
+# backup ran at 20:00. Without this guard we'd regenerate the same date with
+# different content (supersede churn = the race in another form).
+TODAY_TPE=$(TZ=Asia/Taipei date +%F)
+if [ -f "reports/${TODAY_TPE}.json" ]; then
+    echo "[daily_and_push] reports/${TODAY_TPE}.json already exists (GHA backup ran first?) — nothing to do"
+    exit 0
+fi
+
 # ── 2. Market pulse (non-blocking: fails on non-trading days) ───────────────
 python3 tools/fetch_market_pulse.py || echo "[daily_and_push] fetch_market_pulse failed (non-trading day?)"
 
