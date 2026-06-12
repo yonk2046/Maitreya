@@ -60,6 +60,7 @@ if str(_AI_STOCK) not in sys.path:
     sys.path.insert(0, str(_AI_STOCK))
 
 from core.funnel       import run as funnel_run, LAYER_CONFIRMATION, FunnelResult
+from core.market_context import dual_cost_anchor
 from core.state_machine import run_all as sm_run_all, S_CONFIRMED, S_STRENGTHENING
 from core.watchlists   import TIER_A
 
@@ -152,6 +153,12 @@ class GoldenEntry:
     main_force_cost:  float | None = None   # avg buy cost from latest snapshot
     current_price:    float | None = None   # latest closing price
 
+    # P0.6 dual-anchor cost (display/intelligence layer; schema at P3b)
+    cost_episode_weighted: float | None = None  # volume-weighted episode entry base
+    cost_conservative:     float | None = None  # min(recent, episode) — gate anchor
+    cost_divergence_pct:   float | None = None  # recent vs episode, %
+    cost_diverged:         bool = False         # ⚠ 成本背離 (latecomer chasing)
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "ticker":           self.ticker,
@@ -182,6 +189,10 @@ class GoldenEntry:
             "tier_caps":          self.tier_caps,
             "main_force_cost":    self.main_force_cost,
             "current_price":      self.current_price,
+            "cost_episode_weighted": self.cost_episode_weighted,
+            "cost_conservative":     self.cost_conservative,
+            "cost_divergence_pct":   self.cost_divergence_pct,
+            "cost_diverged":         self.cost_diverged,
         }
 
 
@@ -511,6 +522,10 @@ def run(snapshots: list[dict]) -> GoldenResult:
         tier, cap_reasons = _apply_tier_caps(
             tier, stock_data, _fii_contra_streak(ticker, snapshots))
 
+        # P0.6 dual-anchor cost (display layer; gate consumers should read
+        # cost_conservative per config gates.cost_safety.anchor)
+        anchors = dual_cost_anchor(ticker, snapshots)
+
         entry = GoldenEntry(
             ticker=ticker,
             name=cr.name,
@@ -540,6 +555,10 @@ def run(snapshots: list[dict]) -> GoldenResult:
             tier_caps=cap_reasons,
             main_force_cost=latest_stock_map.get(ticker, {}).get("main_force_cost"),
             current_price=latest_stock_map.get(ticker, {}).get("current_price"),
+            cost_episode_weighted=anchors["cost_episode_weighted"],
+            cost_conservative=anchors["cost_conservative"],
+            cost_divergence_pct=anchors["divergence_pct"],
+            cost_diverged=anchors["diverged"],
         )
 
         if all_passed:

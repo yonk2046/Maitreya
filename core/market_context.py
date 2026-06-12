@@ -666,3 +666,85 @@ def _empty_weakening(ticker: str) -> dict[str, Any]:
     return dict(ticker=ticker, flags=[], flag_count=0, severity="none",
                 label_zh="—", label_en="—", streak=0, max_streak=0,
                 velocity_3d=None, net_cumulative=0, present_latest=False)
+
+
+# ---------------------------------------------------------------------------
+# P0.6 — Dual-anchor main-force cost (雙錨主力成本)
+# ---------------------------------------------------------------------------
+# Problem (handoff 20260612, case study 4938 和碩): the short-window cost
+# (upstream avg_buy_cost ≈ last 5 sessions) systematically OVERESTIMATES the
+# real holder base during a sustained rally — price/cost looks safe while the
+# episode's actual sell-pressure source sits far lower.
+#
+# Two anchors:
+#   cost_recent           — latest snapshot's main_force_cost (newest batch)
+#   cost_episode_weighted — Σ(cost_i × mfb_i) / Σ(mfb_i) over the current
+#                           buy episode (consecutive trailing records with
+#                           mfb > 0) = volume-weighted real entry base
+#
+# Divergence (recent vs episode) > threshold → 「⚠ 成本背離」latecomer-chasing
+# signal. Entry-gate consumers should use cost_conservative = min(両錨).
+# Display/intelligence layer only in P3a — schema entry deferred to P3b.
+
+_COST_DIVERGENCE_PCT_DEFAULT = 5.0   # config: gates.cost_safety.divergence_alert_pct
+
+
+def dual_cost_anchor(
+    ticker: str,
+    snapshots: list[dict[str, Any]],
+    divergence_alert_pct: float = _COST_DIVERGENCE_PCT_DEFAULT,
+) -> dict[str, Any]:
+    """Compute the dual cost anchors for one ticker. Pure function.
+
+    Episode = trailing consecutive records (by snapshot, skipping absent
+    days breaks the chain) where main_force_buy > 0. Records lacking a
+    usable cost are kept in the episode but excluded from the weighting.
+    """
+    # Collect (cost, mfb) chronologically for this ticker
+    daily: list[tuple[float | None, float | None]] = []
+    for snap in snapshots:
+        rec = next((s for s in snap.get("stocks", []) if s.get("ticker") == ticker), None)
+        if rec is None:
+            daily.append((None, None))   # absent marker
+        else:
+            daily.append((rec.get("main_force_cost"), rec.get("main_force_buy")))
+
+    # Latest present record → recent anchor
+    cost_recent: float | None = None
+    for cost, _mfb in reversed(daily):
+        if cost is not None:
+            cost_recent = float(cost)
+            break
+
+    # Walk the trailing buy episode (mfb > 0, absence breaks)
+    w_sum = 0.0
+    cw_sum = 0.0
+    episode_len = 0
+    for cost, mfb in reversed(daily):
+        if mfb is None or mfb <= 0:
+            break
+        episode_len += 1
+        if cost is not None and cost > 0:
+            w_sum += mfb
+            cw_sum += float(cost) * mfb
+
+    cost_episode: float | None = (cw_sum / w_sum) if w_sum > 0 else None
+
+    divergence_pct: float | None = None
+    diverged = False
+    if cost_recent is not None and cost_episode and cost_episode > 0:
+        divergence_pct = (cost_recent - cost_episode) / cost_episode * 100.0
+        diverged = abs(divergence_pct) > divergence_alert_pct
+
+    candidates = [c for c in (cost_recent, cost_episode) if c is not None]
+    cost_conservative = min(candidates) if candidates else None
+
+    return {
+        "ticker": ticker,
+        "cost_recent": cost_recent,
+        "cost_episode_weighted": round(cost_episode, 2) if cost_episode else None,
+        "cost_conservative": round(cost_conservative, 2) if cost_conservative else None,
+        "episode_len": episode_len,
+        "divergence_pct": round(divergence_pct, 2) if divergence_pct is not None else None,
+        "diverged": diverged,
+    }
