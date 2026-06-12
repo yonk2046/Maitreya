@@ -1063,3 +1063,118 @@ if __name__ == "__main__":
 
     print(f"\n敘事 Narrative (ZH):\n{summary['narrative_zh']}")
     print(f"\nNarrative (EN):\n{summary['narrative_en']}")
+
+
+# ---------------------------------------------------------------------------
+# P4 — Sector flow profile (板塊輪動強化: 聚合轉強/轉弱/W3 集中度)
+# ---------------------------------------------------------------------------
+# Aggregates per-sector capital flow + lifecycle states + weakening flags.
+# Built to answer "is a sector-wide W3 cluster a rotation-out event?" —
+# e.g. the 2026-06-10 financials case (2887/2890/2884/2867/3033 all W3).
+# Observation layer only: no impact on score/tier/gates.
+
+_W3_ALERT_MIN_TICKERS   = 3     # ≥N W3 tickers in one sector …
+_W3_ALERT_CONCENTRATION = 0.5   # … AND ≥50% of its w3-eligible tickers → alert
+                                # (config candidates for P3b SCORING_RUBRIC)
+
+
+def sector_flow_profile(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
+    """Per-sector aggregation over the snapshot window. Pure function.
+
+    Returns:
+      {
+        "date": str,
+        "sectors": [ {sector, zh, en, active_tickers, net_mfb_latest,
+                      net_mfb_3d, states: {state: [tickers]},
+                      weakening: {red/orange/yellow: [tickers]},
+                      w3_tickers, w3_eligible, w3_concentration,
+                      rotation_out_alert: bool} ...sorted by net_mfb_latest desc ],
+        "alerts": [ {sector, zh, type, detail_zh} ... ],
+      }
+    """
+    # Lazy imports — state_machine imports this module at top level
+    from core.state_machine import run_all as _sm_run_all, S_EXITED, S_UNDISCOVERED
+    from core.market_context import weakening_profile as _weakening
+
+    if not snapshots:
+        return {"date": "—", "sectors": [], "alerts": []}
+
+    date = snapshots[-1].get("date", "?")
+    smap = build_sector_map(snapshots)
+    states = _sm_run_all(snapshots)
+
+    # Latest + 3-day mfb sums per ticker
+    def _mfb_sum(snaps_slice: list[dict]) -> dict[str, float]:
+        out: dict[str, float] = {}
+        for snap in snaps_slice:
+            for s in snap.get("stocks", []):
+                t = s.get("ticker", "")
+                v = s.get("main_force_buy")
+                if t and v is not None:
+                    out[t] = out.get(t, 0) + v
+        return out
+
+    mfb_latest = _mfb_sum(snapshots[-1:])
+    mfb_3d     = _mfb_sum(snapshots[-3:])
+
+    # Group tickers by sector
+    by_sector: dict[str, list[str]] = defaultdict(list)
+    for t in states.keys():
+        by_sector[smap.sector_of(t)].append(t)
+
+    sectors_out: list[dict[str, Any]] = []
+    alerts: list[dict[str, Any]] = []
+
+    for sector, tickers in by_sector.items():
+        meta = sector_meta(sector)
+        state_groups: dict[str, list[str]] = defaultdict(list)
+        weak_groups: dict[str, list[str]] = defaultdict(list)
+        w3_tickers: list[str] = []
+        w3_eligible = 0
+        active: list[str] = []
+
+        for t in sorted(tickers):
+            ts = states[t]
+            if ts.state not in (S_EXITED, S_UNDISCOVERED):
+                active.append(t)
+            state_groups[ts.state].append(t)
+
+            weak = _weakening(t, snapshots)
+            if weak["max_streak"] >= 3:
+                w3_eligible += 1
+            sev = weak["severity"]
+            if sev != "none":
+                weak_groups[sev].append(t)
+            if any(f.get("code") == "W3" for f in weak["flags"]):
+                w3_tickers.append(t)
+
+        concentration = (len(w3_tickers) / w3_eligible) if w3_eligible else 0.0
+        rotation_out = (len(w3_tickers) >= _W3_ALERT_MIN_TICKERS
+                        and concentration >= _W3_ALERT_CONCENTRATION)
+
+        sectors_out.append({
+            "sector": sector,
+            "zh": meta["zh"], "en": meta["en"],
+            "active_tickers": active,
+            "net_mfb_latest": sum(mfb_latest.get(t, 0) for t in tickers),
+            "net_mfb_3d":     sum(mfb_3d.get(t, 0) for t in tickers),
+            "states":    {k: v for k, v in state_groups.items()},
+            "weakening": {k: v for k, v in weak_groups.items()},
+            "w3_tickers": w3_tickers,
+            "w3_eligible": w3_eligible,
+            "w3_concentration": round(concentration, 2),
+            "rotation_out_alert": rotation_out,
+        })
+
+        if rotation_out:
+            alerts.append({
+                "sector": sector, "zh": meta["zh"],
+                "type": "rotation_out",
+                "detail_zh": (
+                    f"{meta['zh']}板塊 {len(w3_tickers)}/{w3_eligible} 檔曾連買≥3日"
+                    f"後集體缺席（{ '、'.join(w3_tickers) }）— 疑似板塊資金輪出"
+                ),
+            })
+
+    sectors_out.sort(key=lambda s: -s["net_mfb_latest"])
+    return {"date": date, "sectors": sectors_out, "alerts": alerts}
