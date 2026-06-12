@@ -2002,11 +2002,23 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
             _wc = "#E05C7A" if _wk["severity"] == "red" else "#E8A33D"
             _wdot = "🔴" if _wk["severity"] == "red" else "🟠"
             _wcodes = "·".join(f["code"] for f in _wk["flags"])
-            _wdetail = "｜".join(f'{f["zh"]}: {f["detail"]}' for f in _wk["flags"])
+            # Hover ⓘ: this ticker's triggered flags (detail) + W1–W5 legend
+            _w_lines = "".join(
+                f'<b>{f["code"]} {f["zh"]}</b> — {f["detail"]}<br>' for f in _wk["flags"])
+            _w_tip = (
+                '<div class="gc-tooltip-wrap">'
+                '<span class="gc-tooltip-icon">ⓘ</span>'
+                '<div class="gc-tooltip" style="white-space:normal;width:330px;">'
+                f'{_w_lines}'
+                '<span style="color:#6B8EAA;">'
+                'W1 動能衰竭｜W2 雙引擎分歧｜W3 主力消失（缺席買超榜≠賣出）｜'
+                'W4 散戶接盤｜W5 分點賣壓'
+                '</span></div></div>'
+            )
             weak_html = (
                 f'<div class="gc-signal-pill" style="background:{_wc}20;color:{_wc};'
-                f'border:1px solid {_wc}60;font-weight:700;" title="{_wdetail}">'
-                f'{_wdot} {_wk["label_zh"]}警示 {_wcodes}'
+                f'border:1px solid {_wc}60;font-weight:700;">'
+                f'{_wdot} {_wk["label_zh"]}警示 {_wcodes}{_w_tip}'
                 f'</div>'
             )
             if _wk["severity"] == "red":
