@@ -11,13 +11,33 @@ States (ordered by lifecycle stage)
   DISCOVERED    → appeared ≥1 time, minimal signal
   ACCUMULATING  → streak ≥ 1, mfb > 0
   STRENGTHENING → streak ≥ 3, sponsorship ≥ 0.4
-  DISTRIBUTING  → was STRENGTHENING/CONFIRMED, now velocity turning negative
-                  (early warning — not yet failed)
+  DECELERATING  → was strong, velocity turning negative but main force still
+                  net-BUYING (neutral yellow warning — buy-volume shrinking
+                  is not sell-side evidence)
+  DISTRIBUTING  → was strong AND real sell-side evidence exists:
+                  latest mfb < 0, or weakening_profile W3/W5 hit
+                  (single source of truth with core.market_context)
   CONFIRMED     → streak ≥ 3, sponsorship ≥ 0.5, sector top-5 (relative),
                   no failed breakout, breadth ≥ 50%
   EXTENDED      → CONFIRMED but velocity slowing + price extended from cost
   FAILED        → failed_breakout detected OR streak collapses 3→0 ≤ 2 days
   EXITED        → disappeared from universe for ≥3 consecutive snapshots
+
+P0.5 reform (2026-06-12) — anti-zigzag discipline
+─────────────────────────────────────────────────
+  1. DISTRIBUTING requires sell-side evidence (above); buy-side slowdown
+     alone is DECELERATING.
+  2. Debounce: a state transition commits only after the same raw state
+     holds for DEBOUNCE_SNAPSHOTS consecutive snapshots. Single-snapshot
+     triggers are recorded in TickerState.events, not committed.
+     FAILED / EXITED are hard evidence and commit same-day.
+  3. Veto: distribution branch is evaluated BEFORE confirmation, and after
+     entering DISTRIBUTING no upgrade to CONFIRMED/EXTENDED is allowed for
+     DIST_LOCKOUT_SNAPSHOTS snapshots unless the streak rebuilt from zero
+     to ≥ STREAK_CONFIRMED (window-close discipline).
+  4. state_flips_30d counts direction reversals of committed transitions in
+     the last 30 snapshots; ≥ FLIPS_UNSTABLE_30D → structure_unstable badge.
+  All committed-state logic remains a pure function of snapshot history.
 
 Transition risk levels
 ───────────────────────
@@ -49,6 +69,7 @@ from core.market_context import (
     sponsorship_persistence,
     failed_breakout_memory,
     regime_shift,
+    weakening_profile,
 )
 from core.sector_intelligence import (
     build_sector_map,
@@ -68,11 +89,18 @@ ABSENT_EXITED         = 3      # consecutive absent snapshots → EXITED
 COLLAPSE_WINDOW       = 2      # streak 3→0 within this many days → FAILED
 DAYS_SINCE_FAIL_RISK  = 10     # failed breakout within this many days → elevated risk
 
+# P0.5 reform constants (candidates for SCORING_RUBRIC config at P3b)
+ACCEL_DISTRIBUTING     = -500  # acceleration below this counts as momentum break
+DEBOUNCE_SNAPSHOTS     = 2     # consecutive snapshots required to commit a transition
+DIST_LOCKOUT_SNAPSHOTS = 5     # no CONFIRMED within this many snaps after DISTRIBUTING
+FLIPS_UNSTABLE_30D     = 2     # committed direction reversals → structure unstable
+
 # ── State keys ────────────────────────────────────────────────────────────────
 S_UNDISCOVERED  = "undiscovered"
 S_DISCOVERED    = "discovered"
 S_ACCUMULATING  = "accumulating"
 S_STRENGTHENING = "strengthening"
+S_DECELERATING  = "decelerating"   # P0.5: buy-side slowdown, NOT sell evidence
 S_DISTRIBUTING  = "distributing"
 S_CONFIRMED     = "confirmed"
 S_EXTENDED      = "extended"
@@ -81,14 +109,18 @@ S_EXITED        = "exited"
 
 STATE_ORDER = [
     S_UNDISCOVERED, S_DISCOVERED, S_ACCUMULATING, S_STRENGTHENING,
-    S_DISTRIBUTING, S_CONFIRMED, S_EXTENDED, S_FAILED, S_EXITED,
+    S_DECELERATING, S_DISTRIBUTING, S_CONFIRMED, S_EXTENDED, S_FAILED, S_EXITED,
 ]
+
+# Hard evidence states commit same-day (no debounce)
+_HARD_STATES = frozenset({S_FAILED, S_EXITED})
 
 STATE_ZH = {
     S_UNDISCOVERED:  "未追蹤",
     S_DISCOVERED:    "初現",
     S_ACCUMULATING:  "吸籌中",
     S_STRENGTHENING: "轉強",
+    S_DECELERATING:  "動能減速",
     S_DISTRIBUTING:  "疑似出貨",
     S_CONFIRMED:     "成熟確認",
     S_EXTENDED:      "過熱延伸",
@@ -101,6 +133,7 @@ STATE_EN = {
     S_DISCOVERED:    "Discovered",
     S_ACCUMULATING:  "Accumulating",
     S_STRENGTHENING: "Strengthening",
+    S_DECELERATING:  "Decelerating",
     S_DISTRIBUTING:  "Distributing",
     S_CONFIRMED:     "Confirmed",
     S_EXTENDED:      "Extended",
@@ -113,6 +146,7 @@ STATE_COLOR = {
     S_DISCOVERED:    "#3A5060",
     S_ACCUMULATING:  "#4A8A6A",
     S_STRENGTHENING: "#52B788",
+    S_DECELERATING:  "#C8C85A",
     S_DISTRIBUTING:  "#D4A84B",
     S_CONFIRMED:     "#7EB8D4",
     S_EXTENDED:      "#C47A5A",
@@ -175,6 +209,11 @@ class TickerState:
     transitions:     list[StateTransition] = field(default_factory=list)
     risk_factors:    list[str]             = field(default_factory=list)
 
+    # P0.5: anti-zigzag telemetry
+    events:             list[dict] = field(default_factory=list)  # debounced single-day signals / vetoes
+    state_flips_30d:    int  = 0
+    structure_unstable: bool = False   # flips ≥ FLIPS_UNSTABLE_30D → ⚡ 結構不穩
+
     # Latest metrics snapshot
     streak:            int   = 0
     net_cumulative:    int   = 0
@@ -206,6 +245,9 @@ class TickerState:
             "transition_risk_en":    self.transition_risk_en,
             "transition_risk_color": self.transition_risk_color,
             "risk_factors":          self.risk_factors,
+            "events":                self.events,
+            "state_flips_30d":       self.state_flips_30d,
+            "structure_unstable":    self.structure_unstable,
             "streak":            self.streak,
             "net_cumulative":    self.net_cumulative,
             "velocity_3d":       self.velocity_3d,
@@ -230,6 +272,7 @@ class MarketStateSummary:
     # Transitions today
     new_entries:   list[TickerState]   # moved to higher state today
     new_failures:  list[TickerState]   # entered FAILED/DISTRIBUTING today
+    decelerating:  list[TickerState] = field(default_factory=list)  # P0.5 yellow cluster
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -239,6 +282,7 @@ class MarketStateSummary:
             "confirmed":      [t.as_dict() for t in self.confirmed],
             "strengthening":  [t.as_dict() for t in self.strengthening],
             "distributing":   [t.as_dict() for t in self.distributing],
+            "decelerating":   [t.as_dict() for t in self.decelerating],
             "failed":         [t.as_dict() for t in self.failed],
             "new_entries":    [t.as_dict() for t in self.new_entries],
             "new_failures":   [t.as_dict() for t in self.new_failures],
@@ -284,10 +328,16 @@ def _assign_state(
     rank_history: list[list[str]], # sector rank per snap
     breadth_series: list[float],   # market breadth per snap
     sm=None,
+    weak_flags: frozenset[str] = frozenset(),  # weakening_profile flag codes for this window
 ) -> str:
     """
-    Assign the current state for one ticker.
+    Assign the RAW state for one ticker at the end of this window.
     All inputs must be pre-computed for performance.
+
+    P0.5: this is the per-snapshot classifier; debounce/lockout discipline
+    is applied on top by _commit_states(). weak_flags carries the
+    weakening_profile flag codes (W1–W5) — the single source of truth for
+    sell-side evidence.
     """
     if not records:
         # Check if recently exited
@@ -330,15 +380,26 @@ def _assign_state(
             if prior_streak >= COLLAPSE_WINDOW:
                 return S_FAILED
 
-    # ── DISTRIBUTING ──────────────────────────────────────────────────────
-    # Was in STRENGTHENING territory but velocity now turning negative
+    # ── DISTRIBUTING / DECELERATING (P0.5 evidence split) ─────────────────
+    # Momentum break alone is NOT distribution. Distribution requires real
+    # sell-side evidence: latest mfb < 0, or weakening W3 (vanished after
+    # accumulation) / W5 (branch-level sell pressure).
     was_strong = (
         sum(1 for r in records[-5:] if (r.get("main_force_buy") or 0) > 0) >= 3
     )
     vel_negative = vel is not None and vel < 0
-    accel_negative = accel is not None and accel < -500
-    if was_strong and streak >= 1 and (vel_negative or accel_negative):
-        return S_DISTRIBUTING
+    accel_negative = accel is not None and accel < ACCEL_DISTRIBUTING
+    # W3 (vanished after accumulation) IS a momentum break by itself —
+    # velocity computed from present-day records stays positive when the
+    # ticker simply disappears, so it must trigger the branch directly.
+    if was_strong and (vel_negative or accel_negative or "W3" in weak_flags):
+        mfb_latest = mfb_vals[-1]
+        sell_evidence = (mfb_latest < 0) or bool({"W3", "W5"} & weak_flags)
+        if sell_evidence:
+            return S_DISTRIBUTING
+        if streak >= 1:
+            # Main force still net-buying — yellow neutral warning only
+            return S_DECELERATING
 
     # ── CONFIRMED ─────────────────────────────────────────────────────────
     sector_strong = _sector_in_top_n_relative(sector, rank_history)
@@ -391,6 +452,10 @@ def _compute_risk(
         score += 2
         factors.append("價格延伸／動能減速")
 
+    if state == S_DECELERATING:
+        score += 1
+        factors.append("動能減速（主力仍買，黃色中性警告）")
+
     # Recent failed breakout proximity
     fb_date = fb.get("breakout_date")
     if fb_date and fb_date in snapshot_dates:
@@ -430,21 +495,18 @@ def _compute_risk(
     return level, factors
 
 
-# ── State history reconstruction ──────────────────────────────────────────────
+# ── State history reconstruction (P0.5: raw → committed) ─────────────────────
 
-def _build_state_history(
+def _raw_state_seq(
     ticker: str,
     snapshots: list[dict],
     rank_history: list[list[str]],
     breadth_series: list[float],
     sm=None,
-) -> tuple[list[str], list[StateTransition]]:
-    """
-    Walk each snapshot window and record state sequence + transitions.
-    Returns (state_history_deduped, transitions).
-    """
-    state_seq: list[tuple[str, str]] = []  # (date, state)
-
+    branch_data: dict | None = None,
+) -> list[tuple[str, str, int]]:
+    """Per-snapshot RAW classification. Returns [(date, raw_state, streak)]."""
+    seq: list[tuple[str, str, int]] = []
     for i in range(1, len(snapshots) + 1):
         sub      = snapshots[:i]
         srh      = rank_history[:i]
@@ -456,16 +518,134 @@ def _build_state_history(
             for s_rec in snap.get("stocks", [])
             if s_rec.get("ticker") == ticker
         ]
-        state = _assign_state(ticker, records, s_dates, srh, sbs, sm)
-        date  = snapshots[i - 1].get("date", "")
-        state_seq.append((date, state))
+        # Single source of truth for sell-side evidence (W flags)
+        weak = weakening_profile(ticker, sub, branch_data)
+        wf = frozenset(f.get("code", "") for f in weak.get("flags", []))
+        state = _assign_state(ticker, records, s_dates, srh, sbs, sm, weak_flags=wf)
+        streak = accumulation_velocity(ticker, records)["streak"] if records else 0
+        seq.append((snapshots[i - 1].get("date", ""), state, streak))
+    return seq
 
-    # Dedup history
+
+def _streak_rebuilt(raw_seq: list[tuple[str, str, int]], dist_idx: int, now_idx: int) -> bool:
+    """True if streak collapsed to 0 after dist_idx then rebuilt to ≥ STREAK_CONFIRMED."""
+    streaks = [s for _, _, s in raw_seq[dist_idx + 1: now_idx + 1]]
+    if not streaks:
+        return False
+    try:
+        zero_at = streaks.index(0)
+    except ValueError:
+        return False
+    return max(streaks[zero_at:], default=0) >= STREAK_CONFIRMED
+
+
+def _commit_states(
+    raw_seq: list[tuple[str, str, int]],
+) -> tuple[list[tuple[str, str]], list[dict[str, str]]]:
+    """Apply debounce + distribution lockout to the raw sequence.
+
+    Returns (committed [(date, state)], events).
+
+    - A transition commits only after DEBOUNCE_SNAPSHOTS consecutive
+      snapshots of the same raw target. Single-snapshot triggers become
+      events (visible, but the committed state holds).
+    - Hard states (FAILED, EXITED) commit same-day.
+    - After DISTRIBUTING commits, upgrades to CONFIRMED/EXTENDED are vetoed
+      for DIST_LOCKOUT_SNAPSHOTS snapshots unless the streak rebuilt from
+      zero to ≥ STREAK_CONFIRMED (SCD window-close discipline). Vetoed
+      upgrades are capped at STRENGTHENING.
+    """
+    committed: list[tuple[str, str]] = []
+    events: list[dict[str, str]] = []
+    cur: str | None = None
+    pending: tuple[str, int] | None = None   # (target_state, consecutive_count)
+    last_dist_idx: int | None = None
+
+    for i, (date, raw, _streak) in enumerate(raw_seq):
+        target = raw
+
+        # Distribution lockout veto
+        if (target in (S_CONFIRMED, S_EXTENDED)
+                and last_dist_idx is not None
+                and (i - last_dist_idx) <= DIST_LOCKOUT_SNAPSHOTS
+                and not _streak_rebuilt(raw_seq, last_dist_idx, i)):
+            events.append({
+                "date": date, "type": "veto",
+                "detail": f"{STATE_ZH[target]} 升級被出貨鎖定期否決（剩 "
+                          f"{DIST_LOCKOUT_SNAPSHOTS - (i - last_dist_idx)} 快照）",
+            })
+            target = S_STRENGTHENING
+
+        if cur is None:
+            cur = target                       # first observation commits directly
+            pending = None
+        elif target == cur:
+            pending = None                     # stable — clear any pending switch
+        elif target in _HARD_STATES:
+            cur = target                       # hard evidence, same-day commit
+            pending = None
+        else:
+            if pending is not None and pending[0] == target:
+                count = pending[1] + 1
+                if count >= DEBOUNCE_SNAPSHOTS:
+                    cur = target
+                    pending = None
+                else:
+                    pending = (target, count)
+            else:
+                pending = (target, 1)
+                events.append({
+                    "date": date, "type": "signal",
+                    "detail": f"{STATE_ZH.get(target, target)} 單日訊號（待第二日確認）",
+                })
+
+        if cur == S_DISTRIBUTING and (last_dist_idx is None
+                                      or not committed
+                                      or committed[-1][1] != S_DISTRIBUTING):
+            last_dist_idx = i
+
+        committed.append((date, cur))
+
+    return committed, events
+
+
+def _flips_30d(committed: list[tuple[str, str]]) -> int:
+    """Count direction REVERSALS of committed transitions in the last 30
+    snapshots. A healthy monotonic progression (discovered→…→confirmed)
+    counts zero; up-down-up zigzag is what we measure."""
+    window = committed[-30:]
+    deltas: list[int] = []
+    for (_, a), (_, b) in zip(window, window[1:]):
+        if a == b:
+            continue
+        ra = STATE_ORDER.index(a) if a in STATE_ORDER else 0
+        rb = STATE_ORDER.index(b) if b in STATE_ORDER else 0
+        d = 1 if rb > ra else -1
+        deltas.append(d)
+    flips = sum(1 for x, y in zip(deltas, deltas[1:]) if x != y)
+    return flips
+
+
+def _build_state_history(
+    ticker: str,
+    snapshots: list[dict],
+    rank_history: list[list[str]],
+    breadth_series: list[float],
+    sm=None,
+    branch_data: dict | None = None,
+) -> tuple[list[str], list[StateTransition], str, list[dict[str, str]], int]:
+    """
+    Walk each snapshot window: raw classify → commit (debounce/veto).
+    Returns (history_deduped, transitions, current_state, events, flips_30d).
+    """
+    raw_seq = _raw_state_seq(ticker, snapshots, rank_history, breadth_series, sm, branch_data)
+    committed, events = _commit_states(raw_seq)
+
     history: list[str] = []
     transitions: list[StateTransition] = []
     prev_state: str | None = None
 
-    for date, state in state_seq:
+    for date, state in committed:
         if state != prev_state:
             if prev_state is not None:
                 transitions.append(StateTransition(
@@ -478,7 +658,8 @@ def _build_state_history(
                 history.append(state)
             prev_state = state
 
-    return history, transitions
+    current = committed[-1][1] if committed else S_UNDISCOVERED
+    return history, transitions, current, events, _flips_30d(committed)
 
 
 def _transition_trigger(from_s: str, to_s: str) -> str:
@@ -488,8 +669,12 @@ def _transition_trigger(from_s: str, to_s: str) -> str:
         (S_ACCUMULATING, S_STRENGTHENING): "連買≥3日+贊助確立",
         (S_STRENGTHENING,S_CONFIRMED):     "族群+廣度+贊助三重確認",
         (S_CONFIRMED,    S_EXTENDED):      "動能減速",
-        (S_STRENGTHENING,S_DISTRIBUTING):  "速度轉負，疑似出貨",
-        (S_CONFIRMED,    S_DISTRIBUTING):  "速度轉負，疑似出貨",
+        (S_STRENGTHENING,S_DECELERATING):  "速度轉負但主力續買，動能減速",
+        (S_CONFIRMED,    S_DECELERATING):  "速度轉負但主力續買，動能減速",
+        (S_DECELERATING, S_STRENGTHENING): "動能回復",
+        (S_DECELERATING, S_DISTRIBUTING):  "出現賣方證據（mfb<0 / W3 / W5）",
+        (S_STRENGTHENING,S_DISTRIBUTING):  "賣方證據，疑似出貨",
+        (S_CONFIRMED,    S_DISTRIBUTING):  "賣方證據，疑似出貨",
         (S_DISTRIBUTING, S_FAILED):        "假突破/完全出場",
         (S_EXTENDED,     S_FAILED):        "結構崩壞",
         (S_FAILED,       S_DISCOVERED):    "重新進場",
@@ -543,11 +728,10 @@ def compute(ticker: str, snapshots: list[dict]) -> TickerState:
         if rec.get("ticker") == ticker
     ]
 
-    # Current state
-    state = _assign_state(ticker, records, snap_dates, rh, breadth_s, sm)
-
-    # Full history + transitions
-    history, transitions = _build_state_history(ticker, snapshots, rh, breadth_s, sm)
+    # Full history + transitions + current state (single committed pipeline —
+    # current state IS the committed sequence tail, never diverges from history)
+    history, transitions, state, events, flips = _build_state_history(
+        ticker, snapshots, rh, breadth_s, sm)
 
     # Days in state
     days_in, entered = _days_and_entry(transitions, state, snap_dates)
@@ -577,6 +761,9 @@ def compute(ticker: str, snapshots: list[dict]) -> TickerState:
         transition_risk_en=RISK_EN[risk_level],
         transition_risk_color=RISK_COLOR[risk_level],
         risk_factors=risk_factors,
+        events=events,
+        state_flips_30d=flips,
+        structure_unstable=flips >= FLIPS_UNSTABLE_30D,
         streak=acc.get("streak", 0),
         net_cumulative=acc.get("net_cumulative") or 0,
         velocity_3d=acc.get("velocity_3d"),
@@ -620,8 +807,8 @@ def run_all(snapshots: list[dict]) -> dict[str, TickerState]:
             if rec.get("ticker") == ticker
         ]
 
-        state = _assign_state(ticker, records, snap_dates, rh, breadth_s, sm)
-        history, transitions = _build_state_history(ticker, snapshots, rh, breadth_s, sm)
+        history, transitions, state, events, flips = _build_state_history(
+            ticker, snapshots, rh, breadth_s, sm)
         days_in, entered = _days_and_entry(transitions, state, snap_dates)
 
         mfb_vals = [r.get("main_force_buy") for r in records if r.get("main_force_buy") is not None]
@@ -646,6 +833,9 @@ def run_all(snapshots: list[dict]) -> dict[str, TickerState]:
             transition_risk_en=RISK_EN[risk_level],
             transition_risk_color=RISK_COLOR[risk_level],
             risk_factors=risk_factors,
+            events=events,
+            state_flips_30d=flips,
+            structure_unstable=flips >= FLIPS_UNSTABLE_30D,
             streak=acc.get("streak", 0),
             net_cumulative=acc.get("net_cumulative") or 0,
             velocity_3d=acc.get("velocity_3d"),
@@ -698,7 +888,8 @@ def state_summary(snapshots: list[dict]) -> MarketStateSummary:
                 continue
             prev_rank = STATE_ORDER.index(prev.state) if prev.state in STATE_ORDER else 0
             curr_rank = STATE_ORDER.index(ts.state) if ts.state in STATE_ORDER else 0
-            if curr_rank > prev_rank and ts.state not in (S_FAILED, S_EXITED, S_DISTRIBUTING):
+            if curr_rank > prev_rank and ts.state not in (
+                    S_FAILED, S_EXITED, S_DISTRIBUTING, S_DECELERATING):
                 new_entries.append(ts)
             if ts.state in (S_FAILED, S_DISTRIBUTING) and prev.state not in (S_FAILED, S_DISTRIBUTING):
                 new_failures.append(ts)
@@ -710,6 +901,7 @@ def state_summary(snapshots: list[dict]) -> MarketStateSummary:
         confirmed=_by_state(S_CONFIRMED),
         strengthening=_by_state(S_STRENGTHENING),
         distributing=_by_state(S_DISTRIBUTING),
+        decelerating=_by_state(S_DECELERATING),
         failed=_by_state(S_FAILED),
         new_entries=new_entries,
         new_failures=new_failures,
@@ -804,6 +996,7 @@ if __name__ == "__main__":
 
     _print_cluster(summary.confirmed,     "成熟確認 Confirmed")
     _print_cluster(summary.strengthening, "轉強 Strengthening")
+    _print_cluster(summary.decelerating,  "動能減速 Decelerating")
     _print_cluster(summary.distributing,  "疑似出貨 Distributing")
     _print_cluster(summary.failed,        "結構失敗 Failed")
 
