@@ -938,21 +938,29 @@ def _render_weakening(snaps: list[dict]) -> None:
         st.info("無快照資料")
         return
 
-    all_tickers: set[str] = set()
-    for snap in snaps:
-        for s in snap.get("stocks", []):
-            all_tickers.add(s.get("ticker", ""))
-    all_tickers.discard("")
-
+    # P5: read pre-computed weakening from latest snapshot (no render-time compute)
+    latest_snap = snaps[-1]
     results = []
-    for ticker in sorted(all_tickers):
-        branch = _load_branches_for_ticker(ticker)
-        w = weakening_profile(ticker, snaps, branch or None)
-        if w["severity"] != "none":
-            results.append(w)
+    for s in latest_snap.get("stocks", []):
+        w_stored = s.get("weakening")
+        if w_stored and w_stored.get("severity", "none") != "none":
+            results.append({"ticker": s["ticker"], **w_stored})
+
+    # Fallback for old snapshots without weakening field: compute on-the-fly
+    if not results and any("weakening" not in s for s in latest_snap.get("stocks", [])):
+        all_tickers: set[str] = set()
+        for snap in snaps:
+            for s in snap.get("stocks", []):
+                all_tickers.add(s.get("ticker", ""))
+        all_tickers.discard("")
+        for ticker in sorted(all_tickers):
+            branch = _load_branches_for_ticker(ticker)
+            w = weakening_profile(ticker, snaps, branch or None)
+            if w["severity"] != "none":
+                results.append(w)
 
     _order = {"red": 0, "orange": 1, "yellow": 2}
-    results.sort(key=lambda w: (_order[w["severity"]], -w["flag_count"], -w["net_cumulative"]))
+    results.sort(key=lambda w: (_order.get(w["severity"], 3), -w["flag_count"], -w.get("net_cumulative", 0)))
 
     _section_header("🔻", "轉弱出貨", "Weakening / Distribution", len(results))
 
@@ -1627,15 +1635,22 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
     all_entries = result.prime + result.strong + result.qualified
 
     # ── Weakening cross-check (display-only, parallel to Golden) ─────────
-    # Calls the same deterministic core detector as the 轉弱出貨 panel.
+    # P5: read pre-computed weakening from latest snapshot stocks.
     # NEVER affects tier/score/gates — purely a contradiction witness.
     _golden_universe = {e.ticker for e in all_entries} | {e.ticker for e in result.near_miss}
+    _latest_stocks_map = {s["ticker"]: s for s in (snaps[-1].get("stocks", []) if snaps else [])}
     weak_map: dict[str, dict] = {}
     for _t in _golden_universe:
-        _bd = _load_branches_for_ticker(_t)
-        _w = weakening_profile(_t, snaps, _bd or None)
-        if _w["severity"] != "none":
-            weak_map[_t] = _w
+        _s = _latest_stocks_map.get(_t, {})
+        _w_stored = _s.get("weakening")
+        if _w_stored and _w_stored.get("severity", "none") != "none":
+            weak_map[_t] = {"ticker": _t, **_w_stored}
+        elif not _w_stored:
+            # Fallback for old snapshots: compute on-the-fly
+            _bd = _load_branches_for_ticker(_t)
+            _w = weakening_profile(_t, snaps, _bd or None)
+            if _w["severity"] != "none":
+                weak_map[_t] = _w
 
     # ── Helpers ──────────────────────────────────────────────────────────
 

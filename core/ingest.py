@@ -304,10 +304,14 @@ def ingest(
             raw.get("_branch_raw"),  # full branch dict for W5; None if no branches file
         )
         rec["weakening"] = {
-            "severity":   _wp["severity"],    # "red" | "orange" | "yellow" | "none"
-            "flags":      _wp["flags"],        # list of {code, zh, detail}
-            "flag_count": _wp["flag_count"],
-            "label_zh":   _wp["label_zh"],
+            "severity":        _wp["severity"],    # "red"|"orange"|"yellow"|"none"
+            "flags":           _wp["flags"],        # list of {code, zh, detail}
+            "flag_count":      _wp["flag_count"],
+            "label_zh":        _wp["label_zh"],
+            # Extra fields needed by viewer rendering (avoids re-computation)
+            "net_cumulative":  _wp.get("net_cumulative", 0),
+            "present_latest":  _wp.get("present_latest", True),
+            "snaps_since_seen": _wp.get("snaps_since_seen", 0),
         }
 
         stocks.append(rec)
