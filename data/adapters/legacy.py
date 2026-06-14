@@ -255,6 +255,7 @@ def adapt_legacy(
             ri["total_sell_vol"]  = bdata.get("totalSellVol")
             ri["avg_buy_cost"]    = bdata.get("avgBuyCost")
             ri["avg_sell_cost"]   = bdata.get("avgSellCost")
+            ri["_branch_raw"]     = bdata   # full branch dict for weakening_profile W5
             ri["_branches_present"] = True
         else:
             ri["top5_branches"] = []

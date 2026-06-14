@@ -26,9 +26,10 @@ from typing import Any
 import yaml
 
 from core.hashing import canonical_sha256
+from core.market_context import weakening_profile
 
 
-SCHEMA_VERSION = "1.5.0"
+SCHEMA_VERSION = "1.6.0"
 CORE_VERSION = "core@0.1.0-p3a"
 
 
@@ -247,9 +248,10 @@ def ingest(
     config: dict,
     *,
     repo_root: str | os.PathLike | None = None,
-    prior_snapshots: dict[str, str] | None = None,  # {date: sha256}
+    prior_snapshots: dict[str, str] | None = None,     # {date: sha256}
+    prior_snap_objects: list[dict] | None = None,       # actual snapshot dicts for weakening_profile
 ) -> dict:
-    """Build a v1.4 canonical snapshot from adapter output.
+    """Build a v1.6 canonical snapshot from adapter output.
 
     Args:
         adapter_output: dict from data.adapters.legacy.adapt_legacy()
@@ -292,6 +294,22 @@ def ingest(
     for ticker in universe:
         raw = raw_per_ticker[ticker]
         rec = _abstain_stock_record(ticker, raw, has_branches=raw.get("_branches_present", False))
+
+        # P5: weakening_profile — deterministic, uses prior snapshots + branch data
+        # prior_snap_objects is None on bootstrap (first few days); weakening_profile
+        # handles empty list gracefully by returning _empty_weakening().
+        _wp = weakening_profile(
+            ticker,
+            prior_snap_objects or [],
+            raw.get("_branch_raw"),  # full branch dict for W5; None if no branches file
+        )
+        rec["weakening"] = {
+            "severity":   _wp["severity"],    # "red" | "orange" | "yellow" | "none"
+            "flags":      _wp["flags"],        # list of {code, zh, detail}
+            "flag_count": _wp["flag_count"],
+            "label_zh":   _wp["label_zh"],
+        }
+
         stocks.append(rec)
 
     # config_hash — canonical hash of config dict (excluding ephemeral fields)

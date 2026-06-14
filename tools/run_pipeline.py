@@ -40,6 +40,23 @@ def _load_config() -> dict:
     return yaml.safe_load(CONFIG_FILE.read_text(encoding="utf-8"))
 
 
+def _load_snap_objects(lookback: dict[str, str], reports_dir: pathlib.Path) -> list[dict]:
+    """Load actual snapshot content for the prior dates in lookback (oldest first).
+
+    Used by ingest() to compute weakening_profile() per ticker.
+    Silently skips dates whose file is missing or unreadable.
+    """
+    result: list[dict] = []
+    for date in sorted(lookback.keys()):
+        path = reports_dir / f"{date}.json"
+        if path.is_file():
+            try:
+                result.append(json.loads(path.read_text(encoding="utf-8")))
+            except Exception:
+                pass
+    return result
+
+
 def _gather_lookback(target_date: str, window: int) -> dict[str, str]:
     """Walk REPORTS_DIR for prior real snapshots (excluding *.example.json) within `window` days.
 
@@ -164,7 +181,12 @@ def run(date: str | None, *, check_replay: bool = False, source: str = "auto") -
     lookback = _gather_lookback(target_date, window)
     print(f"[pipeline] lookback_window={window} found_priors={len(lookback)}: {sorted(lookback.keys())}", file=sys.stderr)
 
-    snapshot = ingest(adapter_out, cfg, repo_root=str(repo_root), prior_snapshots=lookback)
+    # Load actual snapshot content for weakening_profile (P5)
+    prior_snap_objects = _load_snap_objects(lookback, REPORTS_DIR)
+    print(f"[pipeline] prior_snap_objects loaded: {len(prior_snap_objects)}", file=sys.stderr)
+
+    snapshot = ingest(adapter_out, cfg, repo_root=str(repo_root),
+                      prior_snapshots=lookback, prior_snap_objects=prior_snap_objects)
 
     # Archive raw inputs (immutable copy) and validate archived sha == raw sha.
     # This mutates snapshot.provenance.sources[*] to include archived_copy_path
@@ -206,7 +228,8 @@ def run(date: str | None, *, check_replay: bool = False, source: str = "auto") -
         # provenance.archived_copy_path values and the same RAW_ARCHIVED event.
         # Replay legitimacy = byte-identical canonical_sha256 modulo generated_at.
         adapter_out2 = _run_adapter(date)
-        snap2 = ingest(adapter_out2, cfg, repo_root=str(repo_root), prior_snapshots=lookback)
+        snap2 = ingest(adapter_out2, cfg, repo_root=str(repo_root),
+                       prior_snapshots=lookback, prior_snap_objects=prior_snap_objects)
         archive_raw_inputs(snap2, repo_root, RAW_ARCHIVE_DIR)
         # generated_at is wall-clock — intentionally NOT part of replay match.
         snap2["generated_at"] = snapshot["generated_at"]
