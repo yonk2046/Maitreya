@@ -133,17 +133,32 @@ def fetch_and_save(
     tdcc_dir: pathlib.Path | str,
     force: bool = False,
     url: str = TDCC_URL,
+    max_lag_days: int = 7,
 ) -> pathlib.Path:
     """Download and cache the latest TDCC distribution CSV.
 
     Output: <tdcc_dir>/<YYYYMMDD>.json (where YYYYMMDD is TDCC's 資料日期).
-    Skips download if the cache file already exists unless force=True.
+
+    Cache-first: if a cache file exists that is less than max_lag_days old
+    (default 7, matching tdcc_max_lag_days in config), the HTTP request is
+    skipped entirely — no download on Mon–Thu when Friday's file is still valid.
+    Pass force=True to bypass this check and always re-download.
 
     Returns the path of the (new or existing) cache file.
     """
     tdcc_dir = pathlib.Path(tdcc_dir)
     tdcc_dir.mkdir(parents=True, exist_ok=True)
 
+    # ── Cache-first check: skip HTTP if a recent-enough file exists ──────────
+    if not force:
+        files = _list_cache_files(tdcc_dir)
+        if files:
+            latest_date, latest_path = files[-1]
+            age_days = (dt.date.today() - latest_date).days
+            if age_days < max_lag_days:
+                return latest_path  # valid cache — no HTTP needed
+
+    # ── No valid cache (or force=True): download from TDCC ───────────────────
     csv_text = _fetch_csv(url)
     tdcc_date, stocks = _parse_csv(csv_text)
     if not tdcc_date:
@@ -151,7 +166,7 @@ def fetch_and_save(
 
     out_path = tdcc_dir / f"{tdcc_date}.json"
     if out_path.exists() and not force:
-        return out_path  # already cached — skip write
+        return out_path  # same date file already written — skip write
 
     payload = {
         "tdcc_date":   tdcc_date,
