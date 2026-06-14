@@ -688,6 +688,176 @@ def _render_regime(snaps: list[dict]) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+# P3 — 全市場熱度觀察  Heat Radar (additive ranking layer, display-only)
+# ─────────────────────────────────────────────────────────────────────────────
+# AI_GOVERNANCE: this is a parallel display layer.
+# Zero impact on composite_score / tier / gates / golden list.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _heat_score(streak: int, fii, conf_tier: str, weak_sev: str) -> int:
+    """Additive heat score (0–65). Display-only, not a gate/score input.
+
+    Components:
+      Streak      +30/22/14/5/0  (≥7/≥5/≥3/≥1/0)
+      FII         +15 same-dir, -5 opposite
+      Data qual   +10 FULL, +5 PARTIAL, 0 SKELETON
+      Weakening   -25 red, -15 orange, -5 yellow, 0 none
+    """
+    s = 0
+    if streak >= 7:   s += 30
+    elif streak >= 5: s += 22
+    elif streak >= 3: s += 14
+    elif streak >= 1: s += 5
+
+    if fii is not None:
+        if fii > 0:   s += 15
+        elif fii < 0: s -= 5
+
+    if conf_tier == "FULL":    s += 10
+    elif conf_tier == "PARTIAL": s += 5
+
+    if weak_sev == "red":    s -= 25
+    elif weak_sev == "orange": s -= 15
+    elif weak_sev == "yellow": s -= 5
+
+    return s
+
+
+def _heat_bar(score: int) -> str:
+    """Inline HTML progress bar, colour-coded by score tier."""
+    pct = max(0, min(100, int(score / 65 * 100)))
+    if score >= 40:   color = "#52B788"   # green
+    elif score >= 20: color = "#D4A84B"   # amber
+    elif score >= 5:  color = "#7EB8D4"   # blue-grey
+    else:             color = "#4A5A6A"   # dim
+    return (
+        f'<div style="display:flex;align-items:center;gap:6px;">'
+        f'<div style="flex:1;height:6px;border-radius:3px;background:#1E2A3A;">'
+        f'<div style="width:{pct}%;height:100%;border-radius:3px;background:{color};"></div>'
+        f'</div>'
+        f'<span style="font-size:11px;color:{color};font-weight:700;min-width:22px;">{score}</span>'
+        f'</div>'
+    )
+
+
+def _heat_obs_tags(streak: int, fii, conf_tier: str, weak: dict) -> str:
+    """Build inline observation tag HTML — positive signals + blockers."""
+    tags = []
+    # Positive
+    if streak >= 3:
+        tags.append(f'<span class="signal-tag">連買{streak}日</span>')
+    elif streak >= 1:
+        tags.append(f'<span class="signal-tag" style="color:#7EB8D4;">{streak}日</span>')
+    if fii is not None and fii > 0:
+        tags.append('<span class="signal-tag">外資同向</span>')
+    if conf_tier == "FULL":
+        tags.append('<span class="signal-tag">資料完整</span>')
+    # Concerns
+    if fii is not None and fii < 0:
+        tags.append('<span class="signal-tag warn">外資反向</span>')
+    if conf_tier == "SKELETON":
+        tags.append('<span class="signal-tag warn">資料偏薄</span>')
+    sev = weak.get("severity", "none")
+    if sev != "none":
+        label = weak.get("label_zh", "轉弱")
+        flag_codes = "+".join(f["code"] for f in weak.get("flags", []))
+        tags.append(
+            f'<span class="signal-tag red" title="{flag_codes}">'
+            f'🔻 {label}</span>'
+        )
+    return "".join(tags)
+
+
+def _render_heat_radar(snaps: list[dict]) -> None:
+    """P3: additive heat-score ranking for all tracked stocks.
+
+    Reads only from the latest snapshot + prior snap context.
+    Display-only — zero impact on composite_score / tier / gates.
+    """
+    if not snaps:
+        return
+
+    latest_snap   = snaps[-1]
+    latest_stocks = {s["ticker"]: s for s in latest_snap.get("stocks", [])}
+    if not latest_stocks:
+        return
+
+    st.markdown("---")
+    _section_header(
+        "📡", "全市場熱度觀察", "Heat Radar — All Tracked Stocks",
+        len(latest_stocks),
+    )
+    st.markdown(
+        '<div class="data-gap-notice" style="background:#0F1408;border-left-color:#52B788;color:#8B9E8A;">'
+        '熱度分 = 連買積分 + 外資對齊 + 資料品質 − 轉弱扣分。'
+        ' <b>純觀察層</b>，不影響黃金名單評分 / 閘門 / Tier。'
+        ' P3b 啟動後方顯示正式評分。</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Build rows
+    rows = []
+    for ticker, stock in latest_stocks.items():
+        ctx    = full_ticker_context(ticker, snaps)
+        acc    = ctx.get("accumulation", {})
+        streak = acc.get("streak", 0)
+        fii    = stock.get("fii_net_buy")
+        tier   = stock.get("confidence_tier", "SKELETON")
+        weak   = stock.get("weakening", {})
+        sev    = weak.get("severity", "none")
+        score  = _heat_score(streak, fii, tier, sev)
+        price  = stock.get("current_price")
+        chg    = stock.get("change_pct")
+        name   = stock.get("name", "") or _short_name(ticker)
+        rows.append({
+            "ticker": ticker,
+            "name":   name,
+            "score":  score,
+            "streak": streak,
+            "fii":    fii,
+            "tier":   tier,
+            "weak":   weak,
+            "sev":    sev,
+            "price":  price,
+            "chg":    chg,
+        })
+
+    rows.sort(key=lambda r: (-r["score"], -r["streak"]))
+
+    # Render cards in 2 columns
+    col_a, col_b = st.columns(2)
+    for i, r in enumerate(rows):
+        col = col_a if i % 2 == 0 else col_b
+        price_str = f"NT${r['price']:,.2f}" if r["price"] else "—"
+        chg_str   = f"{r['chg']:+.2f}%" if r["chg"] is not None else "—"
+        chg_cls   = _chg_cls(r["chg"])
+        bar_html  = _heat_bar(r["score"])
+        obs_html  = _heat_obs_tags(r["streak"], r["fii"], r["tier"], r["weak"])
+        rank_str  = f"#{i+1}"
+
+        with col:
+            st.markdown(
+                f'<div class="watch-card" style="padding:10px 14px;">'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+                f'<div>'
+                f'<span style="font-size:11px;color:#4A6A8A;margin-right:4px;">{rank_str}</span>'
+                f'<span class="stock-ticker">{r["ticker"]}</span>'
+                f'<span class="stock-name">{r["name"]}</span>'
+                f'</div>'
+                f'<div style="text-align:right;">'
+                f'<span class="stock-price">{price_str}</span>&nbsp;'
+                f'<span class="{chg_cls}" style="font-size:12px;">{chg_str}</span>'
+                f'</div>'
+                f'</div>'
+                f'<div style="margin:6px 0 4px 0;">{bar_html}</div>'
+                f'<div style="margin-top:4px;">{obs_html}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # PANEL 2 — Watchlist Radar  雷達觀察
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -748,6 +918,9 @@ def _render_watchlist_radar(snaps: list[dict]) -> None:
                 f'</div>',
                 unsafe_allow_html=True,
             )
+
+    # ── P3: 全市場熱度觀察 ────────────────────────────────────────────────────
+    _render_heat_radar(snaps)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
