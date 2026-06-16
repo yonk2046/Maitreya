@@ -204,6 +204,35 @@ def main() -> int:
 
         # Normalize wall-clock fields
         snap["generated_at"] = on_disk_snap["generated_at"]
+        # Normalize build-environment fingerprint + audit log. The `environment`
+        # block records the BUILD machine (os, python, numpy, pandas, pyyaml,
+        # jsonschema, etc.) and `audit_log` records build-time events. The primary
+        # builder is the local macOS launchd job while this verifier runs on the
+        # linux CI runner, so HEAD code on a different platform cannot reproduce
+        # these — they are provenance metadata, not data integrity (stocks /
+        # rankings / scoring / raw_sha256 are still compared). Copy on-disk in,
+        # exactly like generated_at, so replay is platform-independent.
+        for _meta in ("environment", "audit_log"):
+            if _meta in on_disk_snap:
+                snap[_meta] = on_disk_snap[_meta]
+        # Normalize mtime-derived provenance metadata. fetched_at / report_date /
+        # data_lag_days are computed from input-file mtimes (see legacy adapter).
+        # shutil.copy2 preserves mtime within a run, so same-run replay matches —
+        # but git checkout in a later CI job resets mtimes, so these fields cannot
+        # be reproduced cross-run. They are environment timestamps, NOT input
+        # integrity (that is covered by raw_sha256, which is still compared), so we
+        # copy the on-disk values in before hashing, exactly like generated_at.
+        _VOLATILE_PROV = ("fetched_at", "report_date", "data_lag_days")
+        _disk_sources = on_disk_snap.get("provenance", {}).get("sources", {})
+        for _sid, _src in snap.get("provenance", {}).get("sources", {}).items():
+            if not isinstance(_src, dict):
+                continue
+            _disk_src = _disk_sources.get(_sid, {})
+            if not isinstance(_disk_src, dict):
+                continue
+            for _f in _VOLATILE_PROV:
+                if _f in _src and _f in _disk_src:
+                    _src[_f] = _disk_src[_f]
         h_replay = canonical_sha256(snap)
         h_current = entry["current_hash"]
 
