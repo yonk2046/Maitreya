@@ -82,6 +82,26 @@ def _archived_file_for(src: dict) -> pathlib.Path:
     return candidate
 
 
+def _load_snap_objects(lookback: dict[str, str], reports_dir: pathlib.Path) -> list[dict]:
+    """Load actual prior-snapshot content for the lookback dates (oldest first).
+
+    Mirrors tools.run_pipeline._load_snap_objects so that the FULL replay feeds
+    ingest() the SAME prior_snap_objects the live pipeline used. Without this,
+    weakening_profile() receives [] on replay and emits empty weakening fields,
+    which diverge from the live snapshot and break full replay for schema >=1.6.0.
+    Silently skips dates whose file is missing or unreadable.
+    """
+    result: list[dict] = []
+    for date in sorted(lookback.keys()):
+        path = reports_dir / f"{date}.json"
+        if path.is_file():
+            try:
+                result.append(json.loads(path.read_text(encoding="utf-8")))
+            except Exception:
+                pass
+    return result
+
+
 def _replay_adapter(d: str, on_disk_snap: dict, repo_root: pathlib.Path) -> dict:
     """Dispatch on provenance to run the right adapter against the archive."""
     prov = on_disk_snap.get("provenance", {}).get("sources", {})
@@ -174,7 +194,9 @@ def main() -> int:
             continue
 
         lookback = _gather_lookback(d, window, index)
-        snap = ingest(adapter_out, cfg, repo_root=str(repo_root), prior_snapshots=lookback)
+        prior_snap_objects = _load_snap_objects(lookback, REPORTS_DIR)
+        snap = ingest(adapter_out, cfg, repo_root=str(repo_root),
+                      prior_snapshots=lookback, prior_snap_objects=prior_snap_objects)
         # verify_only=True: do NOT copy from data/ (which has likely been
         # mutated by upstream fetches). Re-hash the existing archive copy and
         # stamp the same provenance/audit metadata as the original ingest.
