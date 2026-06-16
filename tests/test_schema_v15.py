@@ -181,8 +181,9 @@ class TestAbstainStockRecordV15:
 # Schema version
 # ---------------------------------------------------------------------------
 
-def test_schema_version_is_v15():
-    assert SCHEMA_VERSION == "1.5.0"
+def test_schema_version_is_current():
+    # Bumped to 1.6.0 by P5 (weakening field added to each StockRecord).
+    assert SCHEMA_VERSION == "1.6.0"
 
 
 # ---------------------------------------------------------------------------
