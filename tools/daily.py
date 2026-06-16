@@ -75,6 +75,24 @@ def _read_today_trading_date() -> str | None:
     return d.get("tradingDate") or d.get("date")
 
 
+_ISO_DATE = __import__("re").compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _latest_committed_report_date() -> str | None:
+    """Most recent dated snapshot already on disk (reports/<YYYY-MM-DD>.json).
+
+    Used by the staleness gate to detect a fetch that did not advance past
+    what we already have. Ignores *.example.json / *.intelligence.json.
+    """
+    if not REPORTS_DIR.is_dir():
+        return None
+    dates = [
+        p.stem for p in REPORTS_DIR.glob("*.json")
+        if _ISO_DATE.match(p.stem)
+    ]
+    return max(dates) if dates else None
+
+
 def _run_step(
     name: str,
     argv: list[str],
@@ -180,6 +198,26 @@ def run(
         _finalize(log_lines, "no_target_date", "unknown")
         return 1
     print(f"[daily] target_date = {target_date}", file=sys.stderr)
+
+    # ----- Staleness gate (fail red instead of silent green no-op) -----
+    # Auto-daily path only (no explicit --date, fetch actually ran). If the
+    # resolved date is OLDER than the latest snapshot we already committed, the
+    # fetch regressed (stale/timeout returned old data) — building or re-running
+    # it would silently produce no new commit while CI shows green. Fail loudly.
+    # NOTE: equal-to-latest is allowed (holiday / pre-publish re-run produces a
+    # clean no-op); explicit --date and --skip-fetch are backfill paths, exempt.
+    if date is None and not skip_fetch:
+        latest = _latest_committed_report_date()
+        if latest and target_date < latest:
+            log_lines.append({
+                "step": "staleness_gate", "status": "fail",
+                "reason": f"fetched target_date={target_date} is older than latest "
+                          f"committed report={latest}; fetch likely returned stale data",
+            })
+            _finalize(log_lines, "stale_fetch_regression", target_date)
+            print(f"[daily] STALE FETCH — target_date={target_date} < latest committed "
+                  f"{latest}; refusing to run (exit 3)", file=sys.stderr)
+            return 3
 
     # ----- Step 2: pipeline -----
     rc, _, err = _run_step(
