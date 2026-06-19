@@ -93,6 +93,24 @@ def _latest_committed_report_date() -> str | None:
     return max(dates) if dates else None
 
 
+def _trading_day_gate(target_date: str, latest: str | None) -> str:
+    """Auto-daily disposition by comparing the resolved date to the latest commit.
+
+    Pure (ISO-date string compare). Returns one of:
+      'fail'    — target_date < latest: fetch regressed to old data.
+      'skip'    — target_date == latest: no new trading session (holiday/weekend/
+                  pre-publish); rebuilding would trip verify, so skip cleanly.
+      'proceed' — target_date > latest, or no prior snapshot: genuine new session.
+    """
+    if latest is None:
+        return "proceed"
+    if target_date < latest:
+        return "fail"
+    if target_date == latest:
+        return "skip"
+    return "proceed"
+
+
 def _run_step(
     name: str,
     argv: list[str],
@@ -199,16 +217,23 @@ def run(
         return 1
     print(f"[daily] target_date = {target_date}", file=sys.stderr)
 
-    # ----- Staleness gate (fail red instead of silent green no-op) -----
-    # Auto-daily path only (no explicit --date, fetch actually ran). If the
-    # resolved date is OLDER than the latest snapshot we already committed, the
-    # fetch regressed (stale/timeout returned old data) — building or re-running
-    # it would silently produce no new commit while CI shows green. Fail loudly.
-    # NOTE: equal-to-latest is allowed (holiday / pre-publish re-run produces a
-    # clean no-op); explicit --date and --skip-fetch are backfill paths, exempt.
+    # ----- Trading-day / staleness gate -----
+    # Auto-daily path only (no explicit --date, fetch actually ran). Compare the
+    # resolved target_date against the latest snapshot we already committed:
+    #   target_date <  latest  → fetch REGRESSED (stale/timeout returned old
+    #                            data). Fail loudly (exit 3) — never silent-green.
+    #   target_date == latest  → no NEW trading session (holiday / weekend /
+    #                            pre-publish). The system has no trading calendar,
+    #                            so rebuilding the same date would overwrite a
+    #                            committed snapshot and trip verify; instead SKIP
+    #                            cleanly (exit 0). This is what makes 端午節 etc.
+    #                            green instead of a spurious verify failure.
+    #   target_date >  latest  → genuine new session → build normally.
+    # Explicit --date and --skip-fetch are backfill/re-do paths and stay exempt.
     if date is None and not skip_fetch:
         latest = _latest_committed_report_date()
-        if latest and target_date < latest:
+        decision = _trading_day_gate(target_date, latest)
+        if decision == "fail":
             log_lines.append({
                 "step": "staleness_gate", "status": "fail",
                 "reason": f"fetched target_date={target_date} is older than latest "
@@ -218,6 +243,16 @@ def run(
             print(f"[daily] STALE FETCH — target_date={target_date} < latest committed "
                   f"{latest}; refusing to run (exit 3)", file=sys.stderr)
             return 3
+        if decision == "skip":
+            log_lines.append({
+                "step": "trading_day_gate", "status": "skip",
+                "reason": f"resolved target_date={target_date} == latest committed report={latest}; "
+                          f"no new trading session (holiday/weekend/pre-publish) — skipping cleanly",
+            })
+            _finalize(log_lines, "skip_no_new_trading_day", target_date)
+            print(f"[daily] no new trading session — target_date={target_date} already "
+                  f"committed; skipping cleanly (exit 0)", file=sys.stderr)
+            return 0
 
     # ----- Step 2: pipeline -----
     rc, _, err = _run_step(
