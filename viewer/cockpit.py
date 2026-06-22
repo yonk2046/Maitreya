@@ -2760,6 +2760,28 @@ def _render_confidence(snaps: list[dict]) -> None:
                 return "dual"
             return "single"
 
+        # ── P3a DISPLAY-ONLY proxies (same tier as heat radar; NOT scoring) ──
+        # Core risk_score piles ~35% of names at exactly 0 → they overlap on the
+        # log axis into one blob. These spread the cloud using the demo's chip
+        # proxy. Swap to the real confidence/risk fields when P3b activates; the
+        # axes/skeleton stay the same.
+        def _risk_proxy(stk: dict) -> float:
+            # 追高風險: 當日漲幅 + 距主力成本距離 (越追高越右). Distinct non-zero
+            # values so the log axis can separate names instead of stacking at 0.
+            chg  = stk.get("change_pct") or 0
+            price, cost = stk.get("current_price"), stk.get("main_force_cost")
+            cdist = abs((price - cost) / cost * 100) if (price and cost) else 0
+            return max(4.0, min(100.0, 4 + max(0.0, chg) * 1.8 + cdist * 1.2))
+
+        def _conf_proxy(stk: dict, rs) -> float:
+            # 雙引擎強度: 共振層級 + 外資同向 + 流量規模.
+            fii   = stk.get("fii_net_buy") or 0
+            net   = (stk.get("weakening") or {}).get("net_cumulative") or 0
+            level = rs.resonance_level if rs else 0
+            align = 12 if fii > 0 else (-12 if fii < 0 else 0)
+            flow_b = min(25.0, (abs(net) ** 0.5) / 30)
+            return max(2.0, min(100.0, 30 + level * 15 + align + flow_b))
+
         # Plot the main-force-flow universe (net cumulative ≠ 0), largest first,
         # capped for readability — mirrors the demo's "主力流向" set, not all 117 profiles.
         def _net_of(p):
@@ -2769,14 +2791,17 @@ def _render_confidence(snaps: list[dict]) -> None:
         xs, ys, labels, sizes, colors, hover = [], [], [], [], [], []
         for p in flow:
             stk   = latest_ls.get(p.ticker, {})
+            rs    = reson_map.get(p.ticker)
             net   = (stk.get("weakening") or {}).get("net_cumulative") or 0
             price = stk.get("current_price")
             chg   = stk.get("change_pct")
             cost  = stk.get("main_force_cost")
             dist  = ((price - cost) / cost * 100) if (price and cost) else None
             kind  = _engine_kind(p.ticker)
-            xs.append(max(min(p.risk_score * 100, 100), 4))   # clamp for log axis
-            ys.append(p.confidence * 100)
+            risk_pct = _risk_proxy(stk)
+            conf_pct = _conf_proxy(stk, rs)
+            xs.append(risk_pct)
+            ys.append(conf_pct)
             sizes.append(14 + (abs(net) ** 0.5) / 20)         # demo radius formula
             colors.append(KIND_COLOR[kind])
             labels.append(stk.get("name") or p.ticker)
@@ -2786,7 +2811,7 @@ def _render_confidence(snaps: list[dict]) -> None:
                 f"({('%+.2f%%' % chg) if chg is not None else '—'})<br>"
                 f"淨累計 {net:+,} 張<br>"
                 f"距主力成本 {('%+.1f%%' % dist) if dist is not None else '—'}<br>"
-                f"信心 {p.confidence:.0%}　風險 {p.risk_score:.0%}<br>"
+                f"信心(代理) {conf_pct:.0f}　風險(代理) {risk_pct:.0f}<br>"
                 f"型態 {KIND_ZH[kind]}"
             )
 
