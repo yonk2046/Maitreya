@@ -20,6 +20,61 @@ ROOT_DIR = os.path.dirname(TOOLS_DIR)
 DATA_DIR = os.path.join(ROOT_DIR, "data")
 sys.path.insert(0, TOOLS_DIR)
 
+# 記憶體相關保證群組 — always fetch branch data for these regardless of whether
+# they appear in the day's rankings (mirrors TIER_A_ANCHORS). 華邦電 / 南亞科 / 力成.
+MEMORY_ANCHORS = ["2344", "2408", "6239"]
+
+
+def _prior_priority_from_snapshot(reports_dir, top_net=12):
+    """Read the latest committed snapshot to seed the branch-fetch priority.
+
+    Returns (prior_golden, prior_high_net):
+      prior_golden   — tickers in rankings.golden (empty in P3a; auto-populates
+                       when P3b scoring activates, so this hook needs no change).
+      prior_high_net — tickers with the largest |weakening.net_cumulative|
+                       (累積買超多 = persistent main-force flow worth tracking).
+    Pure read; returns ([], []) if no snapshot is available.
+    """
+    import glob, re
+    try:
+        files = [f for f in glob.glob(os.path.join(reports_dir, "*.json"))
+                 if re.match(r"^\d{4}-\d{2}-\d{2}\.json$", os.path.basename(f))]
+        if not files:
+            return [], []
+        latest = max(files)
+        snap = json.loads(open(latest, encoding="utf-8").read())
+    except Exception:
+        return [], []
+
+    def _as_ticker(x):
+        if isinstance(x, dict):
+            return x.get("ticker") or x.get("code")
+        return x
+
+    golden = [t for t in (_as_ticker(g) for g in snap.get("rankings", {}).get("golden", [])) if t]
+
+    stocks = snap.get("stocks", [])
+    def _net(s):
+        return abs((s.get("weakening") or {}).get("net_cumulative") or 0)
+    high_net = [s["ticker"] for s in sorted(stocks, key=_net, reverse=True)
+                if s.get("ticker") and _net(s) > 0][:top_net]
+    return golden, high_net
+
+
+def build_branch_fetch_list(*, memory, tier_a, prior_golden, prior_high_net,
+                            cross, fii_top, mf_top, fii_sell_top, mf_sell_top,
+                            cap=40):
+    """Deterministic priority order for the capped daily branch-fetch list.
+
+    Priority (first wins, so the names we actually act on survive the cap):
+      記憶體 anchors → Tier-A anchors → 昨日黃金名單 → 昨日高累積買超 →
+      今日共現榜 → 今日外資/主力買超 → 今日外資/主力賣超.
+    """
+    ordered = (list(memory) + list(tier_a) + list(prior_golden) + list(prior_high_net)
+               + list(cross) + list(fii_top) + list(mf_top)
+               + list(fii_sell_top) + list(mf_sell_top))
+    return list(dict.fromkeys(ordered))[:cap]
+
 
 def emit(step, total, label, status="running", detail=""):
     """Emit a JSON progress line to stdout."""
@@ -218,10 +273,16 @@ def run(dry_run=False):
     mf_top       = [s["code"] for s in main_force_buy[:10]]
     fii_sell_top = [s["code"] for s in sell_list[:10]]
     mf_sell_top  = [s["code"] for s in main_force_sell[:10]]
-    sino_set = list(dict.fromkeys(
-        cross[:10] + fii_top + mf_top + fii_sell_top + mf_sell_top + TIER_A_ANCHORS
-    ))
-    sino_tickers = sino_set[:40]  # cap at 40 (raised from 30 to make room for 賣超 coverage)
+    # Priority: 記憶體/Tier-A anchors + 昨日黃金名單 + 昨日高累積買超 come FIRST so
+    # the names we actually track survive the 40-cap; today's rankings fill the
+    # rest. (prior golden is empty in P3a, auto-activates at P3b.)
+    prior_golden, prior_high_net = _prior_priority_from_snapshot(
+        os.path.join(ROOT_DIR, "reports"))
+    sino_tickers = build_branch_fetch_list(
+        memory=MEMORY_ANCHORS, tier_a=TIER_A_ANCHORS,
+        prior_golden=prior_golden, prior_high_net=prior_high_net,
+        cross=cross[:10], fii_top=fii_top, mf_top=mf_top,
+        fii_sell_top=fii_sell_top, mf_sell_top=mf_sell_top, cap=40)
 
     if not sino_tickers:
         emit(7, TOTAL_STEPS, "無三榜/雙榜共現股，跳過分點抓取", status="skip")
