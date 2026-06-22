@@ -2735,49 +2735,97 @@ def _render_confidence(snaps: list[dict]) -> None:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── 2D Scatter: x=risk, y=confidence ─────────────────────────────────
+    # ── 信心 × 風險 × 籌碼 三維泡泡圖 (Yonki 確認偏好此版, 2026-06-18) ────────
+    #   X = 風險 (log scale, 避免擠角落)   Y = 信心   泡泡大小 = 淨累計買超
+    #   顏色 = 引擎型態 (來自 core resonance, viewer 不做分級)
+    #   PROXY: 信心/風險目前用 core/confidence 的代理值; P3b 評分引擎啟動後
+    #   只需把 p.confidence / p.risk_score 換成系統真實欄位, 圖骨架不變。
     if profs:
-        _section_header("⊞", "二維側寫圖", "2D Confidence × Risk Map")
+        _section_header("◉", "信心 × 風險 × 籌碼 三維泡泡圖", "Confidence × Risk × Flow Bubble Map")
+        reson_map = _resonance_mod.run_all(snaps)
+        latest_ls = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
+        KIND_COLOR = {"dual": "#4A9E6B", "single": "#4A7FC4", "diverge": "#C4544A"}
+        KIND_ZH    = {"dual": "雙/三方共振", "single": "單引擎", "diverge": "法人背離"}
+
+        def _engine_kind(ticker: str) -> str:
+            # Display-only colour bucket from core signals (resonance level +
+            # FII sign). No tier/score/gate logic — same display tier as heat radar.
+            stk = latest_ls.get(ticker, {})
+            fii = stk.get("fii_net_buy")
+            rs  = reson_map.get(ticker)
+            level = rs.resonance_level if rs else 0
+            if fii is not None and fii < 0:
+                return "diverge"
+            if level >= 2:
+                return "dual"
+            return "single"
+
+        # Plot the main-force-flow universe (net cumulative ≠ 0), largest first,
+        # capped for readability — mirrors the demo's "主力流向" set, not all 117 profiles.
+        def _net_of(p):
+            return (latest_ls.get(p.ticker, {}).get("weakening") or {}).get("net_cumulative") or 0
+        flow = sorted([p for p in profs if _net_of(p)], key=lambda p: abs(_net_of(p)), reverse=True)[:30] or profs[:30]
+
         xs, ys, labels, sizes, colors, hover = [], [], [], [], [], []
-        profile_colors = {
-            "high_low":       "#52B788",
-            "high_medium":    "#7EB8D4",
-            "high_elevated":  "#D4A84B",
-            "mid_low":        "#9E8AC8",
-            "mid_elevated":   "#E08C5A",
-            "low_any":        "#E05C7A",
-            "deteriorating":  "#FF6B9D",
-        }
-        for p in profs:
-            xs.append(p.risk_score)
-            ys.append(p.confidence)
-            labels.append(p.ticker)
-            sizes.append(12 + p.golden_conviction * 10)
-            colors.append(profile_colors.get(p.profile_code, "#6B8EAA"))
+        for p in flow:
+            stk   = latest_ls.get(p.ticker, {})
+            net   = (stk.get("weakening") or {}).get("net_cumulative") or 0
+            price = stk.get("current_price")
+            chg   = stk.get("change_pct")
+            cost  = stk.get("main_force_cost")
+            dist  = ((price - cost) / cost * 100) if (price and cost) else None
+            kind  = _engine_kind(p.ticker)
+            xs.append(max(min(p.risk_score * 100, 100), 4))   # clamp for log axis
+            ys.append(p.confidence * 100)
+            sizes.append(14 + (abs(net) ** 0.5) / 20)         # demo radius formula
+            colors.append(KIND_COLOR[kind])
+            labels.append(stk.get("name") or p.ticker)
             hover.append(
-                f"{p.ticker} {p.name}<br>"
-                f"信心 {p.confidence:.0%}  風險 {p.risk_score:.0%}<br>"
-                f"{p.profile_zh}<br>"
-                f"狀態: {p.sm_state_zh or '—'}"
+                f"<b>{p.ticker} {p.name}</b><br>"
+                f"現價 {('NT$%.2f' % price) if price else '—'} "
+                f"({('%+.2f%%' % chg) if chg is not None else '—'})<br>"
+                f"淨累計 {net:+,} 張<br>"
+                f"距主力成本 {('%+.1f%%' % dist) if dist is not None else '—'}<br>"
+                f"信心 {p.confidence:.0%}　風險 {p.risk_score:.0%}<br>"
+                f"型態 {KIND_ZH[kind]}"
             )
 
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=xs, y=ys, mode="markers+text",
-            text=labels, textposition="top center",
-            textfont=dict(size=10, color="#8B949E"),
-            marker=dict(size=sizes, color=colors, opacity=0.85,
-                        line=dict(width=1, color="#1F2D3D")),
+            text=labels, textposition="middle center",
+            textfont=dict(size=9, color="#E8E4D8"),
+            marker=dict(size=sizes, color=colors, opacity=0.45,
+                        line=dict(width=1.5, color=colors), sizemode="diameter"),
             hovertext=hover, hoverinfo="text",
         ))
-        # Quadrant guidelines
-        fig.add_hline(y=0.5, line_dash="dot", line_color="#2A3A4A", line_width=1)
-        fig.add_vline(x=0.5, line_dash="dot", line_color="#2A3A4A", line_width=1)
-        layout = _plotly_layout("信心 × 風險 二維分布", 380)
-        layout["xaxis"].update(dict(title="風險 Risk →", range=[-0.05, 1.05], tickformat=".0%"))
-        layout["yaxis"].update(dict(title="信心 Confidence ↑", range=[-0.05, 1.05], tickformat=".0%"))
+        # 理想區 (左上: 高信心 · 低風險)
+        fig.add_shape(type="rect", x0=4, x1=12, y0=55, y1=100, layer="below",
+                      fillcolor="rgba(201,151,58,0.06)", line=dict(width=0))
+        fig.add_annotation(x=4, y=99, text="★ 理想區", showarrow=False,
+                           xanchor="left", yanchor="top",
+                           font=dict(size=11, color="rgba(201,151,58,0.7)"))
+        # 50% 信心分隔線
+        fig.add_hline(y=50, line_dash="dot", line_color="#2A3A4A", line_width=1)
+
+        layout = _plotly_layout("信心 × 風險 × 籌碼 三維泡泡圖", 460)
+        layout["xaxis"].update(dict(title="風險 Risk（代理 · 對數刻度）→", type="log",
+                                    range=[0.60206, 2.0],
+                                    tickvals=[5, 10, 20, 40, 80],
+                                    ticktext=["5%", "10%", "20%", "40%", "80%"]))
+        layout["yaxis"].update(dict(title="信心 Confidence ↑", range=[0, 105]))
         fig.update_layout(**layout)
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.markdown(
+            '<div style="font-size:11px;color:#7A8070;margin-top:-6px;line-height:1.7;">'
+            '<span style="color:#4A9E6B;">●</span> 雙/三方共振　'
+            '<span style="color:#4A7FC4;">●</span> 單引擎　'
+            '<span style="color:#C4544A;">●</span> 法人背離　·　泡泡大小＝淨累計買超張數<br>'
+            '⚠ P3a 代理值：信心/風險為籌碼代理計算；評分引擎(P3b)啟動後改用系統真實 '
+            'confidence / risk 欄位，圖骨架不變。'
+            '</div>',
+            unsafe_allow_html=True,
+        )
 
     st.markdown("<br>", unsafe_allow_html=True)
 
