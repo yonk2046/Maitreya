@@ -156,6 +156,7 @@ def adapt_legacy(
     date: str | None = None,
     *,
     paths_override: dict[str, pathlib.Path] | None = None,
+    tdcc_asof: str | None = None,
 ) -> dict[str, Any]:
     """Read existing legacy data and return canonical raw_inputs.
 
@@ -302,7 +303,14 @@ def adapt_legacy(
     try:
         from data.adapters import tdcc_adapter as _tdcc
         tdcc_dir = paths["root"] / "data" / "tdcc"
-        tdcc_map = _tdcc.load_for_date(target_date, tdcc_dir)
+        # tdcc_asof caps the weekly-file resolution at the week the snapshot
+        # recorded (verify_only replay passes provenance.tdcc_weekly.report_date).
+        # Reading still happens from the live cache — which keeps prior weeks
+        # needed for week-over-week deltas — but capping prevents replay from
+        # drifting to a NEWER weekly file that lands later (which isn't in this
+        # snapshot's archive and crashes archive verification). Normal ingest
+        # leaves tdcc_asof None → resolves as-of target_date as before.
+        tdcc_map = _tdcc.load_for_date(tdcc_asof or target_date, tdcc_dir)
         if tdcc_map:
             _tdcc.enrich_universe(raw_inputs_per_ticker, tdcc_map)
             # Use an arbitrary entry's metadata to build provenance

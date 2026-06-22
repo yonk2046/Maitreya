@@ -117,7 +117,14 @@ def _replay_adapter(d: str, on_disk_snap: dict, repo_root: pathlib.Path) -> dict
             "branches_dir": branches_dir,
             "snapshots":    repo_root / "data" / "snapshots",  # unused by legacy adapter
         }
-        return adapt_legacy(date=d, paths_override=paths_override)
+        # Pin the TDCC resolution to the weekly file the snapshot actually used
+        # (provenance.tdcc_weekly.report_date). Read still happens from live
+        # data/tdcc — which retains prior weeks needed for week-over-week deltas —
+        # but capped at the recorded week so replay can't drift to a NEWER weekly
+        # file that appears later (which isn't in this snapshot's archive and
+        # crashes archive verification). (fix 2026-06-22)
+        tdcc_asof = (prov.get("tdcc_weekly") or {}).get("report_date")
+        return adapt_legacy(date=d, paths_override=paths_override, tdcc_asof=tdcc_asof)
     raise RuntimeError(
         f"verify_all_replay: snapshot {d} has unrecognized provenance "
         f"sources {sorted(prov.keys())}; cannot determine which adapter to replay."
