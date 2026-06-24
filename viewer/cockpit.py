@@ -48,6 +48,7 @@ from core import confidence as _conf_mod
 from core import state_machine as _sm_mod
 from core import resonance as _resonance_mod
 from core import chip_score as _chip_mod
+from core import holdings as _holdings_mod
 from core.distribution import load_for_date as _dist_load
 from core.intelligence_delta import (
     load_for_date as _intel_load,
@@ -1066,11 +1067,20 @@ def _render_strengthening(snaps: list[dict]) -> None:
             "_fresh": fresh_rank,
         })
 
+    # 搜尋欄:輸入代號或名稱即時過濾
+    q = st.text_input("🔍 搜尋代號或名稱", "", key="strong_search",
+                      placeholder="例如 2330 或 台積電").strip()
+    if q:
+        rows = [r for r in rows
+                if q.lower() in str(r["代號"]).lower() or q in str(r["名稱"])]
+
     _section_header("↑", "轉強訊號", "Strengthening Signals", len(rows))
 
     if not rows:
         st.markdown(
-            '<div class="data-gap-notice">目前無連續2日以上買超的標的。</div>',
+            '<div class="data-gap-notice">'
+            + (f'查無符合「{q}」的標的。' if q else '目前無連續2日以上買超的標的。')
+            + '</div>',
             unsafe_allow_html=True,
         )
         return
@@ -3159,6 +3169,75 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# PANEL — 持倉重點關注  Holdings Watch（讀 data/holdings.json,出場條件亮警示燈）
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _render_holdings(snaps: list[dict]) -> None:
+    if not snaps:
+        st.info("無快照資料")
+        return
+    holdings = _holdings_mod.load_holdings(_AI_STOCK / "data" / "holdings.json")
+    if not holdings:
+        _section_header("💼", "持倉重點關注", "Holdings Watch", 0)
+        st.markdown(
+            '<div class="data-gap-notice">尚無持倉。編輯 <code>data/holdings.json</code> 加入 '
+            '{ticker, name, shares, cost} 後 commit,這裡就會出現卡片;達到策略 A/B 出場條件時亮橘/紅燈。</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    rows = _holdings_mod.evaluate_holdings(holdings, snaps)
+    n_red = sum(1 for r in rows if r["alert"] == "red")
+    n_org = sum(1 for r in rows if r["alert"] == "orange")
+    _section_header("💼", "持倉重點關注", "Holdings Watch", len(rows))
+    _metric_strip([
+        ("持倉數 Holdings", str(len(rows)), "manual", "val-dim"),
+        ("🔴 強出場警示", str(n_red), "轉弱red/主力連2賣/外資連2反向", "val-red"),
+        ("🟠 出場留意",   str(n_org), "轉弱orange/回落", "val-amber"),
+    ])
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    ALERT = {"red": ("#E05C7A", "🔴", "出場條件成立"),
+             "orange": ("#D4A84B", "🟠", "接近出場"),
+             "none": ("#52B788", "🟢", "持續持有")}
+    for r in rows:
+        col, dot, zh = ALERT.get(r["alert"], ALERT["none"])
+        price = r["current_price"]
+        price_s = f"NT${price:,.2f}" if price else "—"
+        pl = r["pl_pct"]
+        pl_s = f"{pl*100:+.2f}%" if pl is not None else "—"
+        pl_col = "#52B788" if (pl or 0) > 0 else ("#E05C7A" if (pl or 0) < 0 else "#6B8EAA")
+        cost_s = f"NT${r['cost']:,.2f}" if r.get("cost") else "—"
+        shares_s = f"{r['shares']:,}" if r.get("shares") else "—"
+        mv_s = f"NT${r['market_value']:,}" if r.get("market_value") else "—"
+        reasons = []
+        if r["a_reasons"]:
+            reasons.append("策略A:" + "、".join(r["a_reasons"]))
+        if r["b_reasons"]:
+            reasons.append("策略B:" + "、".join(r["b_reasons"]))
+        reasons_html = (f'<div style="font-size:12px;color:{col};margin-top:6px;">⚠ '
+                        + "　｜　".join(reasons) + '</div>') if reasons else (
+                        '<div style="font-size:12px;color:#6B8EAA;margin-top:6px;">未達 A/B 出場條件</div>')
+        univ = "" if r["in_universe"] else '<span style="font-size:11px;color:#6B8EAA;"> · 今日不在追蹤池</span>'
+        st.markdown(
+            f'<div style="background:#13191F;border:1px solid #1F2D3D;border-left:4px solid {col};'
+            f'border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:10px;">'
+            f'<div style="display:flex;align-items:center;justify-content:space-between;">'
+            f'<div><span style="font-size:16px;font-weight:600;">{dot} {r["ticker"]} {r["name"]}</span>{univ}</div>'
+            f'<div style="font-size:13px;color:{col};font-weight:600;">{zh}</div>'
+            f'</div>'
+            f'<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:#8B949E;margin-top:8px;">'
+            f'<span>現價 <b style="color:#CDD5E0;">{price_s}</b></span>'
+            f'<span>成本 <b style="color:#CDD5E0;">{cost_s}</b></span>'
+            f'<span>股數 <b style="color:#CDD5E0;">{shares_s}</b></span>'
+            f'<span>市值 <b style="color:#CDD5E0;">{mv_s}</b></span>'
+            f'<span>損益 <b style="color:{pl_col};">{pl_s}</b></span>'
+            f'</div>{reasons_html}</div>',
+            unsafe_allow_html=True,
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Sidebar — control panel, date navigator, dev/audit
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -3305,9 +3384,10 @@ def main() -> None:
     _render_market_pulse_banner()
 
     # ── Eleven tabs ───────────────────────────────────────────────────────
-    (tab_regime, tab_radar, tab_strong, tab_weak, tab_fb, tab_accum,
+    (tab_holdings, tab_regime, tab_radar, tab_strong, tab_weak, tab_fb, tab_accum,
      tab_rot, tab_chain, tab_narrative, tab_golden, tab_conf,
      tab_intel) = st.tabs([
+        "💼 持倉",
         "📊 市場體制",
         "🎯 雷達觀察",
         "↑ 轉強訊號",
@@ -3321,6 +3401,9 @@ def main() -> None:
         "◈ 信心風險",
         "📡 今日情報",
     ])
+
+    with tab_holdings:
+        _render_holdings(snaps_to_date)
 
     with tab_regime:
         _render_regime(snaps_to_date)
