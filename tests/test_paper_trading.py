@@ -13,7 +13,7 @@ if str(_AI_STOCK) not in sys.path:
     sys.path.insert(0, str(_AI_STOCK))
 
 from core.paper_trading import run_backtest          # noqa: E402
-from core.strategies import STRATEGY_B, STRATEGY_A    # noqa: E402
+from core.strategies import STRATEGY_B, STRATEGY_A, STRATEGY_B_V2    # noqa: E402
 
 
 def _rec(t, mf, fii, price, wk="none"):
@@ -88,6 +88,34 @@ def test_strategy_a_runs_chip_anchored():
     res = run_backtest(snaps, STRATEGY_A)
     assert isinstance(res.summary.get("trades"), int)
     assert any("chip-anchored" in lim for lim in res.limitations)
+
+
+def _rising_long():
+    # long rising main-force series → momentum v2 enters then scales in
+    mfb = [10, 20, 40, 80, 160, 320, 640, 1280, 2560]
+    return [_snap(f"2026-06-{i+1:02d}", [_rec("AAA", m, 5, 100 + i)]) for i, m in enumerate(mfb)]
+
+
+def test_v2_records_units_and_is_deterministic():
+    snaps = _rising_long()
+    a = run_backtest(snaps, STRATEGY_B_V2)
+    assert all(isinstance(t.units, float) for t in a.trades)
+    assert run_backtest(snaps, STRATEGY_B_V2).as_dict() == a.as_dict()
+
+
+def test_v2_scale_in_grows_position_above_one_unit():
+    res = run_backtest(_rising_long(), STRATEGY_B_V2)
+    assert res.trades, "expected at least one trade"
+    assert max(t.units for t in res.trades) > 1.0   # 加碼 happened
+
+
+def test_v2_partial_reduce_on_velocity_turn_negative():
+    # rise to build position, then main-force drops → velocity negative → 減碼
+    mfb = [10, 20, 40, 80, 160, 40, 20, 10]
+    snaps = [_snap(f"2026-06-{i+1:02d}", [_rec("AAA", m, 5, 110)]) for i, m in enumerate(mfb)]
+    res = run_backtest(snaps, STRATEGY_B_V2)
+    reasons = {t.exit_reason for t in res.trades}
+    assert "vel_reduce" in reasons or any(t.units < 1.0 for t in res.trades)
 
 
 def test_no_lookahead_entry_fills_day_after_signal():

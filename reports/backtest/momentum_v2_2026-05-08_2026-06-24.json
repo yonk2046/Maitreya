@@ -1,19 +1,20 @@
 {
-  "strategy": "momentum_continuation",
+  "strategy": "momentum_v2",
   "date_range": [
     "2026-05-08",
     "2026-06-24"
   ],
-  "trade_count": 11,
+  "trade_count": 13,
   "summary": {
-    "trades": 11,
-    "win_rate": 0.7273,
-    "avg_return": 0.0387,
-    "median_return": 0.0257,
-    "sharpe_per_trade": 0.87,
-    "avg_holding_days": 4.18,
-    "max_drawdown": -0.0179,
+    "trades": 13,
+    "win_rate": 0.6923,
+    "avg_return": 0.029,
+    "median_return": 0.017,
+    "sharpe_per_trade": 0.75,
+    "avg_holding_days": 4.0,
+    "max_drawdown": -0.0194,
     "exit_reasons": {
+      "vel_reduce": 2,
       "fii_reversal": 2,
       "end_of_data": 9
     }
@@ -21,9 +22,22 @@
   "limitations": [
     "settlement uses next-day close as open-price proxy (snapshots carry no open)",
     "fixed 1-unit position; 加碼/減碼 partial sizing deferred",
-    "momentum needs fii (from 2026-06-12) + weakening (from 2026-06-15)"
+    "momentum needs fii (from 2026-06-12) + weakening (from 2026-06-15)",
+    "v2 partial sizing: 加碼/減碼/TP1 已實作; ATR 用收盤對收盤代理(快照無 high/low)"
   ],
   "trades": [
+    {
+      "ticker": "2887",
+      "name": "台新新光金",
+      "entry_date": "2026-06-03",
+      "entry_price": 28.3,
+      "exit_date": "2026-06-08",
+      "exit_price": 27.75,
+      "return_pct": -0.0194,
+      "exit_reason": "vel_reduce",
+      "holding_days": 3,
+      "units": 0.5
+    },
     {
       "ticker": "2892",
       "name": "第一金",
@@ -53,36 +67,48 @@
       "name": "第一金",
       "entry_date": "2026-06-10",
       "entry_price": 30.55,
+      "exit_date": "2026-06-15",
+      "exit_price": 31.3,
+      "return_pct": 0.0245,
+      "exit_reason": "vel_reduce",
+      "holding_days": 3,
+      "units": 0.5
+    },
+    {
+      "ticker": "2892",
+      "name": "第一金",
+      "entry_date": "2026-06-10",
+      "entry_price": 30.55,
       "exit_date": "2026-06-24",
       "exit_price": 32.3,
       "return_pct": 0.0573,
       "exit_reason": "end_of_data",
       "holding_days": 9,
-      "units": 1.0
+      "units": 0.5
     },
     {
       "ticker": "2618",
       "name": "長榮航",
       "entry_date": "2026-06-11",
-      "entry_price": 37.7,
+      "entry_price": 39.32,
       "exit_date": "2026-06-24",
       "exit_price": 41.95,
-      "return_pct": 0.1127,
+      "return_pct": 0.067,
       "exit_reason": "end_of_data",
       "holding_days": 8,
-      "units": 1.0
+      "units": 1.5
     },
     {
       "ticker": "2610",
       "name": "華航",
       "entry_date": "2026-06-15",
-      "entry_price": 21.4,
+      "entry_price": 21.58,
       "exit_date": "2026-06-24",
       "exit_price": 21.95,
-      "return_pct": 0.0257,
+      "return_pct": 0.017,
       "exit_reason": "end_of_data",
       "holding_days": 6,
-      "units": 1.0
+      "units": 1.5
     },
     {
       "ticker": "1326",

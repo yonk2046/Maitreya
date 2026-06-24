@@ -56,7 +56,19 @@ STRATEGY_DESC = {
         "tag": "積極 · 動能延續",
         "entry": "連買 ≥3 日 且 velocity_3d>0 且 acceleration>0 且 外資同向(fii_net_buy>0) → 次日開盤買進 1 單位。",
         "exit":  "移動停利(從波段最高回落 8%) OR 轉弱紅/橙 OR 外資連 2 日反向 → 全出。",
-        "todo":  "velocity 創新高加碼 / velocity 轉負減碼(分批) — v2 待補。",
+        "todo":  "（v1 全進全出;分批版見 momentum_v2）",
+    },
+    "chip_anchored_v2": {
+        "tag": "保守 · 籌碼錨定 v2（分批）",
+        "entry": "同 v1（黃金名單 + 現價≤成本×1.05,1 單位）;現價回貼成本×1.00–1.02 且轉弱 clean → 加碼 0.5(上限 2)。",
+        "exit":  "TP1 減半:主力顯著賣超 OR velocity 轉負連2 OR W1/W5。 全出:轉弱紅/橙 OR W3 OR 主力連2賣 OR 跌破結構止損(max(成本,近10日低)×(1−0.5·ATR%))。",
+        "todo":  "ATR 用收盤對收盤代理(快照無 high/low);「零成本奔跑」用實際均價計算報酬。",
+    },
+    "momentum_v2": {
+        "tag": "積極 · 動能延續 v2（分批）",
+        "entry": "同 v1(連買≥3+vel>0+accel>0+外資同向,1 單位);velocity 正且主力買超創新高、每 3 日加 0.5(上限 2)。",
+        "exit":  "減碼:velocity 轉負連 2 → 減半。 全出:移動停利 8% OR 轉弱紅/橙 OR 外資連 2 反向。",
+        "todo":  "—",
     },
 }
 

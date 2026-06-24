@@ -42,6 +42,17 @@ class StrategyConfig:
     position_unit: float = 1.0
     enabled: bool = True                 # A is disabled until gates exist
 
+    # ── v2 partial sizing (spec §32-67) — off by default (v1 = full in/out) ──
+    partial_sizing: bool = False
+    add_unit: float = 0.5                # 加碼單位
+    max_units: float = 2.0               # 上限
+    add_cooldown_days: int = 3           # B: 每 +N 日才可再加
+    add_cost_band: tuple[float, float] = (1.00, 1.02)   # A: 現價/成本 落在此帶 → 加碼
+    tp1_sell_mult: float = 1.0           # A TP1: 主力賣超 > 吸籌均買 × 此 → 減半
+    structure_low_window: int = 10       # A: 結構低點回看窗 (最低收盤)
+    atr_window: int = 14                 # A: ATR 視窗 (收盤對收盤代理,因無 high/low)
+    atr_buffer_mult: float = 0.5         # A: 止損緩衝 = 此 × ATR%
+
 
 # 動能延續 — runnable now (temporal + weakening only).
 STRATEGY_B = StrategyConfig(
@@ -70,4 +81,27 @@ STRATEGY_A = StrategyConfig(
     enabled=True,    # P3b: golden engine produces a real list → A is runnable on-the-fly
 )
 
-ALL_STRATEGIES = {s.name: s for s in (STRATEGY_B, STRATEGY_A)}
+# ── v2 分批版（spec §32-67）────────────────────────────────────────────────
+# A v2：進場1單位 → 回測貼成本(×1.00-1.02)加0.5 → TP1(主力顯著賣超/velocity轉負連2/W1·W5)減半
+#       → TP2/硬止損(轉弱orange·red / W3 / 主力連2賣 / 雙引擎反向 / 跌破結構止損)全出。
+# B v2：進場1單位 → velocity正且主力買超創新高、每3日加0.5(上限2) → velocity轉負連2減半
+#       → 出場(移動停利8% / 轉弱orange·red / 外資連2反向)。
+STRATEGY_A_V2 = StrategyConfig(
+    name="chip_anchored_v2", zh="籌碼錨定波段 v2", kind="chip_anchored",
+    entry_streak_min=3, max_premium_ratio=1.05,
+    exit_on_weakening=("orange", "red"), fii_reversal_days=2,
+    partial_sizing=True, add_unit=0.5, max_units=2.0,
+    add_cost_band=(1.00, 1.02), tp1_sell_mult=1.0,
+    structure_low_window=10, atr_window=14, atr_buffer_mult=0.5,
+    enabled=True,
+)
+STRATEGY_B_V2 = StrategyConfig(
+    name="momentum_v2", zh="動能延續 v2", kind="momentum",
+    entry_streak_min=3, trailing_stop_pct=0.08,
+    exit_on_weakening=("orange", "red"), fii_reversal_days=2,
+    partial_sizing=True, add_unit=0.5, max_units=2.0, add_cooldown_days=3,
+    enabled=True,
+)
+
+ALL_STRATEGIES = {s.name: s for s in
+                  (STRATEGY_B, STRATEGY_A, STRATEGY_B_V2, STRATEGY_A_V2)}

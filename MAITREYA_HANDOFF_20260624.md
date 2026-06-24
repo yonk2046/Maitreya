@@ -83,12 +83,13 @@ tools/           CLI：run_pipeline, daily, fetch_*, run_backtest, scan_params, 
 **A 籌碼錨定波段（保守）** `chip_anchored_swing`
 - 進場：進黃金名單（5 gate 全過：漏斗=確認層、狀態=confirmed/強化、贊助≥門檻、轉折風險≠critical、淨累計>0）且 現價 ≤ 主力成本×1.05 → 次日開盤買 1 單位。
 - 出場（v1）：轉弱紅/橙 OR 主力連 2 日淨賣(翻負) → 全出。
-- v2 待補：TP1 部分減碼、加碼 0.5 單位、ATR 結構低點止損。
+- **v2 已實作（`STRATEGY_A_V2` / `_run_backtest_v2`）**：加碼(現價回貼成本×1.00–1.02 且轉弱clean,+0.5上限2)、TP1 減半(主力顯著賣超/velocity轉負連2/W1·W5)、全出(轉弱紅橙/W3/主力連2賣/結構止損)。ATR 用收盤對收盤代理(快照無 high/low)。
 
 **B 動能延續（積極）** `momentum_continuation`
 - 進場：連買 ≥3 + velocity_3d>0 + acceleration>0 + 外資同向(fii>0) → 次日開盤買 1 單位。
 - 出場：移動停利(從高點回落 8%) OR 轉弱紅/橙 OR 外資連 2 日反向 → 全出。
-- v2 待補：velocity 創新高加碼 / 轉負減碼（分批）。
+- **v2 已實作（`STRATEGY_B_V2`）**：velocity 正且主力買超創新高、每 3 日加 0.5(上限 2);velocity 轉負連 2 → 減半。
+- 跑法：`python -m tools.run_backtest --strategy chip_anchored_v2`(及 `momentum_v2`);Trade 帶 `units`(分批腿大小);summary 含 per-trade Sharpe。第一份 v2:A 8腿/勝率87.5%/夏普1.40、B 13腿/勝率69%/夏普0.75。
 
 共同設定：次日開盤價結算(歷史無開盤→收盤)、固定 1 單位、掉榜不算出場。
 

@@ -38,14 +38,16 @@ class Trade:
     exit_date: str
     exit_price: float
     return_pct: float
-    exit_reason: str          # trailing_stop | weakening | fii_reversal | end_of_data
+    exit_reason: str          # trailing_stop | weakening | fii_reversal | tp1 | tp2 | atr_stop | end_of_data
     holding_days: int
+    units: float = 1.0        # v2 partial sizing: this leg's size (1.0 for v1 full)
 
     def as_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["return_pct"] = round(self.return_pct, 4)
         d["entry_price"] = round(self.entry_price, 2)
         d["exit_price"] = round(self.exit_price, 2)
+        d["units"] = round(self.units, 2)
         return d
 
 
@@ -125,6 +127,9 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
         if not strategy.enabled:
             result.limitations.append(f"strategy '{strategy.name}' is disabled")
         return result
+
+    if strategy.partial_sizing:
+        return _run_backtest_v2(snaps, dates, strategy, result)
 
     chip = strategy.kind == "chip_anchored"
     if chip:
@@ -274,3 +279,191 @@ def _count_reasons(trades: list[Trade]) -> dict[str, int]:
     for t in trades:
         out[t.exit_reason] = out.get(t.exit_reason, 0) + 1
     return out
+
+
+# ── v2 partial-sizing engine ────────────────────────────────────────────────
+# Adds 加碼/減碼/TP1 partial / ATR structural stop on top of the v1 chip-defined
+# exits. ATR uses a CLOSE-TO-CLOSE proxy (snapshots carry open+close, no
+# high/low) — documented in the result limitations.
+
+def _wflags(rec: dict) -> set[str]:
+    return {f.get("code") for f in ((rec or {}).get("weakening") or {}).get("flags", []) if f.get("code")}
+
+
+def _seq_closes(seq: list[dict]) -> list[float]:
+    return [r.get("current_price") for r in seq if r.get("current_price") is not None]
+
+
+def _atr_pct(closes: list[float], window: int) -> float | None:
+    if len(closes) < 2:
+        return None
+    diffs = [abs(closes[i] - closes[i - 1]) for i in range(1, len(closes))][-window:]
+    if not diffs or not closes[-1]:
+        return None
+    return (sum(diffs) / len(diffs)) / closes[-1]
+
+
+def _record_leg(result, pos, ticker, units, fill_price, exit_date, reason, holding_days):
+    avg = pos["total_cost"] / pos["units"] if pos["units"] else 0.0
+    ret = (fill_price - avg) / avg if avg else 0.0
+    result.trades.append(Trade(
+        ticker=ticker, name=pos["name"], entry_date=pos["entry_date"], entry_price=avg,
+        exit_date=exit_date, exit_price=fill_price, return_pct=ret,
+        exit_reason=reason, holding_days=holding_days, units=round(units, 2),
+    ))
+    frac = (pos["units"] - units) / pos["units"] if pos["units"] else 0.0
+    pos["total_cost"] *= frac
+    pos["units"] -= units
+
+
+def _run_backtest_v2(snaps, dates, strategy, result):
+    n = len(snaps)
+    chip = strategy.kind == "chip_anchored"
+    if chip:
+        from core import golden as _golden
+    result.limitations.append(
+        "v2 partial sizing: 加碼/減碼/TP1 已實作; ATR 用收盤對收盤代理(快照無 high/low)")
+    open_pos: dict[str, dict] = {}
+
+    def _seq(ticker, upto):
+        out = []
+        for s in snaps[:upto]:
+            for r in s.get("stocks", []):
+                if r.get("ticker") == ticker:
+                    out.append(r); break
+        return out
+
+    for i in range(n - 1):
+        decide, fill = snaps[i], snaps[i + 1]
+        prior = snaps[:i]
+
+        for ticker in list(open_pos.keys()):
+            pos = open_pos[ticker]
+            rec = _rec_for(decide, ticker)
+            price = rec.get("current_price") if rec else None
+            if price is None:
+                continue
+            pos["peak"] = max(pos["peak"], price)
+            fii = (rec.get("fii_net_buy") or 0)
+            mfb = (rec.get("main_force_buy") or 0)
+            pos["fii_neg_run"] = pos["fii_neg_run"] + 1 if fii < 0 else 0
+            pos["mfb_neg_run"] = pos["mfb_neg_run"] + 1 if mfb < 0 else 0
+            te = temporal_enrich(ticker, prior, rec)
+            vel = te["velocity_3d"]
+            pos["vel_neg_run"] = pos["vel_neg_run"] + 1 if (vel is not None and vel < 0) else 0
+            sev = _weakening_sev(rec)
+            flags = _wflags(rec)
+            hd = (i + 1) - pos["entry_i"]
+            fp = _fill_price(fill, ticker)
+            if fp is None:
+                continue
+
+            # ---- full exit (TP2 / hard stop) ----
+            full = None
+            if sev in strategy.exit_on_weakening:
+                full = "weakening_tp2"
+            elif chip and "W3" in flags:
+                full = "W3_hardstop"
+            elif chip and pos["mfb_neg_run"] >= 2:
+                full = "main_force_sell"
+            elif not chip and pos["fii_neg_run"] >= strategy.fii_reversal_days:
+                full = "fii_reversal"
+            elif not chip and price <= pos["peak"] * (1 - strategy.trailing_stop_pct):
+                full = "trailing_stop"
+            elif chip:
+                closes = _seq_closes(_seq(ticker, i + 1))
+                cost = rec.get("main_force_cost") or pos.get("anchor")
+                atrp = _atr_pct(closes, strategy.atr_window)
+                slow = min(closes[-strategy.structure_low_window:]) if closes else None
+                if cost and slow is not None and atrp is not None:
+                    stop = max(cost, slow) * (1 - strategy.atr_buffer_mult * atrp)
+                    if price <= stop:
+                        full = "atr_stop"
+            if full:
+                _record_leg(result, pos, ticker, pos["units"], fp, dates[i + 1], full, hd)
+                del open_pos[ticker]
+                continue
+
+            # ---- TP1 partial (sell half, once) ----
+            if not pos.get("tp1_done") and pos["units"] > 0.5:
+                tp1 = False
+                if chip:
+                    big_sell = mfb < -(pos.get("accum_avg_buy") or 0) * strategy.tp1_sell_mult
+                    tp1 = big_sell or pos["vel_neg_run"] >= 2 or bool(flags & {"W1", "W5"})
+                if tp1:
+                    _record_leg(result, pos, ticker, pos["units"] / 2, fp, dates[i + 1], "tp1", hd)
+                    pos["tp1_done"] = True
+
+            # ---- 減碼 (B: velocity 轉負連2 → 減半) ----
+            if not chip and pos["units"] > 0.5 and pos["vel_neg_run"] >= strategy.velocity_negative_days \
+                    and not pos.get("reduced"):
+                _record_leg(result, pos, ticker, pos["units"] / 2, fp, dates[i + 1], "vel_reduce", hd)
+                pos["reduced"] = True
+
+            # ---- 加碼 ----
+            if pos["units"] < strategy.max_units:
+                if chip and not pos.get("scaled") and sev in ("none", "yellow"):
+                    cost = rec.get("main_force_cost")
+                    lo, hi = strategy.add_cost_band
+                    if cost and lo * cost <= price <= hi * cost:
+                        pos["total_cost"] += strategy.add_unit * fp
+                        pos["units"] += strategy.add_unit
+                        pos["scaled"] = True
+                elif not chip and (vel or 0) > 0 and (i - pos["last_add_i"]) >= strategy.add_cooldown_days:
+                    prior_mfb = [r.get("main_force_buy") for r in _seq(ticker, i)
+                                 if r.get("main_force_buy") is not None]
+                    if prior_mfb and mfb > max(prior_mfb):     # 主力買超創新高
+                        pos["total_cost"] += strategy.add_unit * fp
+                        pos["units"] += strategy.add_unit
+                        pos["last_add_i"] = i
+
+        # ---- entries ----
+        golden_map = {}
+        if chip:
+            gres = _golden.run(snaps[:i + 1])
+            golden_map = {e.ticker: e for e in (gres.prime + gres.strong)}
+        for rec in decide.get("stocks", []):
+            ticker = rec.get("ticker")
+            if not ticker or ticker in open_pos:
+                continue
+            anchor = None
+            if chip:
+                ge = golden_map.get(ticker)
+                if ge is None:
+                    continue
+                anchor = ge.cost_conservative if ge.cost_conservative is not None else ge.main_force_cost
+                price_d = rec.get("current_price")
+                if not anchor or not price_d or price_d > anchor * strategy.max_premium_ratio:
+                    continue
+            else:
+                te = temporal_enrich(ticker, prior, rec)
+                if not (te["main_force_consecutive_days"] >= strategy.entry_streak_min
+                        and (te["velocity_3d"] or 0) > 0 and (te["acceleration"] or 0) > 0
+                        and (rec.get("fii_net_buy") or 0) > 0):
+                    continue
+            fp = _fill_price(fill, ticker)
+            if fp is None:
+                continue
+            seq_now = _seq(ticker, i + 1)
+            pos_buys = [r.get("main_force_buy") for r in seq_now
+                        if (r.get("main_force_buy") or 0) > 0]
+            open_pos[ticker] = {
+                "units": strategy.position_unit, "total_cost": strategy.position_unit * fp,
+                "peak": fp, "entry_i": i + 1, "entry_date": dates[i + 1], "name": rec.get("name", ""),
+                "fii_neg_run": 0, "mfb_neg_run": 0, "vel_neg_run": 0,
+                "scaled": False, "reduced": False, "tp1_done": False, "last_add_i": i + 1,
+                "anchor": anchor,
+                "accum_avg_buy": (sum(pos_buys) / len(pos_buys)) if pos_buys else 0.0,
+            }
+
+    # settle remaining
+    last = snaps[-1]
+    for ticker, pos in open_pos.items():
+        fp = _fill_price(last, ticker)
+        if fp is None or pos["units"] <= 0:
+            continue
+        _record_leg(result, pos, ticker, pos["units"], fp, dates[-1], "end_of_data",
+                    (n - 1) - pos["entry_i"])
+
+    result.summary = _summarize(result.trades, strategy)
+    return result
