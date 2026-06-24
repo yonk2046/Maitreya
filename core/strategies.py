@@ -67,7 +67,7 @@ STRATEGY_A = StrategyConfig(
     max_premium_ratio=1.05,
     exit_on_weakening=("orange", "red"),
     fii_reversal_days=2,
-    enabled=False,   # flip on once gates/golden are wired
+    enabled=True,    # P3b: golden engine produces a real list → A is runnable on-the-fly
 )
 
 ALL_STRATEGIES = {s.name: s for s in (STRATEGY_B, STRATEGY_A)}

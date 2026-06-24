@@ -120,14 +120,20 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
             "momentum needs fii (from 2026-06-12) + weakening (from 2026-06-15)",
         ],
     )
-    if n < 2 or strategy.kind != "momentum" or not strategy.enabled:
+    if n < 2 or not strategy.enabled:
         result.summary = _summarize([], strategy)
-        if strategy.kind != "momentum":
-            result.limitations.append(
-                f"strategy kind '{strategy.kind}' not yet runnable (needs P3b gates)")
+        if not strategy.enabled:
+            result.limitations.append(f"strategy '{strategy.name}' is disabled")
         return result
 
-    open_pos: dict[str, dict] = {}   # ticker -> {entry_date, entry_price, peak, fii_neg_run}
+    chip = strategy.kind == "chip_anchored"
+    if chip:
+        from core import golden as _golden   # lazy: heavy funnel/state engine only when needed
+        result.limitations.append(
+            "chip-anchored v1: full position (TP1 partial / 加碼 / ATR structural stop deferred); "
+            "golden membership computed on-the-fly via golden.run over each slice")
+
+    open_pos: dict[str, dict] = {}   # ticker -> {entry_date, entry_price, peak, fii_neg_run, mfb_neg_run}
 
     # iterate decision days i = 0..n-2 (fill on i+1)
     for i in range(n - 1):
@@ -144,17 +150,23 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
                 continue
             pos["peak"] = max(pos["peak"], price)
 
-            # fii reversal run (consecutive negative fii up to & including day i)
             fii = (rec.get("fii_net_buy") or 0) if rec else 0
             pos["fii_neg_run"] = pos["fii_neg_run"] + 1 if fii < 0 else 0
+            mfb = (rec.get("main_force_buy") or 0) if rec else 0
+            pos["mfb_neg_run"] = pos["mfb_neg_run"] + 1 if mfb < 0 else 0
 
             reason = None
             if _weakening_sev(rec) in strategy.exit_on_weakening:
-                reason = "weakening"
-            elif pos["fii_neg_run"] >= strategy.fii_reversal_days:
-                reason = "fii_reversal"
-            elif price <= pos["peak"] * (1 - strategy.trailing_stop_pct):
-                reason = "trailing_stop"
+                reason = "weakening"               # 轉弱紅/橙 — chip-defined exit (both)
+            elif chip:
+                # 主力連 2 日淨賣/翻負 → 硬止損 + TP2 spirit (chip-defined, no price trailing)
+                if pos["mfb_neg_run"] >= 2:
+                    reason = "main_force_sell"
+            else:
+                if pos["fii_neg_run"] >= strategy.fii_reversal_days:
+                    reason = "fii_reversal"
+                elif price <= pos["peak"] * (1 - strategy.trailing_stop_pct):
+                    reason = "trailing_stop"
 
             if reason:
                 fp = _fill_price(fill, ticker)
@@ -164,19 +176,33 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
                 del open_pos[ticker]
 
         # ---- new entries (decide on i, execute on i+1) ----
+        golden_map = {}
+        if chip:
+            gres = _golden.run(snaps[:i + 1])           # golden list as of day i (no look-ahead)
+            golden_map = {e.ticker: e for e in (gres.prime + gres.strong)}
+
         for rec in decide.get("stocks", []):
             ticker = rec.get("ticker")
             if not ticker or ticker in open_pos:
                 continue
-            temporal = temporal_enrich(ticker, prior, rec)
-            if not _momentum_entry_ok(strategy, temporal, rec):
-                continue
+            if chip:
+                ge = golden_map.get(ticker)
+                if ge is None:
+                    continue                            # not in 黃金名單 (gate 全過) on day i
+                anchor = ge.cost_conservative if ge.cost_conservative is not None else ge.main_force_cost
+                price_d = rec.get("current_price")
+                if not anchor or not price_d or price_d > anchor * strategy.max_premium_ratio:
+                    continue                            # 現價 > 主力成本 × 1.05 → skip
+            else:
+                temporal = temporal_enrich(ticker, prior, rec)
+                if not _momentum_entry_ok(strategy, temporal, rec):
+                    continue
             fp = _fill_price(fill, ticker)
             if fp is None:
                 continue
             open_pos[ticker] = {
                 "entry_date": dates[i + 1], "entry_price": fp,
-                "peak": fp, "fii_neg_run": 0,
+                "peak": fp, "fii_neg_run": 0, "mfb_neg_run": 0,
                 "name": rec.get("name", ""), "entry_i": i + 1,
             }
 

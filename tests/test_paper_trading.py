@@ -80,12 +80,14 @@ def test_deterministic():
     assert a == b
 
 
-def test_strategy_a_gated_returns_no_trades():
-    # chip-anchored is disabled until gates exist → no trades, flagged
+def test_strategy_a_runs_chip_anchored():
+    # A is enabled (P3b): runs golden.run on-the-fly. On a tiny synthetic series
+    # the funnel/state engine can't reach 'confirmation' → 0 trades, but it must
+    # run without error and flag the chip-anchored v1 limitations.
     snaps = _rising_entry_series()
     res = run_backtest(snaps, STRATEGY_A)
-    assert res.summary["trades"] == 0
-    assert any("not yet runnable" in lim or "gates" in lim for lim in res.limitations)
+    assert isinstance(res.summary.get("trades"), int)
+    assert any("chip-anchored" in lim for lim in res.limitations)
 
 
 def test_no_lookahead_entry_fills_day_after_signal():
