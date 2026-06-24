@@ -182,8 +182,9 @@ class TestAbstainStockRecordV15:
 # ---------------------------------------------------------------------------
 
 def test_schema_version_is_current():
-    # Bumped to 1.6.0 by P5 (weakening field added to each StockRecord).
-    assert SCHEMA_VERSION == "1.6.0"
+    # 1.6.0 = P5 weakening; 1.7.0 = P3b temporal enrichment (velocity_3d,
+    # acceleration, consecutive days, volume series) added to each StockRecord.
+    assert SCHEMA_VERSION == "1.7.0"
 
 
 # ---------------------------------------------------------------------------

@@ -26,10 +26,10 @@ from typing import Any
 import yaml
 
 from core.hashing import canonical_sha256
-from core.market_context import weakening_profile
+from core.market_context import weakening_profile, temporal_enrich
 
 
-SCHEMA_VERSION = "1.6.0"
+SCHEMA_VERSION = "1.7.0"
 CORE_VERSION = "core@0.1.0-p3a"
 
 
@@ -142,6 +142,8 @@ def _abstain_stock_record(ticker: str, raw: dict, has_branches: bool) -> dict:
         "volume":        volume_field,
         "volume_5d_avg": None,
         "volume_ratio":  None,
+        "velocity_3d":   None,   # P3b temporal — populated by temporal_enrich
+        "acceleration":  None,   # P3b temporal — populated by temporal_enrich
         "market_volume": raw.get("market_volume"),   # 市場總成交量（張），from volRows
 
         # FII / main-force fields — populated from T86 (via adapter) where available
@@ -313,6 +315,20 @@ def ingest(
             "present_latest":  _wp.get("present_latest", True),
             "snaps_since_seen": _wp.get("snaps_since_seen", 0),
         }
+
+        # P3b temporal enrichment — deterministic, same prior_snap_objects as
+        # weakening (replay-safe). Populates the time-series fields gates + the
+        # paper-trading engine consume. Does NOT activate scoring (tier/gates
+        # still abstained below); this only fills observation fields.
+        _te = temporal_enrich(ticker, prior_snap_objects or [], rec)
+        rec["velocity_3d"]                 = _te["velocity_3d"]
+        rec["acceleration"]                = _te["acceleration"]
+        rec["main_force_consecutive_days"] = _te["main_force_consecutive_days"]
+        rec["fii_consecutive_buy_days"]    = _te["fii_consecutive_buy_days"]
+        rec["volume_5d_avg"]               = _te["volume_5d_avg"]
+        rec["volume_ratio"]                = _te["volume_ratio"]
+        rec["volume_increasing_streak"]    = _te["volume_increasing_streak"]
+        rec["main_force_volume_trend"]     = _te["main_force_volume_trend"]
 
         stocks.append(rec)
 

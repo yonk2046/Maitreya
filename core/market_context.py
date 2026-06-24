@@ -126,6 +126,79 @@ def _empty_velocity(ticker: str) -> dict[str, Any]:
 
 
 # ===========================================================================
+# 1b. Temporal enrichment (P3b) — derive the time-series fields that gates and
+#     the paper-trading engine consume. Pure + deterministic: builds the
+#     ticker's record sequence from prior_snap_objects + today's record (same
+#     replay-safe contract as weakening_profile), so a snapshot reproduces
+#     identically on replay given the same prior chain.
+# ===========================================================================
+
+def _tail_positive_streak(values: list[Any]) -> int:
+    """Consecutive strictly-positive values at the tail (None breaks nothing
+    until a real non-positive value is hit — mirrors accumulation_velocity)."""
+    streak = 0
+    for v in reversed(values):
+        if v is not None and v > 0:
+            streak += 1
+        elif v is not None:
+            break
+    return streak
+
+
+def temporal_enrich(
+    ticker: str,
+    prior_snap_objects: list[dict[str, Any]] | None,
+    today_rec: dict[str, Any],
+) -> dict[str, Any]:
+    """Return the temporal derived fields for one ticker.
+
+    Reuses accumulation_velocity for velocity_3d / acceleration / main-force
+    streak, then adds volume and FII series metrics. All inputs come from the
+    prior snapshot chain plus today's record → deterministic and replay-safe.
+    """
+    seq: list[dict[str, Any]] = []
+    for snap in (prior_snap_objects or []):
+        for s in snap.get("stocks", []):
+            if s.get("ticker") == ticker:
+                seq.append(s)
+                break
+    seq.append(today_rec)
+
+    av = accumulation_velocity(ticker, seq)
+
+    # Volume series (oldest→newest, real values only)
+    vols = [r.get("volume") for r in seq if r.get("volume") is not None]
+    vol5 = (sum(vols[-5:]) / len(vols[-5:])) if vols else None
+    today_vol = today_rec.get("volume")
+    vol_ratio = (today_vol / vol5) if (today_vol and vol5) else None
+
+    # Volume-increasing streak at the tail
+    vol_inc_streak = 0
+    for i in range(len(vols) - 1, 0, -1):
+        if vols[i] > vols[i - 1]:
+            vol_inc_streak += 1
+        else:
+            break
+
+    # FII consecutive net-buy days (tail)
+    fii_streak = _tail_positive_streak([r.get("fii_net_buy") for r in seq])
+
+    # Main-force buy-super series (last 5 real obs) — F(n) > F(n-1)检视用
+    mf_trend = [r.get("main_force_buy") for r in seq[-5:] if r.get("main_force_buy") is not None]
+
+    return {
+        "velocity_3d":                 av["velocity_3d"],
+        "acceleration":                av["acceleration"],
+        "main_force_consecutive_days": av["streak"],
+        "fii_consecutive_buy_days":    fii_streak,
+        "volume_5d_avg":               round(vol5, 2) if vol5 is not None else None,
+        "volume_ratio":                round(vol_ratio, 3) if vol_ratio is not None else None,
+        "volume_increasing_streak":    vol_inc_streak,
+        "main_force_volume_trend":     mf_trend,
+    }
+
+
+# ===========================================================================
 # 2.  Sponsorship Persistence  贊助持續性
 # ===========================================================================
 
