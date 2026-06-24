@@ -9,7 +9,22 @@ _AI_STOCK = _HERE.parent
 if str(_AI_STOCK) not in sys.path:
     sys.path.insert(0, str(_AI_STOCK))
 
-from core.holdings import evaluate_holding, evaluate_holdings  # noqa: E402
+from core.holdings import evaluate_holding, evaluate_holdings, load_holdings_with_status  # noqa: E402
+
+
+def test_load_status_distinguishes_cases(tmp_path):
+    # valid
+    f = tmp_path / "h.json"
+    f.write_text('{"holdings":[{"ticker":"2618","cost":42}]}', encoding="utf-8")
+    hs, err = load_holdings_with_status(f)
+    assert err is None and len(hs) == 1
+    # malformed (trailing comma) → error surfaced, not silently empty
+    f.write_text('{"holdings":[{"ticker":"2618","cost":42},]}', encoding="utf-8")
+    hs, err = load_holdings_with_status(f)
+    assert hs == [] and err is not None and "解析失敗" in err
+    # missing file → empty, no error
+    hs, err = load_holdings_with_status(tmp_path / "nope.json")
+    assert hs == [] and err is None
 
 
 def _rec(t, mf=10, fii=10, price=100, wk="none"):

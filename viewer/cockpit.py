@@ -3176,7 +3176,14 @@ def _render_holdings(snaps: list[dict]) -> None:
     if not snaps:
         st.info("無快照資料")
         return
-    holdings = _holdings_mod.load_holdings(_AI_STOCK / "data" / "holdings.json")
+    holdings, err = _holdings_mod.load_holdings_with_status(_AI_STOCK / "data" / "holdings.json")
+    if err:
+        _section_header("💼", "持倉重點關注", "Holdings Watch")
+        st.markdown(
+            f'<div class="data-gap-notice" style="border-left:3px solid #E05C7A;">⚠ {err}</div>',
+            unsafe_allow_html=True,
+        )
+        return
     if not holdings:
         _section_header("💼", "持倉重點關注", "Holdings Watch", 0)
         st.markdown(

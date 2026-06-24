@@ -21,14 +21,30 @@ from typing import Any
 from core.strategies import STRATEGY_B
 
 
+def load_holdings_with_status(path: str | pathlib.Path) -> tuple[list[dict], str | None]:
+    """Read data/holdings.json → (holdings, error).
+
+    Distinguishes 3 cases for the viewer:
+      • file missing        → ([], None)            視為「尚無持倉」
+      • invalid JSON        → ([], "解析失敗…")      讓 viewer 提示格式錯(常見:尾逗號)
+      • valid               → (holdings, None)
+    """
+    p = pathlib.Path(path)
+    if not p.is_file():
+        return [], None
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e:
+        return [], (f"holdings.json 解析失敗,請檢查 JSON 格式"
+                    f"(最常見:最後一筆 }} 後多了逗號、或缺引號)。錯誤:{e}")
+    items = d.get("holdings", d) if isinstance(d, dict) else d
+    holdings = [h for h in (items or []) if isinstance(h, dict) and h.get("ticker")]
+    return holdings, None
+
+
 def load_holdings(path: str | pathlib.Path) -> list[dict]:
     """Read data/holdings.json → list of {ticker, name, shares, cost}. Safe."""
-    try:
-        d = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
-    except Exception:
-        return []
-    items = d.get("holdings", d) if isinstance(d, dict) else d
-    return [h for h in (items or []) if isinstance(h, dict) and h.get("ticker")]
+    return load_holdings_with_status(path)[0]
 
 
 def _seq(ticker: str, snaps: list[dict]) -> list[dict]:
