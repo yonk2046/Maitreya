@@ -47,3 +47,4 @@ def test_build_html_embeds_data_and_is_selfcontained():
     assert "momentum_continuation" in html and "台積電" in html
     assert "Chart.js" in html or "chart.umd" in html
     assert "/*DATA*/" not in html          # placeholder fully replaced
+    assert "策略邏輯" in html and "進場" in html and "出場" in html   # logic embedded

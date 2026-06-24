@@ -43,6 +43,24 @@ def _load():
     return list(by_strategy.values()), scans
 
 
+# Human-readable strategy logic, embedded in the report so the basis is never lost.
+STRATEGY_DESC = {
+    "chip_anchored_swing": {
+        "tag": "保守 · 籌碼錨定波段",
+        "entry": "進入黃金名單（5 道 gate 全過：漏斗=確認層、狀態=confirmed/強化、贊助≥門檻、"
+                 "轉折風險≠critical、淨累計>0）且 現價 ≤ 主力成本 × 1.05 → 次日開盤買進 1 單位。",
+        "exit":  "轉弱紅/橙 OR 主力連 2 日淨賣(翻負) → 全出（止損與 TP 全由籌碼定義,不看價格）。",
+        "todo":  "TP1 部分減碼、回測加碼 0.5 單位、ATR 結構低點止損 — v2 待補。",
+    },
+    "momentum_continuation": {
+        "tag": "積極 · 動能延續",
+        "entry": "連買 ≥3 日 且 velocity_3d>0 且 acceleration>0 且 外資同向(fii_net_buy>0) → 次日開盤買進 1 單位。",
+        "exit":  "移動停利(從波段最高回落 8%) OR 轉弱紅/橙 OR 外資連 2 日反向 → 全出。",
+        "todo":  "velocity 創新高加碼 / velocity 轉負減碼(分批) — v2 待補。",
+    },
+}
+
+
 def _equity_curve(trades: list[dict]) -> list[float]:
     eq, out = 1.0, []
     for t in sorted(trades, key=lambda x: x.get("entry_date", "")):
@@ -72,6 +90,7 @@ def build_html(strategies: list[dict], scans: list[dict]) -> str:
                 "trades": s.get("trades", []),
                 "equity": _equity_curve(s.get("trades", [])),
                 "hist": _histogram(s.get("trades", [])),
+                "desc": STRATEGY_DESC.get(s.get("strategy")),
             }
             for s in strategies
         ],
@@ -109,6 +128,10 @@ _TEMPLATE = r"""<!DOCTYPE html>
  th{color:var(--muted);font-weight:500}td:first-child,th:first-child{text-align:left}
  .pos{color:var(--green)}.neg{color:var(--red)}
  .note{color:var(--muted);font-size:11px;margin-top:8px;line-height:1.6}
+ .logic{margin:8px 0 4px}
+ .logic .lg{font-size:12.5px;line-height:1.75;margin:5px 0}
+ .logic .lg b{color:var(--gold);margin-right:6px}
+ .logic .todo{color:var(--muted)}
  canvas{max-height:240px}
 </style></head><body>
 <h1>Maitreya 模擬績效報表</h1>
@@ -127,6 +150,12 @@ DATA.strategies.forEach((s,idx)=>{
   const sec=document.createElement('div');
   sec.innerHTML=`<h2>${zh}</h2>
    <div class="sub">${(s.date_range||[]).join(' → ')} · ${s.name}</div>
+   ${s.desc?`<div class="panel logic">
+     <h3>策略邏輯 · ${s.desc.tag}</h3>
+     <div class="lg"><b>進場</b>${s.desc.entry}</div>
+     <div class="lg"><b>出場</b>${s.desc.exit}</div>
+     <div class="lg todo"><b>待補</b>${s.desc.todo}</div>
+   </div>`:''}
    <div class="cards">
      ${kpi('交易數',su.trades??'—')}
      ${kpi('勝率',fmtPct(su.win_rate),su.win_rate>=0.5?'pos':'neg')}
@@ -189,7 +218,7 @@ function tradeTable(tr){
 function opt(extra){return {responsive:true,plugins:{legend:{display:false}},
   scales:Object.assign({x:{ticks:{color:'#7a8694'},grid:{color:'#1f2a37'}},
    y:{ticks:{color:'#7a8694'},grid:{color:'#1f2a37'}}},extra||{})}}
-document.getElementById('hdr').textContent=`${DATA.strategies.length} 策略 · ${DATA.scans.length} 掃描 · 籌碼定義出場 · 次日開盤/收盤結算`;
+document.getElementById('hdr').textContent=`${DATA.strategies.length} 策略 · ${DATA.scans.length} 掃描 · 次日開盤/收盤結算 · 「end_of_data」=回測窗口末端強制結算(非真出場,部位仍在追蹤)`;
 </script></body></html>"""
 
 
