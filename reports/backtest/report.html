@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maitreya 模擬績效報表</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+ :root{--bg:#0d1117;--card:#13191f;--ink:#cdd5e0;--muted:#7a8694;--line:#1f2a37;
+   --green:#52b788;--red:#e05c7a;--gold:#d4a84b;--blue:#7eb8d4;}
+ *{box-sizing:border-box;margin:0;padding:0}
+ body{background:var(--bg);color:var(--ink);font-family:-apple-system,"Noto Sans TC",sans-serif;padding:24px;max-width:1100px;margin:0 auto}
+ h1{font-size:22px;color:var(--gold);font-weight:600;margin-bottom:2px}
+ h2{font-size:18px;margin:28px 0 12px;font-weight:500;border-left:3px solid var(--gold);padding-left:10px}
+ .sub{color:var(--muted);font-size:13px;margin-bottom:8px}
+ .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:12px 0}
+ .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+ .kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+ .kpi .v{font-size:24px;font-weight:600;margin-top:4px}
+ .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:12px 0}
+ @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+ .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+ .panel h3{font-size:13px;color:var(--muted);font-weight:500;margin-bottom:8px}
+ table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+ th,td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)}
+ th{color:var(--muted);font-weight:500}td:first-child,th:first-child{text-align:left}
+ .pos{color:var(--green)}.neg{color:var(--red)}
+ .note{color:var(--muted);font-size:11px;margin-top:8px;line-height:1.6}
+ canvas{max-height:240px}
+</style></head><body>
+<h1>Maitreya 模擬績效報表</h1>
+<div class="sub" id="hdr"></div>
+<div id="root"></div>
+<script>
+const DATA={"strategies": [{"name": "chip_anchored_swing", "date_range": ["2026-05-08", "2026-06-24"], "summary": {"trades": 5, "win_rate": 0.8, "avg_return": 0.0421, "median_return": 0.0538, "sharpe_per_trade": 1.37, "avg_holding_days": 7.4, "max_drawdown": -0.0023, "exit_reasons": {"weakening": 1, "end_of_data": 4}}, "limitations": ["settlement uses next-day close as open-price proxy (snapshots carry no open)", "fixed 1-unit position; 加碼/減碼 partial sizing deferred", "momentum needs fii (from 2026-06-12) + weakening (from 2026-06-15)", "chip-anchored v1: full position (TP1 partial / 加碼 / ATR structural stop deferred); golden membership computed on-the-fly via golden.run over each slice"], "trades": [{"ticker": "2881", "name": "富邦金", "entry_date": "2026-06-10", "entry_price": 122.5, "exit_date": "2026-06-16", "exit_price": 132.0, "return_pct": 0.0776, "exit_reason": "weakening", "holding_days": 4}, {"ticker": "6770", "name": "力積電", "entry_date": "2026-05-29", "entry_price": 80.7, "exit_date": "2026-06-24", "exit_price": 82.8, "return_pct": 0.026, "exit_reason": "end_of_data", "holding_days": 17}, {"ticker": "2892", "name": "第一金", "entry_date": "2026-06-11", "entry_price": 30.65, "exit_date": "2026-06-24", "exit_price": 32.3, "return_pct": 0.0538, "exit_reason": "end_of_data", "holding_days": 8}, {"ticker": "2618", "name": "長榮航", "entry_date": "2026-06-16", "entry_price": 39.75, "exit_date": "2026-06-24", "exit_price": 41.95, "return_pct": 0.0553, "exit_reason": "end_of_data", "holding_days": 5}, {"ticker": "2610", "name": "華航", "entry_date": "2026-06-18", "entry_price": 22.0, "exit_date": "2026-06-24", "exit_price": 21.95, "return_pct": -0.0023, "exit_reason": "end_of_data", "holding_days": 3}], "equity": [1.026, 1.1056, 1.1651, 1.2295, 1.2267], "hist": {"labels": ["<-5%", "-5~0%", "0~5%", "5~10%", "10~20%", ">20%"], "counts": [0, 1, 1, 3, 0, 0]}}, {"name": "momentum_continuation", "date_range": ["2026-05-08", "2026-06-24"], "summary": {"trades": 11, "win_rate": 0.7273, "avg_return": 0.0387, "median_return": 0.0257, "sharpe_per_trade": 0.87, "avg_holding_days": 4.18, "max_drawdown": -0.0179, "exit_reasons": {"fii_reversal": 2, "end_of_data": 9}}, "limitations": ["settlement uses next-day close as open-price proxy (snapshots carry no open)", "fixed 1-unit position; 加碼/減碼 partial sizing deferred", "momentum needs fii (from 2026-06-12) + weakening (from 2026-06-15)"], "trades": [{"ticker": "2892", "name": "第一金", "entry_date": "2026-06-05", "entry_price": 29.3, "exit_date": "2026-06-09", "exit_price": 30.5, "return_pct": 0.041, "exit_reason": "fii_reversal", "holding_days": 2}, {"ticker": "2883", "name": "凱基金", "entry_date": "2026-06-03", "entry_price": 25.7, "exit_date": "2026-06-10", "exit_price": 28.2, "return_pct": 0.0973, "exit_reason": "fii_reversal", "holding_days": 5}, {"ticker": "2892", "name": "第一金", "entry_date": "2026-06-10", "entry_price": 30.55, "exit_date": "2026-06-24", "exit_price": 32.3, "return_pct": 0.0573, "exit_reason": "end_of_data", "holding_days": 9}, {"ticker": "2618", "name": "長榮航", "entry_date": "2026-06-11", "entry_price": 37.7, "exit_date": "2026-06-24", "exit_price": 41.95, "return_pct": 0.1127, "exit_reason": "end_of_data", "holding_days": 8}, {"ticker": "2610", "name": "華航", "entry_date": "2026-06-15", "entry_price": 21.4, "exit_date": "2026-06-24", "exit_price": 21.95, "return_pct": 0.0257, "exit_reason": "end_of_data", "holding_days": 6}, {"ticker": "1326", "name": "台化", "entry_date": "2026-06-17", "entry_price": 53.7, "exit_date": "2026-06-24", "exit_price": 58.5, "return_pct": 0.0894, "exit_reason": "end_of_data", "holding_days": 4}, {"ticker": "1402", "name": "遠東新", "entry_date": "2026-06-17", "entry_price": 28.8, "exit_date": "2026-06-24", "exit_price": 28.75, "return_pct": -0.0017, "exit_reason": "end_of_data", "holding_days": 4}, {"ticker": "5880", "name": "合庫金", "entry_date": "2026-06-17", "entry_price": 24.75, "exit_date": "2026-06-24", "exit_price": 24.35, "return_pct": -0.0162, "exit_reason": "end_of_data", "holding_days": 4}, {"ticker": "1301", "name": "台塑", "entry_date": "2026-06-22", "entry_price": 52.4, "exit_date": "2026-06-24", "exit_price": 52.8, "return_pct": 0.0076, "exit_reason": "end_of_data", "holding_days": 2}, {"ticker": "2002", "name": "中鋼", "entry_date": "2026-06-22", "entry_price": 19.5, "exit_date": "2026-06-24", "exit_price": 19.75, "return_pct": 0.0128, "exit_reason": "end_of_data", "holding_days": 2}, {"ticker": "2834", "name": "臺企銀", "entry_date": "2026-06-24", "entry_price": 17.5, "exit_date": "2026-06-24", "exit_price": 17.5, "return_pct": 0.0, "exit_reason": "end_of_data", "holding_days": 0}], "equity": [1.0973, 1.1423, 1.2077, 1.3439, 1.3784, 1.5016, 1.4991, 1.4748, 1.486, 1.505, 1.505], "hist": {"labels": ["<-5%", "-5~0%", "0~5%", "5~10%", "10~20%", ">20%"], "counts": [0, 2, 5, 3, 1, 0]}}], "scans": [{"strategy": "momentum_continuation", "param": "entry_streak_min", "date_range": ["2026-05-08", "2026-06-24"], "rows": [{"value": 3, "trades": 11, "win_rate": 0.7273, "avg_return": 0.0387, "median_return": 0.0257, "sharpe_per_trade": 0.87, "avg_holding_days": 4.18, "max_drawdown": -0.0179}, {"value": 4, "trades": 9, "win_rate": 0.6667, "avg_return": 0.032, "median_return": 0.0128, "sharpe_per_trade": 0.72, "avg_holding_days": 4.33, "max_drawdown": -0.0179}, {"value": 5, "trades": 9, "win_rate": 0.6667, "avg_return": 0.032, "median_return": 0.0128, "sharpe_per_trade": 0.72, "avg_holding_days": 4.33, "max_drawdown": -0.0179}]}]}; const ZH={"momentum_continuation": "動能延續 (積極)", "chip_anchored_swing": "籌碼錨定波段 (保守)"};
+const fmtPct=x=>x==null?"—":(x*100).toFixed(1)+"%";
+const cls=x=>x>0?"pos":(x<0?"neg":"");
+function kpi(l,v,c){return `<div class="kpi"><div class="l">${l}</div><div class="v ${c||''}">${v}</div></div>`}
+const root=document.getElementById('root');
+const charts=[];
+DATA.strategies.forEach((s,idx)=>{
+  const su=s.summary||{};
+  const zh=ZH[s.name]||s.name;
+  const sec=document.createElement('div');
+  sec.innerHTML=`<h2>${zh}</h2>
+   <div class="sub">${(s.date_range||[]).join(' → ')} · ${s.name}</div>
+   <div class="cards">
+     ${kpi('交易數',su.trades??'—')}
+     ${kpi('勝率',fmtPct(su.win_rate),su.win_rate>=0.5?'pos':'neg')}
+     ${kpi('平均報酬',fmtPct(su.avg_return),cls(su.avg_return))}
+     ${kpi('中位數',fmtPct(su.median_return),cls(su.median_return))}
+     ${kpi('夏普(每筆·參考)',su.sharpe_per_trade==null?'—':su.sharpe_per_trade,su.sharpe_per_trade>1?'pos':'')}
+     ${kpi('最大回撤',fmtPct(su.max_drawdown),'neg')}
+     ${kpi('平均持有',(su.avg_holding_days??'—')+'d')}
+   </div>
+   <div class="grid2">
+     <div class="panel"><h3>權益曲線 (累積)</h3><canvas id="eq${idx}"></canvas></div>
+     <div class="panel"><h3>報酬分布</h3><canvas id="hi${idx}"></canvas></div>
+   </div>
+   <div class="grid2">
+     <div class="panel"><h3>出場原因</h3><canvas id="ex${idx}"></canvas></div>
+     <div class="panel"><h3>逐筆交易</h3><div style="max-height:240px;overflow:auto">${tradeTable(s.trades)}</div></div>
+   </div>
+   ${s.limitations&&s.limitations.length?`<div class="note">⚠ ${s.limitations.join('；')}</div>`:''}`;
+  root.appendChild(sec);
+  // equity
+  new Chart(document.getElementById('eq'+idx),{type:'line',
+    data:{labels:s.equity.map((_,i)=>i+1),datasets:[{data:s.equity,borderColor:'#52b788',backgroundColor:'#52b78822',fill:true,tension:.2,pointRadius:0}]},
+    options:opt({y:{ticks:{callback:v=>v.toFixed(2)+'x'}}})});
+  // histogram
+  new Chart(document.getElementById('hi'+idx),{type:'bar',
+    data:{labels:s.hist.labels,datasets:[{data:s.hist.counts,backgroundColor:s.hist.labels.map(l=>l.includes('-')?'#e05c7a':'#52b788')}]},
+    options:opt()});
+  // exit reasons
+  const er=su.exit_reasons||{};
+  new Chart(document.getElementById('ex'+idx),{type:'doughnut',
+    data:{labels:Object.keys(er),datasets:[{data:Object.values(er),backgroundColor:['#7eb8d4','#d4a84b','#e05c7a','#52b788','#9e8ac8']}]},
+    options:{plugins:{legend:{labels:{color:'#cdd5e0',font:{size:11}}}}}});
+});
+// scans
+DATA.scans.forEach((sc,i)=>{
+  const sec=document.createElement('div');
+  sec.innerHTML=`<h2>參數掃描 · ${sc.param}</h2><div class="sub">${(ZH[sc.strategy]||sc.strategy)} · ${(sc.date_range||[]).join(' → ')}</div>
+   <div class="panel"><canvas id="sc${i}"></canvas></div>
+   <div class="note">調高 ${sc.param} 觀察勝率/平均報酬的變化,挑甜點。</div>`;
+  root.appendChild(sec);
+  new Chart(document.getElementById('sc'+i),{type:'bar',
+    data:{labels:sc.rows.map(r=>String(r.value)),datasets:[
+      {label:'勝率',data:sc.rows.map(r=>(r.win_rate||0)*100),backgroundColor:'#7eb8d4',yAxisID:'y'},
+      {label:'平均報酬%',data:sc.rows.map(r=>(r.avg_return||0)*100),backgroundColor:'#d4a84b',yAxisID:'y'},
+      {label:'交易數',data:sc.rows.map(r=>r.trades||0),backgroundColor:'#52b78866',type:'line',borderColor:'#52b788',yAxisID:'y1'},
+    ]},
+    options:{responsive:true,plugins:{legend:{labels:{color:'#cdd5e0',font:{size:11}}}},
+      scales:{x:{ticks:{color:'#7a8694'},grid:{color:'#1f2a37'}},
+        y:{position:'left',ticks:{color:'#7a8694'},grid:{color:'#1f2a37'}},
+        y1:{position:'right',ticks:{color:'#7a8694'},grid:{display:false}}}}});
+});
+function tradeTable(tr){
+  if(!tr||!tr.length)return '<div class="note">無交易</div>';
+  let h='<table><tr><th>標的</th><th>進場</th><th>出場</th><th>報酬</th><th>原因</th><th>天</th></tr>';
+  tr.slice().sort((a,b)=>(b.return_pct||0)-(a.return_pct||0)).forEach(t=>{
+    h+=`<tr><td>${t.ticker} ${t.name||''}</td><td>${t.entry_date}</td><td>${t.exit_date}</td>
+     <td class="${cls(t.return_pct)}">${fmtPct(t.return_pct)}</td><td>${t.exit_reason}</td><td>${t.holding_days}</td></tr>`});
+  return h+'</table>';
+}
+function opt(extra){return {responsive:true,plugins:{legend:{display:false}},
+  scales:Object.assign({x:{ticks:{color:'#7a8694'},grid:{color:'#1f2a37'}},
+   y:{ticks:{color:'#7a8694'},grid:{color:'#1f2a37'}}},extra||{})}}
+document.getElementById('hdr').textContent=`${DATA.strategies.length} 策略 · ${DATA.scans.length} 掃描 · 籌碼定義出場 · 次日開盤/收盤結算`;
+</script></body></html>

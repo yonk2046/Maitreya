@@ -237,7 +237,8 @@ def _close(pos, ticker, decide, fill, fill_price, reason, dates, i) -> Trade:
 def _summarize(trades: list[Trade], strategy: StrategyConfig) -> dict[str, Any]:
     if not trades:
         return {"trades": 0, "win_rate": None, "avg_return": None,
-                "median_return": None, "avg_holding_days": None, "max_drawdown": None}
+                "median_return": None, "sharpe_per_trade": None,
+                "avg_holding_days": None, "max_drawdown": None}
     rets = sorted(t.return_pct for t in trades)
     wins = sum(1 for r in rets if r > 0)
     n = len(rets)
@@ -249,11 +250,19 @@ def _summarize(trades: list[Trade], strategy: StrategyConfig) -> dict[str, Any]:
         eq *= (1 + t.return_pct)
         peak = max(peak, eq)
         mdd = min(mdd, eq / peak - 1)
+    # Per-trade Sharpe = mean / sample-stdev of trade returns (risk-free ≈ 0
+    # per trade). NOT annualised. Small-sample → noisy; treat as directional.
+    sharpe = None
+    if n >= 2:
+        var = sum((r - mean) ** 2 for r in rets) / (n - 1)
+        sd = var ** 0.5
+        sharpe = round(mean / sd, 2) if sd > 0 else None
     return {
         "trades": n,
         "win_rate": round(wins / n, 4),
         "avg_return": round(mean, 4),
         "median_return": round(median, 4),
+        "sharpe_per_trade": sharpe,
         "avg_holding_days": round(sum(t.holding_days for t in trades) / n, 2),
         "max_drawdown": round(mdd, 4),
         "exit_reasons": _count_reasons(trades),

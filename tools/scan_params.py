@@ -35,7 +35,7 @@ def scan(snapshots, strategy, param: str, values: list) -> dict:
         s = res.summary
         rows.append({"value": v, **{k: s.get(k) for k in
                     ("trades", "win_rate", "avg_return", "median_return",
-                     "avg_holding_days", "max_drawdown")}})
+                     "sharpe_per_trade", "avg_holding_days", "max_drawdown")}})
     return {
         "strategy": strategy.name,
         "param": param,
