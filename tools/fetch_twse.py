@@ -9,6 +9,28 @@ from _common import http_get_json, parse_int_safe, parse_float_safe, log
 
 MI_INDEX20_URL = "https://openapi.twse.com.tw/v1/exchangeReport/MI_INDEX20"
 MI_MARGN_URL   = "https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN"
+# Full-market daily OHLC — used to capture next-day OPEN price for the
+# paper-trading backtest settlement (spec §1: 次日開盤價結算).
+STOCK_DAY_ALL_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
+
+
+def _parse_open_map(data) -> dict[str, float]:
+    """Pure: TWSE STOCK_DAY_ALL rows → {code: opening_price}. ETFs (00xx) skipped."""
+    out: dict[str, float] = {}
+    for item in data or []:
+        code = str(item.get("Code") or item.get("證券代號", "")).strip()
+        op = parse_float_safe(item.get("OpeningPrice") or item.get("開盤價", 0))
+        if code and not code.startswith("00") and op:
+            out[code] = op
+    return out
+
+
+def fetch_open_map():
+    log("[twse] fetching STOCK_DAY_ALL (open prices)...")
+    data = http_get_json(STOCK_DAY_ALL_URL, timeout=30)
+    out = _parse_open_map(data)
+    log(f"[twse] STOCK_DAY_ALL: {len(out)} open prices")
+    return out
 
 
 def fetch_volume_top20():
@@ -59,6 +81,12 @@ def fetch():
         log(f"[twse] MI_MARGN failed: {e}")
         result["marketMeta"] = {}
         result["marketMetaError"] = str(e)
+    try:
+        result["openPrices"] = fetch_open_map()
+    except Exception as e:
+        log(f"[twse] STOCK_DAY_ALL failed: {e}")
+        result["openPrices"] = {}
+        result["openPricesError"] = str(e)
     return result
 
 

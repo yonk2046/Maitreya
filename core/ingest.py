@@ -137,6 +137,7 @@ def _abstain_stock_record(ticker: str, raw: dict, has_branches: bool) -> dict:
         "industry":      None,
 
         "current_price": raw.get("current_price"),
+        "open":          raw.get("open"),   # 開盤價 — backtest 次日開盤結算 (None if pre-field history)
         "prev_close":    None,
         "change_pct":    raw.get("change_pct"),
         "volume":        volume_field,

@@ -419,6 +419,7 @@ def run(dry_run=False):
         "mainForceBuy": main_force_buy,  # 主力買超
         "mainForceSell": main_force_sell,  # 主力賣超
         "volRows": vol_rows,
+        "openPrices": (twse_result.get("openPrices", {}) if not twse_err else {}),  # {code: 開盤價} 全市場, for backtest 次日開盤結算
         "marketMeta": market_meta,
         "stage3Prefill": stage3_prefill,
         "crossSignals": cross,         # 三榜 + 雙榜共現

@@ -280,6 +280,14 @@ def adapt_legacy(
     for ticker, ri in raw_inputs_per_ticker.items():
         ri["market_volume"] = vol_map.get(ticker)  # 市場成交量（張），None if not in top list
 
+    # --- Merge next-day-settlement OPEN price (P3b backtest, spec §1) ---
+    # today.json["openPrices"] = {code: 開盤價} full-market (STOCK_DAY_ALL).
+    # None for historical snapshots whose today.json predates this field →
+    # backtest falls back to close (documented limitation).
+    open_map = today.get("openPrices") or {}
+    for ticker, ri in raw_inputs_per_ticker.items():
+        ri["open"] = open_map.get(ticker)
+
     # --- Merge T86 三大法人 data into per-ticker raw_inputs ---
     # today.json["t86"] = { code: {foreign, trust, prop, total3} } all in 張
     t86 = today.get("t86") or {}
