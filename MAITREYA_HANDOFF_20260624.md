@@ -69,6 +69,10 @@ tools/           CLI：run_pipeline, daily, fetch_*, run_backtest, scan_params, 
 - **`data/holdings.json`**：使用者手填 `{ticker, name, shares, cost}`(編輯後 commit)。
 - **cockpit**：新增「💼 持倉」分頁(放第一個)——卡片含現價/成本/股數/市值/損益 + 警示燈(達 A/B 出場條件亮橘/紅、紅燈排頂);「轉強訊號」分頁加搜尋欄(代號/名稱過濾)。viewer 純渲染,判斷在 core。
 
+### 2E. FII 閘 + Tab 合併（2026-06-25,viewer/ops）
+- **FII-published 閘(`tools/daily.py` `_fii_published()`)**：fetch 後若 today.json 的 `t86`(三大法人)為空 → 乾淨 skip(exit 0)。背景:6/25 那天 19:00 launchd 連跑兩次——run1 的 T86 抓到空(date param 20260624)→ 建了**缺外資**的 6/25 並 commit;run2 抓到正確 T86(20260625,13977 檔)卻被交易日 skip-guard 擋住沒重建。此閘讓 run1(t86 空)跳過、run2(t86 完整)接手。**注意:snapshot 的 `generated_at` 是 UTC(`11:00:49Z`=台灣 19:00),別誤判成盤中。** 6/25 那筆缺外資的快照**決定放生**(就一天、回測小樣本、不值得冒險重寫 WORM)。
+- **Tab 合併**:`cockpit` 把「📰 市場敘事 + 📡 今日情報」合併成單一「📰 今日綜述」分頁(13→12)。
+
 ### 第一份回測結果（小樣本，僅參考）
 | 策略 | 交易 | 勝率 | 平均報酬 | 夏普(每筆) | 最大回撤 |
 |------|------|------|---------|-----------|---------|
@@ -102,11 +106,24 @@ tools/           CLI：run_pipeline, daily, fetch_*, run_backtest, scan_params, 
 
 ### 🔴 主要任務（下一步價值最大）
 1. **擴大每日 universe**（讓回測有牛市該有的交易量）：目前 fetch 只抓榜單+權值 ~40 檔。要更多回測候選 → 擴到更大範圍/全市場（fetch 規模放大,評估 API 負載）。**這是「5 筆太少」的根本解。**
-2. **策略 A/B v2 部位分批**：加碼/減碼、TP1 部分減碼、ATR 結構止損（讓報酬更貼近真實）。
-3. **（可選）把真實分數寫回快照**：ingest 目前寫 abstained composite/tier;改成寫 golden.run 的真實結果 → cockpit 每日快照直接帶 tier/分數。需顧 replay + 可能再 bump schema。
+2. **P2.5 — cockpit Tab 重構（待 Yonki 確認分組後做）**：現在 12 個平鋪 tab 沒層次、有重疊。提案按「決策流程」收成 ~6 個 tab(相近的用分隔線疊同頁,如已做的「今日綜述」):
+
+   | 新 tab | 合併原本 | 對應問題 |
+   |--------|----------|----------|
+   | 💼 我的持倉 | 持倉 | 我有什麼 + 出場警示 |
+   | ★ 進場機會 | 黃金名單 + 轉強訊號 | 能不能進 |
+   | 🔻 出場警示 | 轉弱出貨 + 假突破 | 該不該出 |
+   | 📊 市場全景 | 市場體制 + 雷達 + 資金輪動 + 今日綜述 | 為什麼(全景) |
+   | 🔬 深度研究 | 持續吸籌 + 時序演化 + 信心風險 | 想深入 |
+   | 📈 模擬績效 | (接 report.html / 回測) | 驗證 |
+
+   心智模型:我有什麼→該不該出→能不能進→為什麼→深入→驗證。**第一步(市場敘事+今日情報→今日綜述)已做**;其餘待 Yonki 拍板分組再實作(Streamlit 沙箱無法目視,先敲定結構最省事)。
+
+3. **策略 A/B v2 部位分批 — ✅ 已完成(2026-06-24)**:`STRATEGY_A_V2`/`STRATEGY_B_V2` + `_run_backtest_v2`(加碼/減碼/TP1/結構止損)。見 §3。
+4. **（可選）把真實分數寫回快照**：ingest 目前寫 abstained composite/tier;改成寫 golden.run 的真實結果 → cockpit 每日快照直接帶 tier/分數。需顧 replay + 可能再 bump schema。
 
 ### 🟡 次要任務
-- viewer cockpit 加「📈 模擬績效」分頁（目前是 standalone HTML 報表;spec §4 想要 cockpit 內分頁,但 Streamlit 無法在沙箱目視驗證）。
+- 「📈 模擬績效」做進 cockpit 分頁(目前是 standalone `report.html`;併入上面 P2.5 重構)。
 - 原油 × 航運 context overlay（Yonki 提過的想法;消息/總經層,做成警示旗標非預測訊號;需新資料源 adapter）。
 
 ### ⬜ 遠期
