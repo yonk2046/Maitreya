@@ -3390,10 +3390,9 @@ def main() -> None:
     # ── 大盤脈搏 banner (pinned above all tabs) ───────────────────────────
     _render_market_pulse_banner()
 
-    # ── Eleven tabs ───────────────────────────────────────────────────────
+    # ── Tabs（市場敘事 + 今日情報 已合併為「今日綜述」）──────────────────────
     (tab_holdings, tab_regime, tab_radar, tab_strong, tab_weak, tab_fb, tab_accum,
-     tab_rot, tab_chain, tab_narrative, tab_golden, tab_conf,
-     tab_intel) = st.tabs([
+     tab_rot, tab_chain, tab_brief, tab_golden, tab_conf) = st.tabs([
         "💼 持倉",
         "📊 市場體制",
         "🎯 雷達觀察",
@@ -3403,10 +3402,9 @@ def main() -> None:
         "◉ 持續吸籌",
         "⟳ 資金輪動",
         "⌛ 時序演化",
-        "📰 市場敘事",
+        "📰 今日綜述",
         "★ 黃金名單",
         "◈ 信心風險",
-        "📡 今日情報",
     ])
 
     with tab_holdings:
@@ -3436,7 +3434,11 @@ def main() -> None:
     with tab_chain:
         _render_temporal_chains(snaps_to_date)
 
-    with tab_narrative:
+    with tab_brief:
+        # 今日綜述 = 市場敘事 + 今日情報(原兩分頁合併,內容性質重疊)
+        _render_intelligence(active_date, snaps_to_date)
+        st.markdown('<hr style="border:none;border-top:1px solid #1F2D3D;margin:18px 0;">',
+                    unsafe_allow_html=True)
         _render_narrative(snaps_to_date)
 
     with tab_golden:
@@ -3444,9 +3446,6 @@ def main() -> None:
 
     with tab_conf:
         _render_confidence(snaps_to_date)
-
-    with tab_intel:
-        _render_intelligence(active_date, snaps_to_date)
 
 
 main()

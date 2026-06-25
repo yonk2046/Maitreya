@@ -75,6 +75,24 @@ def _read_today_trading_date() -> str | None:
     return d.get("tradingDate") or d.get("date")
 
 
+def _fii_published() -> bool:
+    """True iff today.json carries 三大法人 (T86) data — i.e. FII is published.
+
+    TWSE T86 (外資/投信/自營) publishes after close (~15:30+). A mid-session run
+    (e.g. 11:00 manual workflow_dispatch) fetches before it exists, so today.json's
+    `t86` is empty and every fii_net_buy lands None. Building + committing that
+    snapshot then blocks the proper post-close run via the skip-guard → the day
+    loses FII forever. This gate makes such early runs skip cleanly instead.
+    """
+    if not TODAY_JSON.is_file():
+        return False
+    try:
+        d = json.loads(TODAY_JSON.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return False
+    return bool(d.get("t86"))
+
+
 _ISO_DATE = __import__("re").compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -252,6 +270,21 @@ def run(
             _finalize(log_lines, "skip_no_new_trading_day", target_date)
             print(f"[daily] no new trading session — target_date={target_date} already "
                   f"committed; skipping cleanly (exit 0)", file=sys.stderr)
+            return 0
+
+        # ----- FII-published gate -----
+        # Don't build a canonical snapshot before 三大法人(T86) is published —
+        # an intraday run would commit an FII-less snapshot and the skip-guard
+        # would then block the proper post-close run. Skip cleanly so 19:00/20:00
+        # (or a later manual run after close) builds the complete snapshot.
+        if not _fii_published():
+            log_lines.append({
+                "step": "fii_gate", "status": "skip",
+                "reason": "today.json has no t86 (三大法人 not yet published) — likely an "
+                          "intraday run before ~15:30; skipping so a post-close run builds it",
+            })
+            _finalize(log_lines, "skip_fii_not_published", target_date)
+            print("[daily] 三大法人(T86) 尚未公布 — 跳過,等盤後重跑 (exit 0)", file=sys.stderr)
             return 0
 
     # ----- Step 2: pipeline -----
