@@ -2278,7 +2278,12 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
             main_force_cost=mf_cost,
             current_price=cur_price,
         )
-        chip_bar = cs.bar_html()
+        # 卡片上只露「強度」標籤,不露分子/分母(分母會隨缺資料浮動,無參考意義)
+        chip_bar = (
+            f'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;'
+            f'background:{cs.grade_color};margin-right:5px;vertical-align:middle;"></span>'
+            f'<b style="color:{cs.grade_color};">{cs.grade}</b>'
+        )
 
         # ── Volume ratio ─────────────────────────────────────────────────
         # Compute from snapshot history
@@ -2311,16 +2316,8 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
             '</div></div>'
         )
 
-        # ── PRIME category tags — unified gray, emoji carries the color ────
-        prime_cats = _prime_categories(e)
+        # ── PRIME category tags 已移除（觀察分類無實際意義,Yonki 2026-06-27）───
         cat_html = ""
-        for cat in prime_cats:
-            icon, label, _ = _CAT_META.get(cat, ("", cat, "#6B8EAA"))
-            cat_html += (
-                f'<span style="font-size:10px;padding:1px 6px;border-radius:8px;'
-                f'background:#1A2030;color:#8B949E;border:1px solid #2D3748;margin-right:3px;">'
-                f'{icon} {label}</span>'
-            )
 
         # ── Momentum ──────────────────────────────────────────────────────
         mom = _momentum(e)
@@ -2412,22 +2409,87 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
             # 2a. Institutional checklist
             cl_passed, cl_total, cl_detail = _institutional_checklist(e, stock)
             history_stats = _history_stats(_checklist_history, e.ticker)
-            # 2b. Chip score breakdown
+            # 2b. Chip momentum evidence — 改為「證據列表」格式(Yonki 2026-06-27)
+            # 不再露分子/分母(分母浮動無意義);改成 ✓/△/— 列出 6 個訊號各自的可讀說明。
+            _evidence: list[tuple[str, str]] = []  # [(sym, text), ...]
+
+            def _ev_row(sym: str, text: str) -> None:
+                _evidence.append((sym, text))
+
+            # 1) 投量比(主力買超占當日成交量)
+            it_vr = cs.items.get("vol_ratio", {})
+            if it_vr.get("available"):
+                mfb_local = stock.get("main_force_buy") or 0
+                ratio = abs(mfb_local) / mkt_vol if mkt_vol else 0
+                if ratio >= 0.12:
+                    _ev_row("✓", f"買超占成交量 {ratio:.0%}")
+                elif ratio >= 0.06:
+                    _ev_row("△", f"買超占成交量 {ratio:.0%}（中等）")
+                else:
+                    _ev_row("△", f"買超占成交量 {ratio:.0%}（偏低）")
+            else:
+                _ev_row("—", "買超占成交量（市場成交量資料待補）")
+
+            # 2) 連續買超
+            if streak_n >= 7:
+                _ev_row("✓", f"連續買超 {streak_n} 天")
+            elif streak_n >= 3:
+                _ev_row("△", f"連續買超 {streak_n} 天（≥7天為強）")
+            elif streak_n >= 1:
+                _ev_row("△", f"連續買超 {streak_n} 天（≥3天為基本）")
+            else:
+                _ev_row("—", "無連續買超")
+
+            # 3) 主力成本支撐
+            if mf_cost and mf_cost > 0 and cur_price and cur_price > 0:
+                dist = (cur_price - mf_cost) / mf_cost * 100
+                if abs(dist) <= 2:
+                    _ev_row("✓", f"主力成本 {dist:+.1f}%（貼近）")
+                elif dist <= 5:
+                    _ev_row("✓", f"主力成本 {dist:+.1f}%（安全區）")
+                elif dist > 5:
+                    _ev_row("△", f"主力成本 {dist:+.1f}%（偏離安全區）")
+                else:
+                    _ev_row("△", f"主力成本 {dist:+.1f}%（低於成本）")
+            else:
+                _ev_row("—", "主力成本資料待補")
+
+            # 4) Velocity(3 日速度)
+            vel = e.velocity_3d
+            if vel is None:
+                _ev_row("—", "3 日速度資料待補")
+            elif vel > 1000:
+                _ev_row("✓", f"Velocity ↑（3 日速度 +{vel:,.0f}）")
+            elif vel > 0:
+                _ev_row("△", f"Velocity ↑（3 日速度 +{vel:,.0f},力道有限）")
+            elif vel < -1000:
+                _ev_row("△", f"Velocity ↓（3 日速度 {vel:,.0f}）")
+            else:
+                _ev_row("△", f"Velocity 持平（3 日速度 {vel:,.0f}）")
+
+            # 5) 法人同向
+            sync = stock.get("fii_sync_count")
+            if sync is None:
+                _ev_row("—", "法人同向資料待補（T86）")
+            elif sync >= 2:
+                _ev_row("✓", f"法人同向 {sync}/3 方淨買")
+            elif sync == 1:
+                _ev_row("△", "法人未同步（僅 1/3 方）")
+            else:
+                _ev_row("△", "法人未同步（0/3 方淨買）")
+
+            # 6) TDCC 集中度(永遠未接,顯示一致)
+            _ev_row("—", "TDCC 籌碼集中度未接入")
+
+            # Build evidence rows HTML
             chip_rows = ""
-            for key, cfg_item in _chip_mod.CHIP_SCORE_CONFIG.items():
-                item = cs.items.get(key, {})
-                s    = item.get("score", 0)
-                m    = item.get("max", cfg_item["max"])
-                d    = item.get("detail", "")
-                avail = item.get("available", False)
-                sym  = "✓" if avail and s >= m * 0.7 else ("△" if avail else "—")
-                sc   = "#52B788" if sym == "✓" else ("#E8A838" if sym == "△" else "#4A5A6A")
+            for sym, text in _evidence:
+                sc = {"✓": "#52B788", "△": "#E8A838", "—": "#4A5A6A"}[sym]
+                tc = "#CDD5E0" if sym == "✓" else ("#9E8AB8" if sym == "△" else "#6B8EAA")
                 chip_rows += (
-                    f'<div style="display:flex;gap:8px;align-items:baseline;padding:3px 0;">'
-                    f'<span style="color:{sc};width:14px;flex-shrink:0;">{sym}</span>'
-                    f'<span style="font-size:12px;color:#CDD5E0;width:80px;flex-shrink:0;">{cfg_item["label"]}</span>'
-                    f'<span style="font-size:11px;color:#6B8EAA;flex:1;">{d}</span>'
-                    f'<span style="font-size:12px;font-weight:700;color:{sc};width:40px;text-align:right;">{s}/{m}</span>'
+                    f'<div style="display:flex;gap:10px;align-items:baseline;padding:3px 0;">'
+                    f'<span style="color:{sc};width:14px;flex-shrink:0;font-weight:700;">{sym}</span>'
+                    f'<span style="font-size:12px;color:{tc};flex:1;">{text}</span>'
                     f'</div>'
                 )
             # 2c. Lifecycle + changes
@@ -2449,9 +2511,14 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
                 f'<div style="padding:8px 10px;background:#0A1018;border-radius:7px;border:1px solid #1A2232;margin-bottom:8px;">'
                 f'<div style="font-size:10px;color:#4A6A8A;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">🏛 機構觀察清單 · 通過 {cl_passed}/{cl_total}</div>'
                 f'{cl_detail}{history_stats}</div>'
-                # Chip breakdown
+                # Chip Momentum Evidence(改證據列表,不再顯示浮動的分子/分母)
                 f'<div style="padding:8px 10px;background:#0A1018;border-radius:7px;border:1px solid #1A2232;margin-bottom:8px;">'
-                f'<div style="font-size:10px;color:#4A6A8A;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">籌碼動能 {cs.total}/{cs.max_total}</div>'
+                f'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">'
+                f'<div style="font-size:10px;color:#4A6A8A;text-transform:uppercase;letter-spacing:.06em;">'
+                f'Chip Momentum Evidence · 籌碼動能證據</div>'
+                f'<div style="font-size:11px;color:#6B8EAA;">'
+                f'Strength <b style="color:{cs.grade_color};">{cs.grade}</b></div>'
+                f'</div>'
                 f'{chip_rows}</div>'
                 # Lifecycle + Changes
                 f'<div class="g5-section-label">狀態演進</div>{lifecycle_html}'
@@ -3245,6 +3312,161 @@ def _render_holdings(snaps: list[dict]) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Backtest tab — 模擬績效(讀 reports/backtest/<strategy>_latest.json,有樣本門檻)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_BACKTEST_MIN_TRADES = 30   # 未達標只顯示累積進度,避免小樣本誤導
+_BACKTEST_STRATEGIES = [
+    ("chip_anchored_swing", "A 籌碼錨定波段", "保守"),
+    ("momentum_continuation", "B 動能延續",   "積極"),
+    ("chip_anchored_v2",    "A v2 分批",     "進階"),
+    ("momentum_v2",         "B v2 分批",     "進階"),
+]
+
+
+def _load_backtest_payload(strategy: str) -> dict | None:
+    p = _AI_STOCK / "reports" / "backtest" / f"{strategy}_latest.json"
+    if not p.is_file():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _render_backtest(snaps: list[dict]) -> None:
+    """模擬績效 tab — 每日 pipeline 跑完自動刷新;樣本不足顯示進度。"""
+    _section_header("📈", "模擬績效", "Backtest Performance")
+    st.markdown(
+        f'<div style="font-size:12px;color:#6B8EAA;margin:-6px 0 14px 0;">'
+        f'資料來源:每日 pipeline 自動跑 <code>tools.run_backtest</code> '
+        f'寫入 <code>reports/backtest/&lt;strategy&gt;_latest.json</code>。'
+        f'樣本 ≥ <b>{_BACKTEST_MIN_TRADES}</b> 筆才顯示績效,'
+        f'否則只顯示累積進度(避免小樣本噪音誤導決策)。</div>',
+        unsafe_allow_html=True,
+    )
+
+    cols = st.columns(2, gap="medium")
+    for idx, (sname, label, kind) in enumerate(_BACKTEST_STRATEGIES):
+        with cols[idx % 2]:
+            payload = _load_backtest_payload(sname)
+            if not payload:
+                st.markdown(
+                    f'<div style="padding:14px 16px;background:#0A1018;border:1px solid #1A2232;'
+                    f'border-radius:8px;margin-bottom:12px;">'
+                    f'<div style="font-size:14px;font-weight:700;color:#CDD5E0;">{label}'
+                    f'<span style="font-size:11px;color:#6B8EAA;margin-left:8px;">{kind}</span></div>'
+                    f'<div style="font-size:12px;color:#6B8EAA;margin-top:8px;">'
+                    f'尚無回測結果。下次 pipeline 跑完(<code>tools.daily</code>)會自動生成。</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+                continue
+
+            summary = payload.get("summary", {})
+            n_trades = int(summary.get("trades") or 0)
+            date_range = payload.get("date_range", [None, None])
+            d_lo, d_hi = (date_range[0] or "—"), (date_range[1] or "—")
+
+            # 樣本不足 → 進度條
+            if n_trades < _BACKTEST_MIN_TRADES:
+                pct = n_trades / _BACKTEST_MIN_TRADES
+                pct_w = min(pct, 1.0) * 100
+                st.markdown(
+                    f'<div style="padding:14px 16px;background:#0A1018;border:1px solid #1A2232;'
+                    f'border-radius:8px;margin-bottom:12px;">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:baseline;">'
+                    f'<div style="font-size:14px;font-weight:700;color:#CDD5E0;">{label}'
+                    f'<span style="font-size:11px;color:#6B8EAA;margin-left:8px;">{kind}</span></div>'
+                    f'<div style="font-size:11px;color:#6B8EAA;">{d_lo} → {d_hi}</div>'
+                    f'</div>'
+                    f'<div style="font-size:12px;color:#9E8AB8;margin:10px 0 6px 0;">'
+                    f'樣本累積中:<b style="color:#CDD5E0;">{n_trades}</b> / {_BACKTEST_MIN_TRADES} 筆</div>'
+                    f'<div style="background:#1A2232;border-radius:4px;height:6px;overflow:hidden;">'
+                    f'<div style="background:#7EB8D4;width:{pct_w:.1f}%;height:100%;"></div>'
+                    f'</div>'
+                    f'<div style="font-size:11px;color:#4A6A8A;margin-top:8px;">'
+                    f'再累積 <b>{_BACKTEST_MIN_TRADES - n_trades}</b> 筆才會顯示績效。'
+                    f'隨著每日 pipeline 跑、universe 變寬,進度自動推進。</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+                continue
+
+            # 樣本達標 → 顯示 KPI
+            win_rate = summary.get("win_rate")
+            avg_ret  = summary.get("avg_return")
+            median   = summary.get("median_return")
+            max_dd   = summary.get("max_drawdown")
+            sharpe   = summary.get("sharpe_per_trade") or summary.get("sharpe")
+            avg_hold = summary.get("avg_holding_days")
+
+            def _fmt_pct(v):
+                if v is None: return "—"
+                try:    return f"{float(v) * 100:+.1f}%" if abs(float(v)) < 1.5 else f"{float(v):+.1f}%"
+                except Exception: return "—"
+
+            def _fmt_num(v, dp=2):
+                if v is None: return "—"
+                try:    return f"{float(v):.{dp}f}"
+                except Exception: return "—"
+
+            kpi_rows = [
+                ("勝率", f"{(win_rate * 100):.0f}%" if isinstance(win_rate, (int, float)) else "—",
+                 "#52B788" if (isinstance(win_rate, (int, float)) and win_rate >= 0.6) else "#CDD5E0"),
+                ("平均報酬", _fmt_pct(avg_ret),
+                 "#52B788" if (isinstance(avg_ret, (int, float)) and avg_ret > 0) else "#E05C7A"),
+                ("中位報酬", _fmt_pct(median), "#CDD5E0"),
+                ("最大回撤", _fmt_pct(max_dd),
+                 "#E05C7A" if (isinstance(max_dd, (int, float)) and max_dd < -0.05) else "#CDD5E0"),
+                ("Sharpe", _fmt_num(sharpe, 2),
+                 "#52B788" if (isinstance(sharpe, (int, float)) and sharpe >= 1.0) else "#CDD5E0"),
+                ("平均持有", f"{_fmt_num(avg_hold, 1)} 日", "#CDD5E0"),
+            ]
+            kpi_html = ""
+            for k, v, c in kpi_rows:
+                kpi_html += (
+                    f'<div style="display:flex;justify-content:space-between;padding:4px 0;'
+                    f'border-bottom:1px dashed #1A2232;">'
+                    f'<span style="font-size:12px;color:#6B8EAA;">{k}</span>'
+                    f'<span style="font-size:13px;font-weight:700;color:{c};">{v}</span>'
+                    f'</div>'
+                )
+
+            exit_reasons = summary.get("exit_reasons") or {}
+            er_html = ""
+            if exit_reasons:
+                er_html = '<div style="font-size:11px;color:#6B8EAA;margin-top:10px;">出場原因:'
+                er_html += " · ".join(f"{k} <b style='color:#CDD5E0;'>{v}</b>" for k, v in exit_reasons.items())
+                er_html += "</div>"
+
+            st.markdown(
+                f'<div style="padding:14px 16px;background:#0A1018;border:1px solid #1A2232;'
+                f'border-radius:8px;margin-bottom:12px;">'
+                f'<div style="display:flex;justify-content:space-between;align-items:baseline;">'
+                f'<div style="font-size:14px;font-weight:700;color:#CDD5E0;">{label}'
+                f'<span style="font-size:11px;color:#6B8EAA;margin-left:8px;">{kind}</span></div>'
+                f'<div style="font-size:11px;color:#6B8EAA;">{d_lo} → {d_hi} · {n_trades} 筆</div>'
+                f'</div>'
+                f'<div style="margin-top:10px;">{kpi_html}</div>'
+                f'{er_html}'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+    # 詳版 report.html 入口
+    report_path = _AI_STOCK / "reports" / "backtest" / "report.html"
+    if report_path.is_file():
+        st.markdown(
+            f'<div style="font-size:12px;color:#6B8EAA;margin-top:12px;">'
+            f'詳版報表(權益曲線/逐筆/掃描):<code>reports/backtest/report.html</code> '
+            f'— 在本機 Mac 跑 <code>python -m tools.render_backtest_report</code> 刷新。'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Sidebar — control panel, date navigator, dev/audit
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -3390,62 +3612,71 @@ def main() -> None:
     # ── 大盤脈搏 banner (pinned above all tabs) ───────────────────────────
     _render_market_pulse_banner()
 
-    # ── Tabs（市場敘事 + 今日情報 已合併為「今日綜述」）──────────────────────
-    (tab_holdings, tab_regime, tab_radar, tab_strong, tab_weak, tab_fb, tab_accum,
-     tab_rot, tab_chain, tab_brief, tab_golden, tab_conf) = st.tabs([
-        "💼 持倉",
-        "📊 市場體制",
-        "🎯 雷達觀察",
-        "↑ 轉強訊號",
-        "🔻 轉弱出貨",
-        "⚠ 假突破",
-        "◉ 持續吸籌",
-        "⟳ 資金輪動",
-        "⌛ 時序演化",
-        "📰 今日綜述",
-        "★ 黃金名單",
-        "◈ 信心風險",
+    # ── Tabs（P2.5 重構：12 → 6,心智模型「我有什麼 → 該不該出 → 能不能進 → 為什麼 → 深入 → 驗證」）─
+    tab_holdings, tab_entry, tab_exit, tab_market, tab_research, tab_backtest = st.tabs([
+        "💼 我的持倉",
+        "★ 進場機會",
+        "🔻 出場警示",
+        "📊 市場全景",
+        "🔬 深度研究",
+        "📈 模擬績效",
     ])
+
+    _SECTION_HR = ('<hr style="border:none;border-top:1px solid #1F2D3D;'
+                   'margin:22px 0 18px 0;">')
+    _SECTION_TITLE = ('<div style="font-size:13px;font-weight:700;color:#6B8EAA;'
+                      'letter-spacing:.06em;text-transform:uppercase;'
+                      'margin:0 0 10px 0;">{label}</div>')
 
     with tab_holdings:
         _render_holdings(snaps_to_date)
 
-    with tab_regime:
-        _render_regime(snaps_to_date)
-
-    with tab_radar:
-        _render_watchlist_radar(snaps_to_date)
-
-    with tab_strong:
+    with tab_entry:
+        # 進場機會 = 黃金名單 + 轉強訊號
+        st.markdown(_SECTION_TITLE.format(label="★ 黃金名單"), unsafe_allow_html=True)
+        _render_golden(snaps_to_date)
+        st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        st.markdown(_SECTION_TITLE.format(label="↑ 轉強訊號"), unsafe_allow_html=True)
         _render_strengthening(snaps_to_date)
 
-    with tab_weak:
+    with tab_exit:
+        # 出場警示 = 轉弱出貨 + 假突破
+        st.markdown(_SECTION_TITLE.format(label="🔻 轉弱出貨"), unsafe_allow_html=True)
         _render_weakening(snaps_to_date)
-
-    with tab_fb:
+        st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        st.markdown(_SECTION_TITLE.format(label="⚠ 假突破"), unsafe_allow_html=True)
         _render_failed_breakouts(snaps_to_date)
 
-    with tab_accum:
-        _render_persistent_accumulation(snaps_to_date)
-
-    with tab_rot:
-        _render_leadership_rotation(snaps_to_date)
-
-    with tab_chain:
-        _render_temporal_chains(snaps_to_date)
-
-    with tab_brief:
-        # 今日綜述 = 市場敘事 + 今日情報(原兩分頁合併,內容性質重疊)
+    with tab_market:
+        # 市場全景 = 今日綜述 + 市場體制 + 雷達 + 資金輪動
+        st.markdown(_SECTION_TITLE.format(label="📰 今日綜述"), unsafe_allow_html=True)
         _render_intelligence(active_date, snaps_to_date)
         st.markdown('<hr style="border:none;border-top:1px solid #1F2D3D;margin:18px 0;">',
                     unsafe_allow_html=True)
         _render_narrative(snaps_to_date)
+        st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        st.markdown(_SECTION_TITLE.format(label="📊 市場體制"), unsafe_allow_html=True)
+        _render_regime(snaps_to_date)
+        st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        st.markdown(_SECTION_TITLE.format(label="🎯 雷達觀察"), unsafe_allow_html=True)
+        _render_watchlist_radar(snaps_to_date)
+        st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        st.markdown(_SECTION_TITLE.format(label="⟳ 資金輪動"), unsafe_allow_html=True)
+        _render_leadership_rotation(snaps_to_date)
 
-    with tab_golden:
-        _render_golden(snaps_to_date)
-
-    with tab_conf:
+    with tab_research:
+        # 深度研究 = 持續吸籌 + 時序演化 + 信心風險
+        st.markdown(_SECTION_TITLE.format(label="◉ 持續吸籌"), unsafe_allow_html=True)
+        _render_persistent_accumulation(snaps_to_date)
+        st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        st.markdown(_SECTION_TITLE.format(label="⌛ 時序演化"), unsafe_allow_html=True)
+        _render_temporal_chains(snaps_to_date)
+        st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        st.markdown(_SECTION_TITLE.format(label="◈ 信心風險"), unsafe_allow_html=True)
         _render_confidence(snaps_to_date)
+
+    with tab_backtest:
+        _render_backtest(snaps_to_date)
 
 
 main()

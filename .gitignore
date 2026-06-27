@@ -27,5 +27,15 @@ data/today.json
 # data/snapshots/   ← versioned ✓
 # data/branches/    ← versioned ✓
 # reports/          ← versioned ✓
+
+# Backfill sandbox — 歷史快照重建,獨立於 main archive。
+# data/backfill/staging/ 是 adapter 工作區,丟棄即可。
+# data/backfill/snapshots/ 與 data/backfill/history/ 是重建後的快照與原始資料,
+# 由 Yonki 決定要不要 commit;預設不上 git(避免污染 verify_all_replay 鏈)。
+data/backfill/staging/
+data/backfill/history/
+data/backfill/snapshots/
+reports/backtest/backfill/
+
 __pycache__/
 .DS_Store

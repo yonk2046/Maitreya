@@ -329,6 +329,24 @@ def run(
         print(f"[daily] ⚠ intelligence step FAILED rc={rc_intel} (non-fatal):\n{err_intel}",
               file=sys.stderr)
 
+    # ----- Step 5: backtest refresh (P3b) -----
+    # 每日刷新 A/B 兩策略的回測 JSON,viewer 從 reports/backtest/ 讀檔渲染。
+    # 非阻塞:回測失敗不擋 pipeline(資料/快照永遠優先)。
+    # 用 latest_only=True 確保每日只留一份「最新版」(避免 _<lo>_<hi>.json 越積越多)。
+    for _strategy in ("chip_anchored_swing", "momentum_continuation",
+                      "chip_anchored_v2", "momentum_v2"):
+        rc_bt, _, err_bt = _run_step(
+            name=f"backtest_{_strategy}",
+            argv=[sys.executable, "-m", "tools.run_backtest",
+                  "--strategy", _strategy, "--latest-only"],
+            cwd=_AI_STOCK,
+            log_lines=log_lines,
+            timeout_sec=180,
+        )
+        if rc_bt != 0:
+            print(f"[daily] ⚠ backtest {_strategy} FAILED rc={rc_bt} (non-fatal):\n{err_bt}",
+                  file=sys.stderr)
+
     # ----- Done -----
     _finalize(log_lines, "ok", target_date)
     print(f"[daily] ✅ {target_date} all green", file=sys.stderr)
