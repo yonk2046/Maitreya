@@ -1089,6 +1089,7 @@ def _render_strengthening(snaps: list[dict]) -> None:
             "現價": f"NT${price:,.2f}" if price else "—",
             "漲跌": f"{chg:+.2f}%" if chg is not None else "—",
             "連買(日)": streak,
+            "窗口買(日)": _stock_buy_days_in_window(stock),
             "累計(張)": net,
             "速度(張/日)": round(vel) if vel is not None else None,
             "贊助分": round(spon_score, 2),
@@ -1129,7 +1130,8 @@ def _render_strengthening(snaps: list[dict]) -> None:
             color_cols=["漲跌", "速度(張/日)"],
             text_cols=["動能", "資料"],
             fmt={"累計(張)": "{:+,.0f}", "速度(張/日)": "{:+,.0f}",
-                 "連買(日)": "{:d} 日", "贊助分": "{:.2f}"},
+                 "連買(日)": "{:d} 日", "窗口買(日)": "{:d}/20",
+                 "贊助分": "{:.2f}"},
         ),
         use_container_width=True,
         hide_index=True,
@@ -1402,7 +1404,7 @@ def _render_persistent_accumulation(snaps: list[dict]) -> None:
             df_pa,
             color_cols=[],
             text_cols=["動能", "資料"],
-            fmt={"累計(張)": "{:+,.0f}", "買超(日)": "{:d} 日", "分點(日)": "{:d} 日"},
+            fmt={"累計(張)": "{:+,.0f}", "買超(日)": "{:d}/20", "分點(日)": "{:d} 日"},
         ),
         use_container_width=True,
         hide_index=True,
@@ -1570,10 +1572,14 @@ def _render_temporal_chains(snaps: list[dict]) -> None:
         ctx = full_ticker_context(ticker, snaps)
         spon = ctx["sponsorship"]
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("連買天數 Streak",    f"{_stock_streak(stock_latest)}日")
-        col2.metric("累計買超 Net Total",  f"{_stock_net_accumulation(stock_latest):+,}張")
-        col3.metric("贊助持續 Sponsor",   f"{spon['persistence_score']:.0%}")
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("連買天數 Strict",  f"{_stock_streak(stock_latest)}日",
+                    help="嚴格連續尾部買超天數(任何缺日或賣超皆中斷)")
+        col2.metric("窗口買超 Window",  f"{_stock_buy_days_in_window(stock_latest)}/20",
+                    help="過去 20 個交易日內主力買超天數(鬆語意,缺日不計但不中斷)")
+        col3.metric("累計買超 Net",      f"{_stock_net_accumulation(stock_latest):+,}張",
+                    help="20 天窗口內主力買超累計")
+        col4.metric("贊助持續 Sponsor", f"{spon['persistence_score']:.0%}")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -2415,7 +2421,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
             f'<hr class="gc-divider">'
             # Row 2: key metrics grid (3-column, 6 items)
             + f'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px;margin:6px 0;">'
-            f'<div class="gc-metric"><span class="gc-metric-label">主力連買</span><span class="gc-metric-val" style="color:#7EB8D4;">{streak_n}日</span></div>'
+            f'<div class="gc-metric"><span class="gc-metric-label">主力連買</span><span class="gc-metric-val" style="color:#7EB8D4;">{streak_n}日{(" · 窗" + str(_stock_buy_days_in_window(stock))) if _stock_buy_days_in_window(stock) > streak_n else ""}</span></div>'
             f'<div class="gc-metric"><span class="gc-metric-label">贊助強度</span><span class="gc-metric-val" style="color:#D4A84B;">{e.sponsorship_score:.0%}</span></div>'
             f'<div class="gc-metric"><span class="gc-metric-label">主力成本</span><span class="gc-metric-val">{cost_s}</span></div>'
             f'<div class="gc-metric"><span class="gc-metric-label">3日速度</span><span class="gc-metric-val">{f"{e.velocity_3d:+,.0f}" if e.velocity_3d is not None else "—"}</span></div>'
@@ -2469,7 +2475,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
             else:
                 _ev_row("—", "買超占成交量（市場成交量資料待補）")
 
-            # 2) 連續買超
+            # 2) 連續買超(嚴格) + 窗口買超(鬆語意)
             if streak_n >= 7:
                 _ev_row("✓", f"連續買超 {streak_n} 天")
             elif streak_n >= 3:
@@ -2478,6 +2484,16 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
                 _ev_row("△", f"連續買超 {streak_n} 天（≥3天為基本）")
             else:
                 _ev_row("—", "無連續買超")
+
+            # 2b) 窗口買超 — 20 天內主力買超天數(鬆語意,輔助參考)
+            _pos_days = _stock_buy_days_in_window(stock)
+            if _pos_days > streak_n:  # 只有當鬆語意大於嚴格時才有額外資訊量
+                if _pos_days >= 12:
+                    _ev_row("✓", f"窗口買超 {_pos_days}/20 天（高頻吸籌）")
+                elif _pos_days >= 7:
+                    _ev_row("△", f"窗口買超 {_pos_days}/20 天（中頻）")
+                else:
+                    _ev_row("△", f"窗口買超 {_pos_days}/20 天（偶現）")
 
             # 3) 主力成本支撐
             if mf_cost and mf_cost > 0 and cur_price and cur_price > 0:
