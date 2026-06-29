@@ -409,6 +409,37 @@ def _real_dates() -> list[str]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 1.8.0 衍生欄位讀取(優先讀 snapshot,不再 render-time 重算)
+# ─────────────────────────────────────────────────────────────────────────────
+# 原本 viewer 對全 viewer 載入的 snapshot 跑 full_ticker_context() →
+# accumulation_velocity() 即時算 streak/net_cumulative,造成「前端 14 日 vs
+# JSON 4 日」的不一致(窗口不同 + None 透明處理)。1.8.0 後 ingest 直接寫回
+# main_force_strict_streak_days / main_force_positive_days_in_window /
+# net_accumulation_in_window,viewer 用下面的 helper 讀取,確保前後端一致。
+
+def _stock_streak(stock: dict) -> int:
+    """主力嚴格連續買超天數(1.8.0:讀 snapshot,缺日視為中斷)。"""
+    v = stock.get("main_force_strict_streak_days")
+    if v is None:
+        v = stock.get("main_force_consecutive_days")  # 1.7.0 兼容欄位
+    return int(v) if v is not None else 0
+
+
+def _stock_buy_days_in_window(stock: dict) -> int:
+    """過去 lookback_window_days 內主力買超天數(忽略缺日,不要求連續)。"""
+    v = stock.get("main_force_positive_days_in_window")
+    return int(v) if v is not None else 0
+
+
+def _stock_net_accumulation(stock: dict) -> int:
+    """過去 lookback_window_days 內主力買超累計(張)。1.7.0 兼容退回 weakening.net_cumulative。"""
+    v = stock.get("net_accumulation_in_window")
+    if v is None:
+        v = (stock.get("weakening") or {}).get("net_cumulative")
+    return int(v) if v is not None else 0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Shared HTML helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -800,9 +831,8 @@ def _render_heat_radar(snaps: list[dict]) -> None:
     # Build rows
     rows = []
     for ticker, stock in latest_stocks.items():
-        ctx    = full_ticker_context(ticker, snaps)
-        acc    = ctx.get("accumulation", {})
-        streak = acc.get("streak", 0)
+        # 1.8.0:直接讀 snapshot,不再 render-time 跑 full_ticker_context
+        streak = _stock_streak(stock)
         fii    = stock.get("fii_net_buy")
         tier   = stock.get("confidence_tier", "SKELETON")
         weak   = stock.get("weakening", {})
@@ -880,14 +910,13 @@ def _render_watchlist_radar(snaps: list[dict]) -> None:
         meta   = TIER_A[ticker]
         stock  = latest_stocks.get(ticker, {})
         branch = _load_branches_for_ticker(ticker)
-        ctx    = full_ticker_context(ticker, snaps) if snaps else {}
-        acc    = ctx.get("accumulation", {})
 
         price      = stock.get("current_price")
         chg        = stock.get("change_pct")
         mfb        = stock.get("main_force_buy")
         cost       = stock.get("main_force_cost") or branch.get("avgBuyCost")
-        streak     = acc.get("streak", 0)
+        # 1.8.0:讀 snapshot 持久化欄位
+        streak     = _stock_streak(stock)
 
         price_str = f"NT${price:,.2f}" if price else "—"
         chg_str   = f"{chg:+.2f}%" if chg is not None else "—"
@@ -1034,21 +1063,23 @@ def _render_strengthening(snaps: list[dict]) -> None:
     first_seen, last_seen = _presence_dates(snaps)
 
     for ticker in sorted(all_tickers):
-        ctx = full_ticker_context(ticker, snaps)
-        acc  = ctx["accumulation"]
-        spon = ctx["sponsorship"]
-        if acc["streak"] < 2:
-            continue
         stock = latest_stocks.get(ticker, {})
+        # 1.8.0:streak / net / vel / accel 直接讀 snapshot;sponsorship 仍走
+        # full_ticker_context(尚未持久化,屬於 P2 後續工作)
+        streak = _stock_streak(stock)
+        if streak < 2:
+            continue
+        ctx  = full_ticker_context(ticker, snaps)
+        spon = ctx["sponsorship"]
         name  = stock.get("name") or _short_name(ticker)
         price = stock.get("current_price")
         chg   = stock.get("change_pct")
         cost  = stock.get("main_force_cost")
-        vel   = acc.get("velocity_3d")
-        net   = acc.get("net_cumulative") or 0
-        streak = acc["streak"]
+        vel   = stock.get("velocity_3d")
+        accel = stock.get("acceleration")
+        net   = _stock_net_accumulation(stock)
         spon_score = spon.get("persistence_score") or 0
-        mom_txt, mom_rank = _momentum_glyph(vel, acc.get("acceleration"))
+        mom_txt, mom_rank = _momentum_glyph(vel, accel)
         fresh_txt, fresh_rank = _freshness_label(ticker, first_seen, last_seen, latest_date)
         rows.append({
             "資料": fresh_txt,
@@ -1302,17 +1333,21 @@ def _render_persistent_accumulation(snaps: list[dict]) -> None:
             all_tickers.add(s.get("ticker", ""))
     all_tickers.discard("")
 
+    # 1.8.0:用 snapshot 的 main_force_positive_days_in_window 取代
+    # full_ticker_context 重算的 buy_days;sponsorship 仍走 ctx
+    latest_for_persist = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
     candidates = []
     for ticker in sorted(all_tickers):
         ctx  = full_ticker_context(ticker, snaps)
         spon = ctx["sponsorship"]
-        acc  = ctx["accumulation"]
-        if spon.get("persistence_score", 0) >= 0.35 and acc.get("buy_days", 0) >= 2:
+        stk_for_count = latest_for_persist.get(ticker, {})
+        buy_days = _stock_buy_days_in_window(stk_for_count)
+        if spon.get("persistence_score", 0) >= 0.35 and buy_days >= 2:
             candidates.append((ticker, ctx))
 
     candidates.sort(key=lambda x: (
         -x[1]["sponsorship"]["persistence_score"],
-        -x[1]["accumulation"]["net_cumulative"],
+        -_stock_net_accumulation(latest_for_persist.get(x[0], {})),
     ))
 
     _section_header("◉", "持續吸籌", "Persistent Accumulation", len(candidates))
@@ -1332,19 +1367,21 @@ def _render_persistent_accumulation(snaps: list[dict]) -> None:
     rows_pa = []
     for ticker, ctx in candidates:
         spon  = ctx["sponsorship"]
-        acc   = ctx["accumulation"]
+        # 1.8.0:vel/accel/net_cumulative/buy_days 都從 snapshot 直接讀
         stock = latest_stocks.get(ticker, {})
         name  = stock.get("name") or _short_name(ticker)
         cost  = stock.get("main_force_cost")
-        mom_txt, mom_rank = _momentum_glyph(acc.get("velocity_3d"), acc.get("acceleration"))
+        vel   = stock.get("velocity_3d")
+        accel = stock.get("acceleration")
+        mom_txt, mom_rank = _momentum_glyph(vel, accel)
         fresh_txt, fresh_rank = _freshness_label(ticker, first_seen, last_seen, latest_date)
         rows_pa.append({
             "資料": fresh_txt,
             "代號": ticker,
             "名稱": name,
             "動能": mom_txt,
-            "累計(張)": acc.get("net_cumulative") or 0,
-            "買超(日)": acc.get("buy_days") or 0,
+            "累計(張)": _stock_net_accumulation(stock),
+            "買超(日)": _stock_buy_days_in_window(stock),
             "主力分點": spon.get("top_persistent_broker") or "—",
             "分點(日)": spon.get("top_broker_days") or 0,
             "成本": f"NT${cost:,.2f}" if cost else "—",
@@ -1527,13 +1564,15 @@ def _render_temporal_chains(snaps: list[dict]) -> None:
             unsafe_allow_html=True,
         )
 
+        # 1.8.0:streak / net_accumulation 從 snapshot 讀;sponsorship 仍走 ctx
+        latest_snap = snaps[-1] if snaps else {}
+        stock_latest = next((s for s in latest_snap.get("stocks", []) if s.get("ticker") == ticker), {})
         ctx = full_ticker_context(ticker, snaps)
-        acc = ctx["accumulation"]
         spon = ctx["sponsorship"]
 
         col1, col2, col3 = st.columns(3)
-        col1.metric("連買天數 Streak",    f"{acc['streak']}日")
-        col2.metric("累計買超 Net Total",  f"{acc['net_cumulative']:+,}張")
+        col1.metric("連買天數 Streak",    f"{_stock_streak(stock_latest)}日")
+        col2.metric("累計買超 Net Total",  f"{_stock_net_accumulation(stock_latest):+,}張")
         col3.metric("贊助持續 Sponsor",   f"{spon['persistence_score']:.0%}")
 
         st.markdown("<br>", unsafe_allow_html=True)

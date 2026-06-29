@@ -135,7 +135,8 @@ def _empty_velocity(ticker: str) -> dict[str, Any]:
 
 def _tail_positive_streak(values: list[Any]) -> int:
     """Consecutive strictly-positive values at the tail (None breaks nothing
-    until a real non-positive value is hit — mirrors accumulation_velocity)."""
+    until a real non-positive value is hit — mirrors accumulation_velocity).
+    用於 fii_consecutive_buy_days 等指標的「透明缺日」版本。"""
     streak = 0
     for v in reversed(values):
         if v is not None and v > 0:
@@ -143,6 +144,32 @@ def _tail_positive_streak(values: list[Any]) -> int:
         elif v is not None:
             break
     return streak
+
+
+def _strict_tail_streak(values: list[Any]) -> int:
+    """嚴格連續尾部正值 — 任何 None 或非正值都中斷。
+    用於 main_force_strict_streak_days:確保「連 N 日」是真的 N 個交易日不間斷。
+    與 _tail_positive_streak 對比:後者把 None(缺日)視為透明,容易誤導。"""
+    streak = 0
+    for v in reversed(values):
+        if v is not None and v > 0:
+            streak += 1
+        else:
+            break
+    return streak
+
+
+def _positive_count_in_window(values: list[Any]) -> int:
+    """窗口內正值天數(忽略 None,不要求連續)。
+    用於 main_force_positive_days_in_window:回答「過去 N 個交易日內有幾天主力買超」,
+    缺日不計、不破壞計數。"""
+    return sum(1 for v in values if v is not None and v > 0)
+
+
+def _window_sum(values: list[Any]) -> int:
+    """窗口內 mf_buy 累計(忽略 None)。
+    用於 net_accumulation_in_window:回答「過去 N 個交易日主力買超累計多少張」。"""
+    return int(sum(v for v in values if v is not None))
 
 
 def temporal_enrich(
@@ -156,18 +183,26 @@ def temporal_enrich(
     streak, then adds volume and FII series metrics. All inputs come from the
     prior snapshot chain plus today's record → deterministic and replay-safe.
     """
-    seq: list[dict[str, Any]] = []
+    # seq_present:只含 ticker 真的有出現的快照(用於 velocity/acceleration 等需「真資料」的計算)
+    # seq_windowed:窗口內每個快照都有一格(缺日為 None,用於計算「窗口內買超天數」「窗口內累計」)
+    seq_present: list[dict[str, Any]] = []
+    seq_windowed: list[dict[str, Any] | None] = []
     for snap in (prior_snap_objects or []):
+        found = None
         for s in snap.get("stocks", []):
             if s.get("ticker") == ticker:
-                seq.append(s)
+                found = s
                 break
-    seq.append(today_rec)
+        seq_windowed.append(found)   # None 表示當日 ticker 沒進 universe
+        if found is not None:
+            seq_present.append(found)
+    seq_windowed.append(today_rec)
+    seq_present.append(today_rec)
 
-    av = accumulation_velocity(ticker, seq)
+    av = accumulation_velocity(ticker, seq_present)
 
     # Volume series (oldest→newest, real values only)
-    vols = [r.get("volume") for r in seq if r.get("volume") is not None]
+    vols = [r.get("volume") for r in seq_present if r.get("volume") is not None]
     vol5 = (sum(vols[-5:]) / len(vols[-5:])) if vols else None
     today_vol = today_rec.get("volume")
     vol_ratio = (today_vol / vol5) if (today_vol and vol5) else None
@@ -180,16 +215,36 @@ def temporal_enrich(
         else:
             break
 
-    # FII consecutive net-buy days (tail)
-    fii_streak = _tail_positive_streak([r.get("fii_net_buy") for r in seq])
+    # FII consecutive net-buy days (tail) — 用 _tail_positive_streak(透明缺日語意,
+    # 與既有定義一致;只用 present 序列以維持原本行為)
+    fii_streak = _tail_positive_streak([r.get("fii_net_buy") for r in seq_present])
 
-    # Main-force buy-super series (last 5 real obs) — F(n) > F(n-1)检视用
-    mf_trend = [r.get("main_force_buy") for r in seq[-5:] if r.get("main_force_buy") is not None]
+    # Main-force buy-super series (last 5 real obs) — F(n) > F(n-1)檢視用
+    mf_trend = [r.get("main_force_buy") for r in seq_present[-5:]
+                if r.get("main_force_buy") is not None]
+
+    # ─── 1.8.0 新增三個衍生欄位(寫回 snapshot,viewer 直接讀)──────────────
+    # 用 seq_windowed(含 None 缺日)計算:
+    # main_force_strict_streak_days:嚴格連續尾部正值(任何 None 或非正值都中斷)
+    #   → 5880 過去 4 個交易日不間斷主力買超 = 4
+    # main_force_positive_days_in_window:窗口內有買超的天數(忽略缺日)
+    #   → 5880 過去 20 天有 13 天主力買超
+    # net_accumulation_in_window:窗口內主力買超累計(缺日當 0)
+    mf_window = [r.get("main_force_buy") if r is not None else None for r in seq_windowed]
+    strict_streak = _strict_tail_streak(mf_window)
+    positive_days = _positive_count_in_window(mf_window)
+    net_accum = _window_sum(mf_window)
 
     return {
         "velocity_3d":                 av["velocity_3d"],
         "acceleration":                av["acceleration"],
-        "main_force_consecutive_days": av["streak"],
+        # === 1.8.0:三個明確命名的衍生欄位(取代舊 main_force_consecutive_days)===
+        "main_force_strict_streak_days":      strict_streak,
+        "main_force_positive_days_in_window": positive_days,
+        "net_accumulation_in_window":         net_accum,
+        # === 兼容別名 — paper_trading 等下游消費者用舊名 ===
+        # 保留 main_force_consecutive_days = strict 語意(嚴格連續),向後相容
+        "main_force_consecutive_days": strict_streak,
         "fii_consecutive_buy_days":    fii_streak,
         "volume_5d_avg":               round(vol5, 2) if vol5 is not None else None,
         "volume_ratio":                round(vol_ratio, 3) if vol_ratio is not None else None,

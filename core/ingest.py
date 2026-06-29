@@ -29,7 +29,14 @@ from core.hashing import canonical_sha256
 from core.market_context import weakening_profile, temporal_enrich
 
 
-SCHEMA_VERSION = "1.7.0"
+SCHEMA_VERSION = "1.8.0"
+# 1.8.0 (2026-06-29): 寫回前後端一致的衍生欄位 + lookback 5→20。
+#   - rename main_force_consecutive_days → main_force_strict_streak_days(語意更精確:嚴格連續、缺日視為中斷)
+#   - 新增 main_force_positive_days_in_window(窗口內買超天數,缺日透明)
+#   - 新增 net_accumulation_in_window(窗口內主力買超累計)
+#   - viewer 直接讀這些欄位,不再 render-time 重算(根除 14 vs 4 等不一致)。
+#   - config.lookback_window_days 5 → 20。
+#   舊 1.7.0 快照走 legacy-epoch-clean(hash 鎖定,不重 replay)。
 CORE_VERSION = "core@0.1.0-p3a"
 
 
@@ -160,6 +167,10 @@ def _abstain_stock_record(ticker: str, raw: dict, has_branches: bool) -> dict:
         "top5_branches":               raw.get("top5_branches", []),
         "main_force_cost":             raw.get("avg_buy_cost"),
         "main_force_consecutive_days": None,
+        # 1.8.0 新增三個衍生欄位 — abstain 時也填 None 維持 schema 完整性
+        "main_force_strict_streak_days":      None,
+        "main_force_positive_days_in_window": None,
+        "net_accumulation_in_window":         None,
         "main_force_volume_trend":     [],
         "volume_increasing_streak":    None,
         "top5_concentration":          None,
@@ -324,6 +335,11 @@ def ingest(
         _te = temporal_enrich(ticker, prior_snap_objects or [], rec)
         rec["velocity_3d"]                 = _te["velocity_3d"]
         rec["acceleration"]                = _te["acceleration"]
+        # 1.8.0:三個明確命名的衍生欄位(取代過去單一含糊的 main_force_consecutive_days)
+        rec["main_force_strict_streak_days"]      = _te["main_force_strict_streak_days"]
+        rec["main_force_positive_days_in_window"] = _te["main_force_positive_days_in_window"]
+        rec["net_accumulation_in_window"]         = _te["net_accumulation_in_window"]
+        # 兼容欄位:舊名 = strict 語意,讓 paper_trading/golden 等下游無感升級
         rec["main_force_consecutive_days"] = _te["main_force_consecutive_days"]
         rec["fii_consecutive_buy_days"]    = _te["fii_consecutive_buy_days"]
         rec["volume_5d_avg"]               = _te["volume_5d_avg"]

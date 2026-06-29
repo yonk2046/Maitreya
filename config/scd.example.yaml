@@ -54,7 +54,7 @@ storage:
 # === Temporal Architecture (see TEMPORAL_ARCHITECTURE.md) ===
 # All defaults conservative; do NOT encode alpha here. Adjust only after P4 backtest.
 temporal:
-  lookback_window_days: 5             # how many prior snapshots feed into temporal_state
+  lookback_window_days: 20            # how many prior snapshots feed into temporal_state (1.8.0: 5→20 配合新衍生欄位 main_force_positive_days_in_window / net_accumulation_in_window;前/後端統一窗口)
   min_velocity_samples: 2             # below this -> abstain on velocity
   min_acceleration_samples: 3         # below this -> abstain on acceleration
   ema_lookbacks: [3, 5]               # which EMAs to compute (in score_tree.root.temporal)
