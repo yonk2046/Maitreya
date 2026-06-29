@@ -431,6 +431,12 @@ def _stock_buy_days_in_window(stock: dict) -> int:
     return int(v) if v is not None else 0
 
 
+def _stock_buy_days_in_window_or_none(stock: dict) -> int | None:
+    """同 _stock_buy_days_in_window,但欄位完全缺失(1.7.0 舊快照)時回 None,
+    讓 viewer 顯示「—」而不是 0/20(避免明天前看起來像「全部標的窗口都沒買」)。"""
+    return stock.get("main_force_positive_days_in_window")
+
+
 def _stock_net_accumulation(stock: dict) -> int:
     """過去 lookback_window_days 內主力買超累計(張)。1.7.0 兼容退回 weakening.net_cumulative。"""
     v = stock.get("net_accumulation_in_window")
@@ -1089,7 +1095,7 @@ def _render_strengthening(snaps: list[dict]) -> None:
             "現價": f"NT${price:,.2f}" if price else "—",
             "漲跌": f"{chg:+.2f}%" if chg is not None else "—",
             "連買(日)": streak,
-            "窗口買(日)": _stock_buy_days_in_window(stock),
+            "窗口買(日)": _stock_buy_days_in_window_or_none(stock),  # 1.7.0 缺欄位顯示「—」
             "累計(張)": net,
             "速度(張/日)": round(vel) if vel is not None else None,
             "贊助分": round(spon_score, 2),
@@ -1383,7 +1389,7 @@ def _render_persistent_accumulation(snaps: list[dict]) -> None:
             "名稱": name,
             "動能": mom_txt,
             "累計(張)": _stock_net_accumulation(stock),
-            "買超(日)": _stock_buy_days_in_window(stock),
+            "買超(日)": _stock_buy_days_in_window_or_none(stock),  # 1.7.0 缺欄位顯示「—」
             "主力分點": spon.get("top_persistent_broker") or "—",
             "分點(日)": spon.get("top_broker_days") or 0,
             "成本": f"NT${cost:,.2f}" if cost else "—",
@@ -1575,8 +1581,11 @@ def _render_temporal_chains(snaps: list[dict]) -> None:
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("連買天數 Strict",  f"{_stock_streak(stock_latest)}日",
                     help="嚴格連續尾部買超天數(任何缺日或賣超皆中斷)")
-        col2.metric("窗口買超 Window",  f"{_stock_buy_days_in_window(stock_latest)}/20",
-                    help="過去 20 個交易日內主力買超天數(鬆語意,缺日不計但不中斷)")
+        _win_v = _stock_buy_days_in_window_or_none(stock_latest)
+        col2.metric("窗口買超 Window",
+                    f"{_win_v}/20" if _win_v is not None else "—",
+                    help="過去 20 個交易日內主力買超天數(鬆語意,缺日不計但不中斷)。"
+                         "舊 1.7.0 快照無此欄位,顯示「—」;明日 pipeline 跑出 1.8.0 即生效。")
         col3.metric("累計買超 Net",      f"{_stock_net_accumulation(stock_latest):+,}張",
                     help="20 天窗口內主力買超累計")
         col4.metric("贊助持續 Sponsor", f"{spon['persistence_score']:.0%}")
