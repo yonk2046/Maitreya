@@ -2229,8 +2229,14 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         chg_col   = "#52B788" if (chg or 0) > 0 else ("#E05C7A" if (chg or 0) < 0 else "#6B8EAA")
         streak_n  = e.streak or 0
 
-        # Card + badge classes
-        tier_l = e.tier.lower()
+        # Card + badge classes — P2.6 action-aware label (可買進/增強/中)
+        _dt      = _golden_mod.display_tier(
+            e, weak_map.get(e.ticker, {}).get("severity", "none"))
+        _dt_css  = {_golden_mod.DTIER_BUY: "prime",
+                    _golden_mod.DTIER_STRENGTHEN: "qualified",
+                    _golden_mod.DTIER_MID: "strong"}[_dt]
+        _dt_zh   = _golden_mod.DTIER_ZH[_dt]
+        _dt_icon = _golden_mod.DTIER_ICON[_dt]
         if near_miss:
             card_cls = "gc-card gc-qualified"
             badge_cls = "gc-badge gc-badge-qualified"
@@ -2238,13 +2244,11 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         elif is_new:
             card_cls = "gc-card gc-new"
             badge_cls = "gc-badge gc-badge-new"
-            tier_sym = {"prime": "★", "strong": "●", "qualified": "◦"}.get(tier_l, "◦")
-            badge_txt = f"✦ 新進 {tier_sym}{e.tier.upper()}"
+            badge_txt = f"✦ 新進 {_dt_icon}{_dt_zh}"
         else:
-            card_cls = f"gc-card gc-{tier_l}"
-            badge_cls = f"gc-badge gc-badge-{tier_l}"
-            tier_sym = {"prime": "★", "strong": "●", "qualified": "◦"}.get(tier_l, "◦")
-            badge_txt = f"{tier_sym} {e.tier.upper()}"
+            card_cls = f"gc-card gc-{_dt_css}"
+            badge_cls = f"gc-badge gc-badge-{_dt_css}"
+            badge_txt = f"{_dt_icon} {_dt_zh}"
 
         # ── Weakening cross-check pill (display-only) ────────────────────
         _wk = weak_map.get(e.ticker)
@@ -2631,6 +2635,16 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         for e in all_entries
     }
 
+    # P2.6: action-aware plain-language tier (可買進/增強/中). Logic in core.golden.
+    dtier_of: dict[str, str] = {
+        e.ticker: _golden_mod.display_tier(
+            e, weak_map.get(e.ticker, {}).get("severity", "none"))
+        for e in all_entries
+    }
+    _buy_n = sum(1 for v in dtier_of.values() if v == _golden_mod.DTIER_BUY)
+    _str_n = sum(1 for v in dtier_of.values() if v == _golden_mod.DTIER_STRENGTHEN)
+    _mid_n = sum(1 for v in dtier_of.values() if v == _golden_mod.DTIER_MID)
+
     new_entrants = sorted(
         [e for e in all_entries if e.ticker in _new_entrant_tickers
          and action_of[e.ticker] != _golden_mod.ACTION_WEAKENING],
@@ -2654,7 +2668,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
     # ── Summary metric strip — action-first (P2) ─────────────────────────
     _metric_strip([
         ("黃金總覽 Total", str(prime_n + strong_n + qual_n),
-         f"★{prime_n} ●{strong_n} ◦{qual_n}", "val-cyan"),
+         f"🟢可買進{_buy_n} ◆增強{_str_n} ●中{_mid_n}", "val-cyan"),
         ("🟢 可執行",   str(_n_of[_golden_mod.ACTION_EXECUTABLE]),    "價格在保守錨容忍內", "val-green"),
         ("🟡 等回檔",   str(_n_of[_golden_mod.ACTION_WAIT_PULLBACK]), "結構好、價格延伸",   "val-amber"),
         ("🔵 資料待補", str(_n_of[_golden_mod.ACTION_DATA_PENDING]),  "SKELETON/缺錨點",   "val-cyan"),
@@ -2670,7 +2684,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
     if total_n == 0:
         bullets.append("目前黃金名單無符合標的，需要更多歷史快照積累。")
     else:
-        bullets.append(f"本日黃金名單共 {total_n} 檔，其中 PRIME {prime_n} / STRONG {strong_n} / QUALIFIED {qual_n}。")
+        bullets.append(f"本日黃金名單共 {total_n} 檔，其中 🟢可買進 {_buy_n} / ◆增強 {_str_n} / ●中 {_mid_n}。可買進＝結構強且現價在主力成本5%內。")
     if new_entrants:
         tickers_s = "、".join(f"{e.ticker} {e.name}" for e in new_entrants[:3])
         suffix = f"等{len(new_entrants)}檔" if len(new_entrants) > 3 else ""
@@ -2769,8 +2783,11 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         # Build scout cards HTML
         scout_cards = []
         for e in near_sorted:
-            tier_l   = e.tier.lower()
-            tier_sym = {"prime": "★", "strong": "●", "qualified": "◦"}.get(tier_l, "◦")
+            # near-miss failed a gate → never 可買進; label by conviction only
+            _sdt = (_golden_mod.DTIER_STRENGTHEN if e.conviction >= _golden_mod.TIER_STRONG
+                    else _golden_mod.DTIER_MID)
+            tier_sym = _golden_mod.DTIER_ICON[_sdt]
+            _sdt_zh  = _golden_mod.DTIER_ZH[_sdt]
             conv_pct = int(e.conviction * 100)
             # Which gate(s) are missing?
             all_gates = ["G1", "G2", "G3", "G4", "G5"]
@@ -2785,7 +2802,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
                 f'<div class="g5-scout-head">'
                 f'<span class="g5-scout-ticker">{e.ticker}</span>'
                 f'<span class="g5-scout-name">{e.name}</span>'
-                f'<span class="g5-scout-badge">{tier_sym} {e.tier.upper()}</span>'
+                f'<span class="g5-scout-badge">{tier_sym} {_sdt_zh}</span>'
                 f'<span style="font-size:11px;padding:1px 7px;border-radius:8px;'
                 f'background:{state_col}20;color:{state_col};border:1px solid {state_col}50;margin-left:6px;">'
                 f'{e.sm_state_zh}</span>'

@@ -766,3 +766,38 @@ def action_group(entry: "GoldenEntry", weakening_severity: str = "none") -> str:
     if price <= anchor * _cost_safety_cfg()["max_premium_ratio"]:
         return ACTION_EXECUTABLE
     return ACTION_WAIT_PULLBACK
+
+
+# ── Display tier (P2.6) — plain-language, action-aware label ───────────────────
+# Yonki 2026-07-01: replace PRIME / STRONG / QUALIFIED on the golden cards with
+# 可買進 / 增強 / 中.  The key rule: 「可買進」must mean *actually buyable*, so it
+# requires PRIME-level conviction AND an executable price (≤ cost×1.05) AND no
+# weakening.  A structurally-strong but price-extended name (e.g. 國巨 trading
+# +17% over main-force cost) therefore shows 增強·等回檔 — never 可買進.
+#
+# This is display-only and derived from existing conviction + action_group; it
+# does NOT change gates, conviction, the snapshot tier field, or replay hashes.
+DTIER_BUY        = "buy"          # 可買進
+DTIER_STRENGTHEN = "strengthen"   # 增強
+DTIER_MID        = "mid"          # 中
+
+DTIER_ZH    = {DTIER_BUY: "可買進", DTIER_STRENGTHEN: "增強", DTIER_MID: "中"}
+DTIER_EN    = {DTIER_BUY: "Buy Zone", DTIER_STRENGTHEN: "Strengthening", DTIER_MID: "Neutral"}
+DTIER_COLOR = {DTIER_BUY: "#F4C842", DTIER_STRENGTHEN: "#52B788", DTIER_MID: "#7EB8D4"}
+DTIER_ICON  = {DTIER_BUY: "🟢", DTIER_STRENGTHEN: "◆", DTIER_MID: "●"}
+
+
+def display_tier(entry: "GoldenEntry", weakening_severity: str = "none") -> str:
+    """Action-aware plain-language tier for the viewer (P2.6).
+
+    Returns one of DTIER_BUY / DTIER_STRENGTHEN / DTIER_MID.
+      可買進 : PRIME-level conviction AND price executable (≤cost×1.05) AND not weakening
+      增強   : otherwise strong structure (conviction ≥ TIER_STRONG)
+      中     : gate-passing but lower conviction
+    """
+    ag = action_group(entry, weakening_severity)
+    if ag == ACTION_EXECUTABLE and entry.conviction >= TIER_PRIME:
+        return DTIER_BUY
+    if entry.conviction >= TIER_STRONG:
+        return DTIER_STRENGTHEN
+    return DTIER_MID

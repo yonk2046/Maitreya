@@ -46,9 +46,15 @@ def fetch_volume_top20():
         name  = str(item.get("Name") or item.get("股票名稱", "")).strip()
         vol   = parse_int_safe(item.get("TradeVolume") or item.get("成交股數", 0))
         close = parse_float_safe(item.get("ClosingPrice") or item.get("收盤價", 0))
+        # TWSE "Change" (漲跌價差) is the ABSOLUTE NT$ move, not a percentage.
+        # Storing it directly as chgPct made 1000+ NT$ stocks (e.g. 國巨 2327,
+        # +100 NT$ ≈ +9.6%) read as "100%". Convert to a real percent here.
         chg   = parse_float_safe(item.get("Change") or item.get("漲跌價差", 0))
+        prev_close = close - chg
+        chg_pct = round(chg / prev_close * 100, 2) if prev_close else 0.0
         if code and not code.startswith("00"):  # filter ETFs
-            rows.append({"code": code, "name": name, "todayVol": vol, "close": close, "chgPct": chg})
+            rows.append({"code": code, "name": name, "todayVol": vol, "close": close,
+                         "chgPct": chg_pct, "chgAmt": chg})
     log(f"[twse] MI_INDEX20: {len(rows)} non-ETF stocks (tradingDate={trading_date})")
     return rows, trading_date
 

@@ -37,8 +37,9 @@ def _kw(**over):
 
 def test_priority_order_memory_first():
     out = build_branch_fetch_list(**_kw(prior_high_net=["9999"], cross=["1111"]))
-    assert out[:3] == MEMORY_ANCHORS           # 記憶體 anchors lead
-    assert out[3:11] == TIER_A                  # then Tier-A
+    _m = len(MEMORY_ANCHORS)
+    assert out[:_m] == MEMORY_ANCHORS                    # 記憶體 anchors lead
+    assert out[_m:_m + len(TIER_A)] == TIER_A            # then Tier-A
     assert "9999" in out and "1111" in out
 
 

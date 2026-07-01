@@ -22,7 +22,10 @@ sys.path.insert(0, TOOLS_DIR)
 
 # 記憶體相關保證群組 — always fetch branch data for these regardless of whether
 # they appear in the day's rankings (mirrors TIER_A_ANCHORS). 華邦電 / 南亞科 / 力成.
-MEMORY_ANCHORS = ["2344", "2408", "6239"]
+# 2026-07-01: added 國巨 2327 / 中石化 1314 — both fell out of the top-40 分點
+# fetch and went stale (國巨 mf=8836 repeated 6/18→6/30, inflating streak/spon).
+# Anchoring keeps their branch data fresh so golden isn't fed duplicate days.
+MEMORY_ANCHORS = ["2344", "2408", "6239", "2327", "1314"]
 
 
 def _prior_priority_from_snapshot(reports_dir, top_net=12):
