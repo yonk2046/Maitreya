@@ -41,23 +41,31 @@ if ! git rebase --autostash origin/main; then
     exit 1
 fi
 
-# ── 1.5 Skip if the backup (GHA) already produced today's snapshot ─────────
-# Mac asleep at 19:00 → launchd fires this on wake, possibly AFTER the GHA
-# backup ran at 20:00. Without this guard we'd regenerate the same date with
-# different content (supersede churn = the race in another form).
+# ── 1.5 Skip only if today's snapshot is already PUBLISHED on origin/main ──
+# GUARD FIX 2026-07-02: the old guard checked local file existence, so a
+# stray scheduler / manual `make daily` (which does NOT push) tripped it —
+# the snapshot sat on disk, this script exited "nothing to do", and GitHub /
+# Streamlit never got the data. "Done" now means: the file is on origin/main
+# (freshly fetched in step 1). A local-only snapshot is instead published
+# as-is (no regeneration → no supersede churn).
 TODAY_TPE=$(TZ=Asia/Taipei date +%F)
-if [ -f "reports/${TODAY_TPE}.json" ]; then
-    echo "[daily_and_push] reports/${TODAY_TPE}.json already exists (GHA backup ran first?) — nothing to do"
+SNAP="reports/${TODAY_TPE}.json"
+if git cat-file -e "origin/main:${SNAP}" 2>/dev/null; then
+    echo "[daily_and_push] ${SNAP} already on origin/main (GHA backup ran first?) — nothing to do"
     exit 0
 fi
 
-# ── 2. Market pulse (non-blocking: fails on non-trading days) ───────────────
-python3 tools/fetch_market_pulse.py || echo "[daily_and_push] fetch_market_pulse failed (non-trading day?)"
+if [ -f "${SNAP}" ]; then
+    echo "[daily_and_push] ${SNAP} exists locally but NOT on origin/main (stray run without push?) — skipping regeneration, publishing existing artifacts"
+else
+    # ── 2. Market pulse (non-blocking: fails on non-trading days) ───────────
+    python3 tools/fetch_market_pulse.py || echo "[daily_and_push] fetch_market_pulse failed (non-trading day?)"
 
-# ── 3. Daily pipeline — failure ABORTS, we do not commit suspect data ──────
-if ! python3 -m tools.daily; then
-    echo "[daily_and_push] ❌ tools.daily failed — NOT committing. Check reports/_daily_logs/."
-    exit 1
+    # ── 3. Daily pipeline — failure ABORTS, we do not commit suspect data ──
+    if ! python3 -m tools.daily; then
+        echo "[daily_and_push] ❌ tools.daily failed — NOT committing. Check reports/_daily_logs/."
+        exit 1
+    fi
 fi
 
 # ── 4. Commit and push (retry on race with the GHA backup) ─────────────────
