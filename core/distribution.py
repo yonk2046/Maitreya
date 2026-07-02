@@ -6,8 +6,9 @@ Purpose
 Surfaces sell-side signals (賣超) that are already fetched into
 data/today.json / data/branches/*.json (and preserved in
 reports/_raw_archive/<date>/) but were never wired into the canonical
-schema or any scoring module. See PROJECT_STATUS.md "已知技術債" for the
-finding that prompted this layer.
+schema or any scoring module. (The audit finding that prompted this layer
+was documented in the old PROJECT_STATUS.md "已知技術債", since merged into
+ARCHITECTURE.md.)
 
 Architectural contract — READ BEFORE EDITING
 ────────────────────────────────────────────────────────────────────────

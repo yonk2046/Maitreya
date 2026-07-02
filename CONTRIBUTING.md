@@ -1,7 +1,9 @@
 # Contributing to SCD Engine
 
-> Status as of 2026-05-26: **P3a-Hardening** — replay legitimacy, WORM, and
-> schema enforcement are higher priority than scoring expansion. Read
+> Status as of 2026-07-02: **P3b unlocked**（Yonki 2026-06-24 簽核）— scoring
+> work and new snapshot fields are allowed; changing *existing* snapshot
+> fields still requires a schema bump + replay safety. Current phase state
+> lives in the latest `MAITREYA_HANDOFF_*.md`. Read
 > [docs/REPLAY.md](docs/REPLAY.md) first if you haven't.
 
 ## Project layout & path quirk
@@ -111,18 +113,14 @@ make verify-index                     # contracts test only (no write)
   must equal the canonical hash recomputed from the file on disk. The
   supersedes chain links every history entry forward and backward.
 
-## What's GATED until hardening is signed off
+## Scoring status（updated 2026-07-02）
 
-- Any scoring logic (Stage-1 / Stage-2 / Stage-3 / composite weights).
-- Anything that writes `tier != "IGNORE"`.
-- Anything that fills `eligible_count > 0`.
-- Anything that activates gates G1/G2/G3.
-- Episode lifecycle (start/update/resolve).
-- Regime detection (currently stub_v0).
-
-Until [scd-priority-replay-first] is lifted, the system's value is being a
-trustworthy archive of replayable temporal market memory. Scoring comes
-*after* enough history accumulates with provably airtight chain-of-custody.
+The old "scoring GATED / tier must stay IGNORE" rule was lifted on
+2026-06-24 (P3b sign-off). `core/golden.py` computes real
+prime/strong/qualified tiers live (viewer + backtest); ingest still writes
+abstained values (`tier="IGNORE"`, `composite_score=0`) — writing real
+scores back into snapshots is an optional formal step that requires a
+schema bump. See the latest `MAITREYA_HANDOFF_*.md` before touching this.
 
 ## Adding a new audit event
 

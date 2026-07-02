@@ -394,7 +394,7 @@ python -m tools.replay --recent 5 --check-only --strict
 
 ## 16. 與其他文件交叉指引
 
-- 為何需要 replay → [AUDIT_v1.0.md](AUDIT_v1.0.md) §3 F1-F7、§5.3
+- 為何需要 replay → [AUDIT_v1.0.md](archive/AUDIT_v1.0.md) §3 F1-F7、§5.3
 - 分數規則 → [SCORING_RUBRIC.md](SCORING_RUBRIC.md) (本階段不變)
 - Schema 細節 → [CANONICAL_SCHEMA.md](CANONICAL_SCHEMA.md) v1.4.0
 - AI 不可介入 → [AI_GOVERNANCE.md](AI_GOVERNANCE.md) — AI 不可作為 replay 路徑的一部分

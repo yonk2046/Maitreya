@@ -5,7 +5,7 @@ Reads N historical snapshots, extracts leaf raw_inputs (from score_tree),
 computes Pearson / Spearman / mutual-information correlations, emits report.
 
 This tool is OBSERVATIONAL. It does not modify scoring rules or factor weights.
-See docs/CORRELATION_REPORT.md for usage philosophy.
+See docs/archive/CORRELATION_REPORT.md for usage philosophy.
 
 Usage:
     python -m tools.correlation_analyzer \\
@@ -153,7 +153,7 @@ def emit_markdown_report(pearson, spearman, mi, counts, out_path: pathlib.Path):
     if not pairs:
         lines.append("| _(none)_ | | | | | |")
     lines.append("")
-    lines.append("Interpretation rules (see docs/CORRELATION_REPORT.md §2.4):")
+    lines.append("Interpretation rules (see docs/archive/CORRELATION_REPORT.md §2.4):")
     lines.append("- |r| > 0.7  → suspect redundancy; require P4 IC test before removal")
     lines.append("- 0.5 < |r| ≤ 0.7 → moderate overlap; consider orthogonalization in P4")
     lines.append("- |r| ≤ 0.5 → independent")

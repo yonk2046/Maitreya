@@ -1,397 +1,202 @@
-# Maitreya — Architecture Reference
-**For AI assistants and human reviewers joining this project.**  
-Last updated: 2026-05-30 | Current phase: P3a-Hardening (P3b gated)
+# Maitreya — Architecture Reference（架構參考）
 
-> *彌勒觀市，不測，只記。*  
-> Maitreya watches the market. It does not predict. It only remembers.
-
----
-
-## 0. What This System Does (30-second version)
-
-Maitreya is a **Taiwan stock market observation terminal**. It ingests daily broker-desk ("分點") data from multiple upstream sources, runs it through a multi-layer scoring pipeline, and renders a bilingual (ZH/EN) Streamlit dashboard for human review.
-
-**Critical constraint throughout the entire codebase:** Pure observation only. No trading signals, no buy/sell recommendations. Every output is a descriptive label derived deterministically from inputs.
-
-The system answers one question: *which stocks are exhibiting sustained, institutional-grade accumulation behaviour across multiple time windows?*
+> *彌勒觀市，不測，只記。*
+> **Maitreya**（彌勒）= TWSE 股票的決定論狀態偵測引擎（SCD = Stock Condition Detection）。
+>
+> 最後更新：2026-07-02（合併自舊 ARCHITECTURE.md 2026-05-30 + PROJECT_STATUS.md 2026-06-04）
+> ⚠️ **Phase / 進度狀態一律以最新的 `MAITREYA_HANDOFF_*.md` 為準**——本文件只寫「不常變的結構性知識」，避免再次過期。
 
 ---
 
-## 1. Repo Layout
+## 0. 系統一句話
+
+每個交易日自動抓取主力分點＋外資＋投信資料，計算籌碼動能，以可重現（deterministic replay）方式存入不可篡改的歷史快照，供波段決策參考。**同一份輸入（raw + config + lookback）永遠產同一份 snapshot。**
+
+**哲學**：籌碼 > 心理 > 消息 > 預測。不預測，只偵測「主力正在做什麼」的客觀狀態。
+**紀律**：連買 <3 日不進場；現價 ≤ 主力成本 ×1.05；空手是獲利的一部分；止損/TP 由籌碼定義，價格只是觸發點。
+
+---
+
+## 1. 架構四層
 
 ```
-SCD engine/                        ← project root
-├── tools/                         ← upstream fetchers (run OUTSIDE Ai stock/)
-│   ├── fetch_daily.py             ← orchestrates Steps 1-9; writes data/today.json
-│   ├── fetch_market_pulse.py      ← TAIEX + TX futures + 三大法人台指期 → data/market_pulse.json
-│   ├── fetch_fubon.py             ← Fubon ZGK broker-desk scraper
-│   ├── fetch_twse.py              ← TWSE open data (T86 institutional flow)
-│   ├── fetch_sinotrade.py         ← Sinotrade branch data (broker-level positions)
-│   └── fetch_tdcc.py              ← TDCC shareholder distribution
+data/adapters/   原始資料 → 標準化 adapter_output（legacy / rollup / tdcc adapter）
+core/            純函數：ingest, scoring(golden), state_machine, market_context,
+                 paper_trading, holdings, confidence, funnel …
+viewer/          Streamlit read-only cockpit（不含業務邏輯，只渲染）
+tools/           CLI：run_pipeline, daily, fetch_*, run_backtest, scan_params, backfill_range
+```
+
+### ⛔ AI_GOVERNANCE 紅線（違反即拒絕）
+
+1. **`viewer/` 不得含業務邏輯**——偵測/計分/分級一律在 `core/` 算，viewer 純渲染。**不得 render-time 重算衍生欄位**，用 helper 讀 snapshot。
+2. 新（會進快照的）欄位走 **schema → core → viewer** 順序，且要 **bump schema + 顧 replay-safety**。
+3. `core/` 不寫死數字門檻 → 放 `config/scd.example.yaml`（策略參數放 `core/strategies.py` dataclass）。
+4. `reports/_raw_archive/<date>/` 是 **WORM，禁改**。`data/` 執行期唯讀，寫入觸發 `WORM_VIOLATION` 中止。
+5. **NEVER 輸出 GitHub token（`ghp_*`）**，不 `git remote -v` 印 URL。
+6. P3b 已解鎖（Yonki 2026-06-24 簽核）——可動 scoring / 新增欄位；改既有快照欄位仍要 bump schema + 顧 replay。
+
+---
+
+## 2. 目錄結構
+
+```
+/Users/yoncky/SCD engine/
+├── tools/fetch_daily.py        上游抓取 orchestrator（Step 1-9），在 Ai stock/ 之外
+│                                輸出 data/today.json + data/branches/<ticker>.json
 │
-├── data/
-│   ├── today.json                 ← latest raw fetch output
-│   ├── market_pulse.json          ← TAIEX / TX futures / 三大法人 snapshot
-│   └── (snapshots/, branches/)   ← rollup raw files; per-ticker branch JSON
-│
-└── Ai stock/                      ← Python package root (add to sys.path)
-    ├── core/                      ← pure-Python intelligence layer (no I/O)
-    │   ├── watchlists.py          ← TIER_A (8 anchors), SECTOR_GROUPS, helpers
-    │   ├── market_context.py      ← 5 stateless observation functions
-    │   ├── funnel.py              ← STEP 5: 5-layer candidate filter
-    │   ├── state_machine.py       ← STEP 6: 9-state lifecycle per ticker
-    │   ├── golden.py              ← STEP 7: Golden Layer v2 (conviction tiers)
-    │   ├── confidence.py          ← STEP 8: 2D confidence × risk profiles
-    │   ├── narrative_engine.py    ← bilingual market narrative text
-    │   ├── market_state.py        ← unified market state (P3d)
-    │   ├── sector_intelligence.py ← sector-level analysis helpers
-    │   ├── ingest.py              ← raw JSON → canonical snapshot schema
-    │   ├── archive.py             ← WORM-style archive writer
-    │   ├── hashing.py             ← SHA-256 provenance sidecar
-    │   └── worm_check.py          ← tamper detection
+└── Ai stock/                   ← 主 repo（git: yonk2046/Maitreya）
+    ├── core/
+    │   ├── ingest.py           snapshot 寫入 + audit_log（SCHEMA_VERSION 在此）
+    │   ├── hashing.py          canonical hash（generated_at 排除；規則見 docs/REPLAY.md §4）
+    │   ├── archive.py          raw 歸檔到 _raw_archive/（WORM）
+    │   ├── worm_check.py       WORM 自查
+    │   ├── golden.py           黃金名單：G1-G5 gates + conviction + action_group()
+    │   │                       + display_tier()（可買進/增強/中）
+    │   ├── market_context.py   時序觀察 + temporal_enrich()（窗口 streak/velocity）
+    │   ├── state_machine.py    時序狀態機（P0.5 改革後版本）
+    │   ├── funnel.py           候選漏斗
+    │   ├── confidence.py       信心×風險 2D 側寫
+    │   ├── holdings.py         持倉判斷 evaluate_holdings()（P/L + A/B 出場警示）
+    │   ├── paper_trading.py    回測引擎 run_backtest()（純函式、no-lookahead）
+    │   ├── strategies.py       策略 A/B v1/v2 參數（dataclass）
+    │   ├── distribution.py     Distribution Intelligence Layer（獨立 sidecar）
+    │   ├── watchlists.py       Tier A 錨點 + 板塊群組
+    │   └── …（narrative_engine, market_state, sector_intelligence, chip_score, resonance）
     │
     ├── data/
-    │   ├── adapters/              ← legacy / rollup / contract adapters
-    │   └── branches/<ticker>.json ← per-ticker Sinotrade branch history
+    │   ├── adapters/           legacy / rollup / tdcc / contract（介面凍結）
+    │   ├── branches/<ticker>.json   Sinotrade 分點（⚠ 無 fetchDate，陳舊問題見 handoff）
+    │   ├── snapshots/          原始 rollup 快照
+    │   └── market_pulse.json   TAIEX / 台指期 / 三大法人
     │
     ├── reports/
-    │   ├── YYYY-MM-DD.json        ← canonical snapshots (one per trading day)
-    │   ├── YYYY-MM-DD.sha256      ← hash sidecars
-    │   ├── index.json             ← supersedes chain + metadata
-    │   └── _raw_archive/<date>/   ← immutable provenance files
+    │   ├── YYYY-MM-DD.json + .sha256    每日 canonical snapshot（WORM）
+    │   ├── index.json                   快照索引（supersedes 鏈）
+    │   ├── backtest/<strategy>_latest.json   每日自動刷新的回測結果
+    │   ├── _raw_archive/<date>/         不可篡改 raw（replay 從這讀）
+    │   └── _daily_logs/                 每日 pipeline log
     │
     ├── tools/
-    │   ├── daily.py               ← daily pipeline orchestrator
-    │   ├── run_pipeline.py        ← single-date ingest entrypoint
-    │   └── temporal/              ← read-only temporal analysis toolkit
-    │       ├── _loader.py         ← CLI-safe snapshot loader (no streamlit)
-    │       ├── streak_analyzer.py
-    │       ├── transition_detector.py
-    │       ├── persistence_ranker.py
-    │       ├── regime_monitor.py
-    │       └── market_flow_monitor.py
+    │   ├── daily.py            每日流程：fetch→pipeline→verify→intel→backtest×4→log
+    │   │                       含 _trading_day_gate（假日跳過）+ _fii_published()（T86 未出跳過）
+    │   ├── run_pipeline.py     單日 ingest
+    │   ├── run_backtest.py     回測 CLI（4 策略）
+    │   ├── backfill_range.py   歷史回補沙盒
+    │   ├── verify_all_replay.py  全量重放驗證（epoch-aware）
+    │   ├── fetch_twse.py / fetch_sinotrade.py / fetch_tdcc.py / fetch_market_pulse.py
+    │   └── temporal/           read-only 時序工具（_loader.py 不得 import streamlit）
     │
     ├── viewer/
-    │   ├── cockpit.py             ← PRIMARY UI — 10-tab dashboard on :8502
-    │   ├── cockpit_v2.py          ← experimental v2 on :8503 (same features)
-    │   ├── app.py                 ← engineering diagnostic viewer on :8501
-    │   ├── data.py                ← Streamlit-aware snapshot loader + cache
-    │   ├── intelligence.py        ← legacy scoring layer (still used by app.py)
-    │   └── metrics.py             ← metric computation helpers
+    │   ├── cockpit.py          ★ 主 UI（:8502）——6 tab：持倉 / 進場機會 / 出場警示 /
+    │   │                       市場全景 / 深度研究 / 模擬績效
+    │   ├── app.py              工程診斷界面（:8501）
+    │   ├── data.py             Streamlit 緩存 loader
+    │   └── metrics.py / intelligence.py（舊，逐步淘汰）
     │
-    ├── tests/                     ← pytest suite
-    ├── Makefile                   ← all entrypoints (see Section 5)
-    └── ARCHITECTURE.md            ← this file
+    ├── schema/canonical_schema.json    ← 版本以檔內為準
+    ├── config/scd.example.yaml         全部門檻（cost_safety 1.05、lookback 20 日等）
+    ├── deploy/                 launchd plist + daily_and_push.sh（主 pipeline）
+    ├── .github/workflows/daily.yml     GHA 備援 pipeline（skip-guard）
+    ├── tests/                  pytest 全套
+    └── Makefile                所有日常操作入口
 ```
 
 ---
 
-## 2. Data Flow
+## 3. 資料流
 
 ```
-Upstream sources
-  Fubon ZGK (broker-desk)
-  TWSE T86 (institutional flow)
-  Sinotrade (branch positions)
-  TDCC (shareholder distribution)
+上游：TWSE(T86/日成交/TAIEX) · Sinotrade 分點 · Fubon ZGK · TDCC 集保
         │
-        ▼
-tools/fetch_daily.py  ─────────────────────────────► data/today.json
-tools/fetch_market_pulse.py ────────────────────────► data/market_pulse.json
+tools/fetch_daily.py ──► data/today.json + data/branches/<ticker>.json
         │
-        ▼
-core/ingest.py  (normalize → canonical schema)
-core/hashing.py (SHA-256 sidecar)
-core/archive.py (WORM write)
+data/adapters/legacy.py ──► adapter_output（contract 驗證）
         │
-        ▼
-reports/YYYY-MM-DD.json   ←  one file per trading day
-reports/index.json        ←  supersedes chain
+core/ingest.py + hashing + archive ──► reports/YYYY-MM-DD.json (+.sha256, WORM raw archive)
         │
-        ▼
-tools/temporal/_loader.py  (CLI-safe multi-snapshot loader)
-viewer/data.py             (Streamlit-cached loader)
+core/market_context.temporal_enrich ──► 窗口欄位寫進快照
         │
-        ├──► core/market_context.py  (stateless, 5 functions)
-        │
-        ├──► core/funnel.py          ─┐
-        ├──► core/state_machine.py    ├─► core/golden.py ──► core/confidence.py
-        │                             │
-        └──► tools/temporal/*  ───────┘  (read-only temporal analysis)
-                │
-                ▼
-        viewer/cockpit.py  (Streamlit, port 8502)
-        10 tabs: Regime / Radar / Strengthening / Failed Breakout /
-                 Accumulation / Rotation / Temporal / Narrative /
-                 ★ Golden Layer / ◈ Confidence & Risk
+        ├─► core/golden.run()（viewer/回測即時算，尚未寫回快照）
+        ├─► core/paper_trading.run_backtest() ──► reports/backtest/*_latest.json
+        └─► viewer/cockpit.py（read-only 渲染）
 ```
 
-**Key rule:** `tools/temporal/_loader.py` must never import streamlit. It's the CLI-safe path. `viewer/data.py` is the Streamlit-cached path. Both load from `reports/`.
+**Key rule**：`tools/temporal/_loader.py` 絕不 import streamlit（CLI-safe 路徑）；`viewer/data.py` 是 Streamlit-cached 路徑。
 
 ---
 
-## 3. The Intelligence Pipeline (STEPS 5–8)
+## 4. 黃金名單引擎（core/golden.py）
 
-Each layer receives snapshots and produces a typed dataclass result. They are designed to be called sequentially, but currently each re-runs the layers below it independently (known duplication — see Section 7).
-
-### STEP 5 — Funnel (`core/funnel.py`)
-
-Five ordered gates. A ticker passes when it clears all gates above its current layer.
-
-```
-DISCOVERY      ← appeared in ≥1 snapshot this window
-OBSERVATION    ← streak ≥ 1 (appeared in last snapshot)
-CONFIRMATION   ← streak ≥ 2 AND net_cumulative > 0
-RISK_WARNING   ← failed_breakout detected
-FAILURE        ← streak = 0 after confirmed status
-```
-
-Public API: `run_all(snaps) → dict[ticker, FunnelResult]`
-
-### STEP 6 — State Machine (`core/state_machine.py`)
-
-Nine lifecycle states, evaluated per ticker over the full snapshot window.
-
-```
-UNDISCOVERED → DISCOVERED → ACCUMULATING → STRENGTHENING
-                                                 │
-                                          DISTRIBUTING (early exit warning)
-                                                 │
-                                          CONFIRMED → EXTENDED → EXITED
-                                                 │
-                                              FAILED
-```
-
-Key state logic:
-- `DISTRIBUTING`: was_strong AND (velocity_negative OR accel_negative)
-- `CONFIRMED`: funnel=confirmation AND streak≥3 AND sponsorship≥0.45
-- `EXTENDED`: confirmed + additional 5 days
-- Transition risk: `low / medium / elevated / critical` (4 levels)
-
-Public API: `run_all(snaps) → dict[ticker, TickerState]`, `state_summary(snaps) → dict`
-
-### STEP 7 — Golden Layer (`core/golden.py`)
-
-Five gates + weighted conviction score → three tier labels.
-
-**Gates:**
-- G1: funnel layer = confirmation
-- G2: SM state ∈ {confirmed, strengthening}
-- G3: sponsorship_score ≥ 0.45
-- G4: transition_risk ≠ critical
-- G5: net_cumulative > 0
-
-**Conviction score** (additive, capped at 1.0):
-streak≥5 +0.40, streak≥3 +0.15, spon≥0.70 +0.30, spon≥0.55 +0.10,
-confirmed +0.15, tier_a +0.10, velocity_pos +0.10, accel_pos +0.05, sector_top3 +0.05
-
-**Tiers:** PRIME ≥ 0.65 · STRONG ≥ 0.40 · QUALIFIED ≥ 0.0
-**Near-miss:** passed exactly 4 of 5 gates
-
-Public API: `run(snaps) → GoldenResult`
-
-`GoldenResult` fields: `date, snapshot_count, prime, strong, qualified, near_miss`
-`GoldenEntry` key fields: `ticker, name, tier, conviction, gates_passed, sponsorship_score, streak, sm_state_zh`
-
-### STEP 8 — Confidence & Risk (`core/confidence.py`)
-
-Two independent 0.0–1.0 scores per ticker → 7 profile codes.
-
-**Confidence** components (additive, capped 1.0):
-streak/10 →max 0.30, sponsorship×0.25, velocity_pos +0.15, accel_pos +0.10,
-in_golden +0.15, conviction×0.05, sector_top3 +0.05, tier_a +0.05
-
-**Risk** components (additive, uncapped before classification):
-sm_base (critical→0.40, elevated→0.25, medium→0.10),
-distributing +0.25, funnel_warning +0.20, failed_breakout +0.20,
-velocity_neg +0.15, accel_strongly_neg +0.10, streak_zero +0.10
-
-**Profile codes:** `high_low, high_medium, high_elevated, mid_low, mid_elevated, low_any, deteriorating`
-
-**Market Risk Temperature** (`MarketRiskTemperature`):
-`temperature = 0.40×elevated_ratio + 0.30×distributing_ratio + 0.30×breadth_risk`
-Levels: `cool / stable / warm / hot / extreme`
-
-Public API: `run(snaps) → ConfidenceResult`
-
-`ConfidenceResult` fields: `date, snapshot_count, market_temperature, profiles (dict), ideal, watch, deteriorating, weak`
-`ConfidenceProfile` key fields: `ticker, name, confidence, risk_score, profile_code, profile_zh, risk_level, risk_zh, sm_state_zh, golden_conviction, streak`
-`MarketRiskTemperature` key fields: `temperature, temperature_level, temperature_zh, temperature_color`
+- **G1-G5 五道 gate** 全過才入名單；**5% 成本鐵則不在 gate 裡**，在 `action_group()` 判（EXECUTABLE vs WAIT_PULLBACK）。
+- **conviction** 加權分（0–1）→ 內部 tier：prime ≥0.65 / strong ≥0.40 / qualified。
+- **前端顯示用 `display_tier()`**：🟢可買進（PRIME + EXECUTABLE + 未轉弱）/ ◆增強 / ●中。純顯示層，不動快照。
+- 門檻數字一律在 `config/scd.example.yaml`，勿信任何文件裡的舊數值（含 docs/SCORING_RUBRIC.md 的 GOLDEN≥85 舊制）。
 
 ---
 
-## 4. Canonical Snapshot Schema
+## 5. 部署與兩條 pipeline（OPS-1）
 
-Each `reports/YYYY-MM-DD.json` has this top-level shape:
-
-```json
-{
-  "date": "YYYY-MM-DD",
-  "universe_size": 30,
-  "schema_version": "2.0",
-  "generated_at": "ISO-8601",
-  "provenance": { "source": "rollup", "canonical_hash": "sha256:..." },
-  "market_regime": { "breadth": 0.62, "avg_chg": 0.38, "vol_index": 1.2 },
-  "stocks": [
-    {
-      "ticker": "2317",
-      "name": "鴻海",
-      "current_price": 185.5,
-      "change_pct": 1.2,
-      "main_force_buy": 3200,
-      "main_force_cost": 182.3,
-      "top5_branches": ["凱基台北", "元大板橋"],
-      "fii_holding_trend_5d": null
-    }
-  ],
-  "audit_log": [...]
-}
-```
-
-`main_force_buy` is in 張 (1張 = 1000 shares). Positive = net buy, negative = net sell.  
-`top5_branches` are broker-desk names from Sinotrade data.
+- **主**：本機 launchd 每交易日 **19:00**（Fubon ZGK ~18:00-18:30 結算後）。
+- **備**：GitHub Actions `daily.yml` 週一~五 **20:00**，含 skip-guard（主已 commit 當日快照則跳過）。
+- **原則：同一時間只有一個來源在 push。** 改 code 後 commit+push，等排程自動跑，別手動觸發 Actions。
+- Viewer 部署：Streamlit Community Cloud，讀 GitHub repo，日常操作見 `RUNBOOK.md`。
+- **GitHub 是 source of truth**；本機/沙箱可能落後，push 前先 `git pull --rebase`。
 
 ---
 
-## 5. Key Make Targets
+## 6. 重要設計決策
+
+| # | 決策 | 理由 |
+|---|------|------|
+| D1 | **Replay first** — deterministic replay 最高優先 | 系統價值是可信賴的歷史記錄，非即時 alpha |
+| D2 | **Raw archive WORM** | 任何 replay 都從 immutable source 重建 |
+| D3 | **generated_at 排除於 canonical hash** | 同日重跑不應改變 hash |
+| D4 | **Scoring 演進走簽核制**（P3b 已於 2026-06-24 解鎖） | 避免不成熟 scoring 污染歷史記錄 |
+| D5 | **UI 不含業務邏輯** — cockpit 只 render | 防止 UI 端偷改造成結果不一致 |
+| D6 | **所有門檻在 config** | 防止不同對話偷改門檻 |
+| D7 | **AI 引用白名單** — CANONICAL_SCHEMA §7 ai_readable_subset | 防止 AI 幻想未計算的指標 |
+| D8 | **MEMORY_ANCHORS 永遠在 fetch** — 常追個股每日必抓分點 | 保持主力成本連續性、防 branches 陳舊 |
+| D9 | **Adapter contract 凍結** | 防止 adapter 介面蔓延 |
+| D10 | **Feature flags 全在 config，預設 OFF** | 行為可稽核、可重現 |
+| D11 | **Cockpit read-only** | viewer 不能污染 archive |
+| D12 | **回測 no-lookahead、次日開盤結算、固定 1 單位** | 解耦選股與下注，杜絕前視偏誤 |
+
+---
+
+## 7. 資料來源
+
+| 來源 | 資料 | 時間 | 入口 |
+|------|------|------|------|
+| TWSE | 個股日成交、TAIEX（MI_INDEX）、T86 三大法人 | 收盤後 ~14:30 | `fetch_twse.py` / `fetch_daily.py` |
+| Sinotrade | 主力分點買超（branches/） | T+1 | `fetch_daily.py`（前 40 + MEMORY_ANCHORS） |
+| Fubon ZGK | 外資分點最終結算 | ~18:00-18:30 | `fetch_daily.py`（19:00 排程原因） |
+| TDCC 集保 | 股東人數（週報，有 lag） | 每週 | `fetch_tdcc.py` |
+
+板塊分類：21 群，基於官方 TWSE/TPEx 產業代碼（sector taxonomy v2）。
+
+---
+
+## 8. 如何從零接手
 
 ```bash
-# UI
-make cockpit              # launch primary dashboard on :8502 (recommended)
-make restart-cockpit      # kill any running streamlit → relaunch :8502
-
-# Daily data pipeline
-make fetch                # upstream fetch → data/today.json
-make fetch-pulse          # TAIEX/TX/三大法人 → data/market_pulse.json
-make daily                # full daily flow: fetch → ingest → verify-all-replay
-
-# Intelligence pipeline (CLI)
-make funnel               # STEP 5: candidate funnel output
-make state-machine        # STEP 6: lifecycle states for all tickers
-make golden               # STEP 7: golden layer (prime/strong/qualified)
-make golden-near-miss     # STEP 7: include near-miss entries
-make confidence           # STEP 8: 2D confidence/risk + market temperature
-
-# Temporal toolkit (read-only)
-make streak-analyze       # persistence rows across snapshot archive
-make transitions          # state transitions across consecutive snapshots
-make market-flow          # regime + capital flow + leadership rotation
-
-# Integrity
-make test                 # full pytest suite
-make verify-replay DATE=YYYY-MM-DD
-make verify-index         # integrity scan over reports/index.json
-make fix-index            # idempotent supersedes-chain repair
+cd "/Users/yoncky/SCD engine/Ai stock"
+git log --oneline -20                # 最近提交
+make verify-all-replay               # 全量重放（沙箱 linux = 等同 GHA）
+make test                            # pytest（沙箱缺 streamlit → --ignore=tests/test_viewer_data.py）
+make cockpit                         # UI :8502（沙箱看不到，在 Mac 開）
 ```
 
----
+閱讀順序：**最新 `MAITREYA_HANDOFF_*.md`** → 本文件 → `RUNBOOK.md` → `CONTRIBUTING.md` → docs/ 各規格。
+歷史 handoff 與已完成的一次性規格在 `docs/handoffs/`、`docs/archive/`。
 
-## 6. Core Design Decisions
+### 環境限制（AI session 必讀）
 
-**A. Pure-function intelligence layer**  
-All of `core/` (except ingest/archive/worm) is stateless and I/O-free. They take `snaps: list[dict]` and return typed dataclasses. This makes them testable without any database or file system. The Streamlit UI is a thin shell on top.
-
-**B. WORM provenance**  
-Once a snapshot is archived, it cannot be modified — only superseded. `reports/index.json` maintains a `supersedes` chain. `worm_check.py` verifies SHA-256 sidecars on startup.
-
-**C. Temporal-first scoring**  
-The system's primary value is *time-series behaviour*, not single-day scores. `streak`, `velocity_3d`, `acceleration`, and `sponsorship_persistence` are multi-day sliding-window metrics. A ticker appearing once with a high score is less interesting than one appearing consistently for 5+ days.
-
-**D. Bilingual output**  
-Every classification label has both `_zh` and `_en` variants in the dataclass. The UI renders both. This is structural — not just translation.
-
-**E. CLI-safe vs Streamlit-safe imports**  
-`tools/temporal/_loader.py` must never import streamlit. Any CLI entrypoint (`-m core.golden`, `make funnel`) must use `_loader.py`, never `viewer/data.py`.
-
-**F. Dataclass field ordering**  
-Python 3.10 dataclasses: all non-default fields must precede all fields with defaults. `float | None` union syntax is used throughout. Two bugs were caused by violating this — always put `field(default_factory=...)` and `= value` fields last.
+- 沙箱**不能 push / 寫 git**；所有 git、fetch 在 Yonki 的 Mac Terminal 跑。
+- 沙箱跑 pytest / verify 前 `export SCD_PROJECT_ROOT="/path/to/SCD engine"`（雙掛載，見 CONTRIBUTING.md）。
+- 沙箱連不到 TWSE / Sinotrade / TDCC。
+- 沙箱刪不掉已追蹤檔 → 用 `git rm`（Mac）。
 
 ---
 
-## 7. Known Architecture Debt
-
-These are documented and intentional trade-offs, not bugs:
-
-| Issue | Location | Impact | Recommended fix |
-|-------|----------|--------|-----------------|
-| `state_machine.run_all()` called 3× per `confidence.run()` | confidence.py | CPU only; mitigated by `@st.cache_data(ttl=120)` | Add optional `sm_result=` param to golden/confidence |
-| `funnel.run_all()` called twice inside confidence (via golden) | confidence.py | Same as above | Pass funnel result through |
-| `accumulation_velocity()` computed independently in funnel, state_machine, confidence | all three | Same data, three passes | Shared `MetricsCache` per ticker |
-| Sector top-3 logic: 3 independent implementations | funnel, state_machine, golden | Slight divergence possible | Add `sector_top3: bool` to `TickerState` |
-| `_is_deteriorating()` re-runs `accumulation_velocity` on prev_records | confidence.py | One extra pass per ticker | Use `sm_state.velocity_3d` directly |
-
----
-
-## 8. Streamlit UI — Tab Map (cockpit.py, :8502)
-
-| # | Tab label | Data source | Key output |
-|---|-----------|-------------|------------|
-| 1 | 📊 市場體制 | `market_context.regime_shift()` | Regime banner, breadth/avg-chg charts |
-| 2 | 🎯 雷達觀察 | `market_context.full_ticker_context()` | Tier A 5-card grid (TSMC, Hon Hai, MediaTek, Delta, Quanta) |
-| 3 | ↑ 轉強訊號 | `full_ticker_context()` streak≥2 | Cards with streak/velocity/sponsorship tags |
-| 4 | ⚠ 假突破 | `failed_breakout_memory()` | Warning cards with breakout date/vol/retreat |
-| 5 | ◉ 持續吸籌 | `sponsorship_persistence()` ≥0.35 | Progress bar + broker info |
-| 6 | ⟳ 資金輪動 | `leadership_rotation()` | Sector flow bars + 5-day trend chart |
-| 7 | ⌛ 時序演化 | raw snapshots | Single-ticker chain view OR multi-ticker heatmap |
-| 8 | 📰 市場敘事 | `narrative_engine.generate()` | Bilingual narrative bullets + themes + entities |
-| 9 | ★ 黃金名單 | `golden.run()` | PRIME/STRONG/QUALIFIED tier cards + near-miss expander |
-| 10 | ◈ 信心風險 | `confidence.run()` | Temperature banner + 2D scatter + profile cards |
-
-Cache strategy: `@st.cache_data(ttl=120)` keyed on `f"{last_date}_{len(snaps)}"` (cheap, no hashing).
-
----
-
-## 9. Phase Roadmap
-
-| Phase | Status | Description |
-|-------|--------|-------------|
-| P3a | ✅ shipped | Core pipeline: ingest → archive → WORM → replay verification |
-| P3a-Hardening | 🔄 in progress | Integrity tests, provenance audit, index repair |
-| P3b | ⏳ gated | Scoring layer: tier / composite_score (currently all IGNORE/0) |
-| P3c | ✅ shipped | Market context: regime + rotation + narrative + watchlists |
-| P3d | ✅ shipped | Unified market state engine |
-| P3e | ✅ shipped | Candidate funnel (STEP 5) + state machine (STEP 6) |
-| P3f | ✅ shipped | Golden Layer v2 (STEP 7) |
-| P3g | ✅ shipped | Confidence & Risk profiles (STEP 8) |
-| P3h (next) | 🔲 planned | STEP 9: AI Commentary layer (narrative from Golden+Confidence) |
-
-P3b requires ≥20 days of snapshot history and explicit sign-off before enabling real scores — currently all tickers carry `tier=IGNORE`, `composite_score=0`.
-
----
-
-## 10. How to Review This Project
-
-### Quick orientation (5 minutes)
-```bash
-cd "SCD engine/Ai stock"
-make golden              # run the full golden layer, read the output
-make confidence          # run confidence/risk, see market temperature
-make cockpit             # launch UI at http://127.0.0.1:8502
-```
-
-### Read these files in order
-1. `core/watchlists.py` — understand the universe (Tier A, sector groups)
-2. `core/market_context.py` — the 5 primitive observation functions
-3. `core/funnel.py` — how candidates are filtered
-4. `core/state_machine.py` — lifecycle state logic
-5. `core/golden.py` — conviction scoring and tier gates
-6. `core/confidence.py` — 2D confidence/risk + market temperature
-7. `viewer/cockpit.py` — how the UI consumes all of the above
-
-### Run the test suite
-```bash
-make test       # full pytest suite
-make test-fast  # quick run
-```
-
-### Things to look for in a review
-- Are the gate thresholds in `golden.py` defensible? (G3: spon≥0.45, PRIME: conviction≥0.65)
-- Is the risk scoring in `confidence.py` well-calibrated? (DISTRIBUTING adds +0.25 risk)
-- Does the state machine's DISTRIBUTING detection catch real distribution early enough?
-- Are there edge cases in `failed_breakout_memory()` with thin-volume days?
-- Is the 3× `state_machine.run_all()` duplication worth fixing before P3h?
-
----
-
-*This document describes the system as of 2026-05-30, after STEP 8 (Confidence & Risk) delivery.*  
-*Next session should start from STEP 9: AI Commentary, or P3a-Hardening sign-off.*
+*本文件為結構性參考。最新進度、已知 bug、待辦一律看最新 handoff。*

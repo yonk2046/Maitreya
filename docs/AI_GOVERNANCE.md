@@ -122,4 +122,4 @@ OUTPUT STRUCTURE:
 
 - 評分如何被決定 → [SCORING_RUBRIC.md](SCORING_RUBRIC.md)
 - AI 可讀的欄位白名單 → [CANONICAL_SCHEMA.md](CANONICAL_SCHEMA.md) §7
-- 為何要這麼嚴 → [AUDIT_FINDINGS.md](AUDIT_FINDINGS.md) §「AI 主觀詮釋造成的 ranking 漂移」
+- 為何要這麼嚴 → [AUDIT_FINDINGS.md](archive/AUDIT_FINDINGS.md) §「AI 主觀詮釋造成的 ranking 漂移」

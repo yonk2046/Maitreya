@@ -262,5 +262,5 @@ python -m tools.replay --all --check-only --parallel 4
 - [CANONICAL_SCHEMA.md](CANONICAL_SCHEMA.md) — 統一資料結構 (v1.2 schema 由 P1 升級)
 - [REPLAY.md](REPLAY.md) — Replay 與重現性規格 (P1 新增)
 - [AI_GOVERNANCE.md](AI_GOVERNANCE.md) — AI 紅線
-- [AUDIT_FINDINGS.md](AUDIT_FINDINGS.md) — 現況不穩定點稽核
-- [AUDIT_v1.0.md](AUDIT_v1.0.md) — v1.0 內部稽核
+- [AUDIT_FINDINGS.md](archive/AUDIT_FINDINGS.md) — 現況不穩定點稽核
+- [AUDIT_v1.0.md](archive/AUDIT_v1.0.md) — v1.0 內部稽核

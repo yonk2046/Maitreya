@@ -1,10 +1,13 @@
 # SCD Engine — 量化評分規則 (Scoring Rubric)
 
+> ⚠️ **已過時（2026-07-02 標記）**：本文件是 2026-05-22 的規格設計稿。實際上線的評分是
+> `core/golden.py`（G1-G5 gates + conviction 0–1 + prime/strong/qualified + display_tier
+> 可買進/增強/中），**不是**本文的 0-100 composite / GOLDEN≥85 制。門檻以
+> `config/scd.example.yaml` 為準。本文僅供歷史/設計思路參考。
+>
 > Version: v1.1 (2026-05-22) — superseded v1.0
 > 對應 V3 守冊 §二、§三、§四
 > Patches applied: AUDIT_v1.0.md P0-1 ~ P0-10
-> **本文件是真理之源。任何 prompt 或 UI 顯示的分數必須能在此完全還原。**
-> *This document is the source of truth. Any score shown in prompts/UI must be fully reconstructible from these rules.*
 
 ---
 

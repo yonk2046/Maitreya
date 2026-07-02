@@ -323,7 +323,7 @@ AI 應該說：
 - [CANONICAL_SCHEMA.md](CANONICAL_SCHEMA.md) — 完整 schema 說明
 - [REPLAY.md](REPLAY.md) — 重現性規約
 - [AUDIT_LOG_EVENTS.md](AUDIT_LOG_EVENTS.md) — `SUBFACTOR_COMPUTED` 等 P2 事件
-- [CORRELATION_REPORT.md](CORRELATION_REPORT.md) — 哪些 leaves 之間高度相關（觀察用，不修改規則）
+- [CORRELATION_REPORT.md](archive/CORRELATION_REPORT.md) — 哪些 leaves 之間高度相關（觀察用，不修改規則）
 - [FEATURE_FLAGS.md](FEATURE_FLAGS.md) — 如 day-trader exclusion 的旁路 flag
 
 ---
