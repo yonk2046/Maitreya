@@ -1085,6 +1085,7 @@ def _render_strengthening(snaps: list[dict]) -> None:
         accel = stock.get("acceleration")
         net   = _stock_net_accumulation(stock)
         spon_score = spon.get("persistence_score") or 0
+        spon_days  = spon.get("days_with_branches") or 0
         mom_txt, mom_rank = _momentum_glyph(vel, accel)
         fresh_txt, fresh_rank = _freshness_label(ticker, first_seen, last_seen, latest_date)
         rows.append({
@@ -1098,21 +1099,37 @@ def _render_strengthening(snaps: list[dict]) -> None:
             "窗口買(日)": _stock_buy_days_in_window_or_none(stock),  # 1.7.0 缺欄位顯示「—」
             "累計(張)": net,
             "速度(張/日)": round(vel) if vel is not None else None,
-            "贊助分": round(spon_score, 2),
+            # 樣本 <3 天的贊助分不可信（1/1=100% 假訊號）→ 加 ⚠ 標記
+            "贊助分": f"{spon_score:.2f} ⚠" if spon_days < 3 else f"{spon_score:.2f}",
+            "樣本(天)": spon_days,
             "成本": f"NT${cost:,.2f}" if cost else "—",
             "Tier A": "★" if ticker in TIER_A else "",
             "_mom": mom_rank,
             "_fresh": fresh_rank,
+            "_spon": spon_score,
+            "_spon_days": spon_days,
         })
 
     # 搜尋欄:輸入代號或名稱即時過濾
-    q = st.text_input("🔍 搜尋代號或名稱", "", key="strong_search",
-                      placeholder="例如 2330 或 台積電").strip()
+    col_q, col_f = st.columns([3, 2])
+    with col_q:
+        q = st.text_input("🔍 搜尋代號或名稱", "", key="strong_search",
+                          placeholder="例如 2330 或 台積電").strip()
+    with col_f:
+        only_acc = st.checkbox("◉ 只看持續吸籌（贊助分 ≥0.35 且樣本 ≥3 天）",
+                               key="strong_acc_filter")
     if q:
         rows = [r for r in rows
                 if q.lower() in str(r["代號"]).lower() or q in str(r["名稱"])]
+    if only_acc:
+        rows = [r for r in rows if r["_spon"] >= 0.35 and r["_spon_days"] >= 3]
 
     _section_header("↑", "轉強訊號", "Strengthening Signals", len(rows))
+    st.markdown(_EXPLAIN_DIV.format(
+        text="連續 2 日以上主力買超的全部標的（最寬的潛力篩網）。"
+             "贊助分＝最常出現分點的出現天數 ÷ 有分點資料天數（主力黏性）；⚠＝樣本 <3 天，數值不可信。"
+             "勾「只看持續吸籌」即原深度研究的持續吸籌名單。"),
+        unsafe_allow_html=True)
 
     if not rows:
         st.markdown(
@@ -1127,7 +1144,7 @@ def _render_strengthening(snaps: list[dict]) -> None:
     df = (
         _pd.DataFrame(rows)
         .sort_values(["_mom", "_fresh", "累計(張)"], ascending=[True, True, False])
-        .drop(columns=["_mom", "_fresh"])
+        .drop(columns=["_mom", "_fresh", "_spon", "_spon_days"])
     )
     st.caption("排序：動能方向 → 資料新鮮度 → 累計買超 ｜ ▼ 減速中的標的代表動能衰竭，連買天數高也應降權看待")
     st.dataframe(
@@ -1136,8 +1153,7 @@ def _render_strengthening(snaps: list[dict]) -> None:
             color_cols=["漲跌", "速度(張/日)"],
             text_cols=["動能", "資料"],
             fmt={"累計(張)": "{:+,.0f}", "速度(張/日)": "{:+,.0f}",
-                 "連買(日)": "{:d} 日", "窗口買(日)": "{:d}/20",
-                 "贊助分": "{:.2f}"},
+                 "連買(日)": "{:d} 日", "窗口買(日)": "{:d}/20"},
         ),
         use_container_width=True,
         hide_index=True,
@@ -1842,7 +1858,7 @@ def _run_sm_all(snaps: list[dict]) -> "dict[str, _sm_mod.TickerState]":
     return _sm_mod.run_all(snaps)
 
 
-def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX)
+def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # noqa: C901  (P3h.5 research UX)
     if not snaps:
         st.info("尚無快照資料 No snapshot data.")
         return
@@ -2777,7 +2793,7 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
         pass  # never block rendering on history write failure
 
     # ── SECTION E: Near-miss — compact scout cards, distinct section ─────
-    if result.near_miss:
+    if show_near_miss and result.near_miss:
         near_sorted = sorted(result.near_miss, key=lambda e: e.conviction, reverse=True)
 
         # Build scout cards HTML
@@ -2829,6 +2845,126 @@ def _render_golden(snaps: list[dict]) -> None:  # noqa: C901  (P3h.5 research UX
             f'</div>',
             unsafe_allow_html=True,
         )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PANEL — 潛力區 helpers  (P2.7: watch table + near-miss table; display-only,
+# 全部讀既有 core 計算結果, 不做任何 render-time 業務邏輯)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_EXPLAIN_DIV = ('<div style="font-size:11.5px;color:#6B8EAA;margin:-4px 0 10px 0;'
+                'line-height:1.5;">{text}</div>')
+
+
+def _render_watch_table(active_date: str) -> None:
+    """精選觀察 — intelligence report watch_list rendered as a sortable table."""
+    report = _intel_load(active_date) if active_date else None
+    _section_header("◉", "精選觀察", "Top Watch (next 3–5 sessions)",
+                    len(report.watch_list) if report else 0)
+    st.markdown(_EXPLAIN_DIV.format(
+        text="狀態機已達 吸籌中/轉強/已確認 的股票，依「狀態層級＋贊助分＋連買＋信心」加權排序取前 8。"
+             "只有 10 秒的話，看這張表就夠。"),
+        unsafe_allow_html=True)
+    if not report or not report.watch_list:
+        st.markdown('<div class="data-gap-notice">無觀察名單資料（今日情報尚未生成）</div>',
+                    unsafe_allow_html=True)
+        return
+    import pandas as _pd
+    rows = [{
+        "代號": w.ticker,
+        "名稱": w.name,
+        "狀態": w.sm_state_zh,
+        "連買(日)": w.streak,
+        "贊助分": round(w.sponsorship, 2),
+        "信心": f"{w.confidence:.0%}",
+        "風險": f"{w.risk_score:.0%}",
+        "在此狀態(天)": w.days_in_state,
+        "入選理由": w.reason_zh,
+    } for w in report.watch_list]
+    st.dataframe(_pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
+def _render_near_miss_table(snaps: list[dict]) -> None:
+    """黃金候補 — near-miss entries as a table (moved out of the golden tab)."""
+    key = _snaps_key(snaps)
+    result = _run_golden(key, snaps)
+    near = sorted(result.near_miss, key=lambda e: e.conviction, reverse=True)
+    _section_header("△", "黃金候補", "Near-Miss Watchzone", len(near))
+    st.markdown(_EXPLAIN_DIV.format(
+        text="黃金名單 5 道門檻（G1 漏斗確認／G2 狀態強勢／G3 贊助≥45%／G4 風險非臨界／G5 淨累計>0）"
+             "剛好通過 4 道的股票——距離升級黃金最近的預備隊。「缺門檻」欄標出還差哪一道。"),
+        unsafe_allow_html=True)
+    if not near:
+        st.markdown('<div class="data-gap-notice">今日無候補標的（沒有剛好過 4 道門檻的股票）</div>',
+                    unsafe_allow_html=True)
+        return
+    latest_stocks = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
+    _gate_zh = {"G1": "漏斗確認", "G2": "狀態強勢", "G3": "贊助≥45%",
+                "G4": "風險<臨界", "G5": "淨累計>0"}
+    import pandas as _pd
+    rows = []
+    for e in near:
+        stock = latest_stocks.get(e.ticker, {})
+        price = stock.get("current_price")
+        chg   = stock.get("change_pct")
+        cost  = stock.get("main_force_cost")
+        premium = (price / cost - 1) * 100 if (price and cost) else None
+        failed = [g for g in ("G1", "G2", "G3", "G4", "G5")
+                  if g not in (e.gates_passed or [])]
+        rows.append({
+            "代號": e.ticker,
+            "名稱": e.name,
+            "信念": f"{e.conviction:.0%}",
+            "缺門檻": "、".join(_gate_zh.get(g, g) for g in failed) or "—",
+            "狀態": e.sm_state_zh,
+            "連買(日)": e.streak or 0,
+            "贊助分": round(e.sponsorship_score or 0, 2),
+            "現價": f"NT${price:,.2f}" if price else "—",
+            "漲跌": f"{chg:+.2f}%" if chg is not None else "—",
+            "距主力成本": f"{premium:+.1f}%" if premium is not None else "—",
+        })
+    st.dataframe(_pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    st.caption("距主力成本 >+5% 即使升級黃金也會被標「等回檔」，不符 5% 鐵則不追高。")
+
+
+_EVT_LABEL = {
+    "state_transition":        ("狀態轉換", False),
+    "golden_entry":            ("進入黃金名單", False),
+    "golden_exit":             ("退出黃金名單", False),
+    "golden_tier_change":      ("黃金分級變化", False),
+    "confidence_upgrade":      ("信心分上升", True),
+    "confidence_downgrade":    ("信心分下降", True),
+    "sponsorship_jump":        ("贊助分跳升", True),
+    "sponsorship_collapse":    ("贊助分崩落", True),
+    "risk_elevation":          ("風險分上升", True),
+    "risk_reduction":          ("風險分下降", True),
+}
+
+_SEV_MARK = {"info": "·", "watch": "👀", "alert": "⚠", "critical": "🔴"}
+
+
+def _event_table(events: list) -> None:
+    """DailyEvent list → compact table（取代舊的逐筆卡片，省 2/3 篇幅）."""
+    import pandas as _pd
+    rows = []
+    for e in events:
+        label, is_pct = _EVT_LABEL.get(e.event_type, (e.event_type, False))
+        fv, tv = e.from_value, e.to_value
+        if is_pct and isinstance(fv, (int, float)) and isinstance(tv, (int, float)):
+            change = f"{fv:.0%} → {tv:.0%} ({(tv - fv):+.0%})"
+        elif fv is not None and tv is not None:
+            change = f"{fv} → {tv}"
+        else:
+            change = "—"
+        rows.append({
+            "": _SEV_MARK.get(e.severity, "·"),
+            "代號": e.ticker or "—",
+            "名稱": e.name or "",
+            "事件": label,
+            "變化": change,
+        })
+    st.dataframe(_pd.DataFrame(rows), use_container_width=True, hide_index=True,
+                 height=min(38 + 35 * len(rows), 330))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -3198,11 +3334,11 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
     with col_left:
         # What's New
         _section_header("+", "今日新增", "What's New Today", report.new_count)
+        st.markdown(_EXPLAIN_DIV.format(
+            text="昨日不存在、今日新出現的事件：首次進入吸籌狀態、新進黃金名單等。"),
+            unsafe_allow_html=True)
         if report.new_today:
-            st.markdown(
-                "".join(_event_card(e, "new") for e in report.new_today),
-                unsafe_allow_html=True,
-            )
+            _event_table(report.new_today)
         else:
             st.markdown('<div class="data-gap-notice">今日無新增事件</div>', unsafe_allow_html=True)
 
@@ -3210,22 +3346,24 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
 
         # Upgrades
         _section_header("↑", "升級", "Upgrades", report.upgrade_count)
+        st.markdown(_EXPLAIN_DIV.format(
+            text="與昨日相比顯著改善（變化≥15%）的指標。贊助分＝最常出現分點的出現天數 ÷ 有分點資料天數，"
+                 "衡量同一批主力是否持續回來買；⚠ 分點資料只有 1-2 天的股票，贊助分 0%→100% 多為樣本太少的跳動，非真訊號。"),
+            unsafe_allow_html=True)
         if report.upgrades:
-            st.markdown(
-                "".join(_event_card(e, "upgrade") for e in report.upgrades),
-                unsafe_allow_html=True,
-            )
+            _event_table(report.upgrades)
         else:
             st.markdown('<div class="data-gap-notice">無升級事件</div>', unsafe_allow_html=True)
 
     with col_right:
         # Risk Alerts
         _section_header("⚠", "風險警報", "Risk Alerts", report.risk_count)
+        st.markdown(_EXPLAIN_DIV.format(
+            text="風險分＝因子加總：疑似出貨 +25%、假突破 +20%、買超速度轉負 +15%、狀態轉換風險 +10~40% 等；"
+                 "單日上升 ≥15% 即列入警報，≥60% 標 ⚠。"),
+            unsafe_allow_html=True)
         if report.risk_alerts:
-            st.markdown(
-                "".join(_event_card(e, "risk") for e in report.risk_alerts),
-                unsafe_allow_html=True,
-            )
+            _event_table(report.risk_alerts)
         else:
             st.markdown(
                 '<div class="data-gap-notice" style="background:#0F1E17;border-color:#2E6B4A;color:#52B788;">'
@@ -3237,11 +3375,11 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
 
         # Downgrades
         _section_header("↓", "降級", "Downgrades", report.downgrade_count)
+        st.markdown(_EXPLAIN_DIV.format(
+            text="與昨日相比顯著轉差（變化≥15%）的指標：信心/贊助分下滑、狀態降級。"),
+            unsafe_allow_html=True)
         if report.downgrades:
-            st.markdown(
-                "".join(_event_card(e, "down") for e in report.downgrades),
-                unsafe_allow_html=True,
-            )
+            _event_table(report.downgrades)
         else:
             st.markdown('<div class="data-gap-notice">無降級事件</div>', unsafe_allow_html=True)
 
@@ -3257,6 +3395,10 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
 
     # ── Biggest Changes — 3 ranked tables ────────────────────────────────
     _section_header("△", "最大變化排行", "Biggest Changes (last 24h)")
+    st.markdown(_EXPLAIN_DIV.format(
+        text="三個核心指標 24 小時變化最大的股票。贊助分＝主力分點黏性（0~100%）；"
+             "速度＝近 3 日平均買超張數/日；信心＝連買/贊助/動能/黃金身分的加權綜合分。"),
+        unsafe_allow_html=True)
     col_s, col_v, col_c = st.columns(3, gap="small")
 
     with col_s:
@@ -3288,32 +3430,11 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── Watch List ────────────────────────────────────────────────────────
-    _section_header("◉", "持續觀察名單", "Things Worth Watching (next 3–5 sessions)",
-                    len(report.watch_list))
-    if report.watch_list:
-        wc = st.columns(min(3, len(report.watch_list)))
-        for i, w in enumerate(report.watch_list):
-            c_color = "#52B788" if w.confidence >= 0.60 else ("#D4A84B" if w.confidence >= 0.40 else "#6B8EAA")
-            r_color = "#E05C7A" if w.risk_score >= 0.50 else ("#D4A84B" if w.risk_score >= 0.30 else "#52B788")
-            with wc[i % 3]:
-                st.markdown(
-                    f'<div class="watch-card">'
-                    f'<span class="watch-ticker">{w.ticker}</span>'
-                    f'<span class="watch-name">{w.name}</span>'
-                    f'<div><span class="watch-state">{w.sm_state_zh}</span></div>'
-                    f'<div class="watch-reason">{w.reason_zh}</div>'
-                    f'<div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">'
-                    f'<span style="font-size:11px;color:{c_color};">信心 {w.confidence:.0%}</span>'
-                    f'<span style="font-size:11px;color:{r_color};">風險 {w.risk_score:.0%}</span>'
-                    f'<span style="font-size:11px;color:#8B949E;">連買 {w.streak}日</span>'
-                    f'<span style="font-size:11px;color:#9E8AC8;">贊助 {w.sponsorship:.0%}</span>'
-                    f'</div>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-    else:
-        st.markdown('<div class="data-gap-notice">無觀察名單資料</div>', unsafe_allow_html=True)
+    # ── Watch List → 已搬到「🌱 潛力區」tab（_render_watch_table），此處不再
+    #    重複渲染（P2.7 去重複）。 ────────────────────────────────────────
+    st.markdown(
+        '<div style="font-size:11.5px;color:#6B8EAA;">◉ 持續觀察名單已移至「🌱 潛力區」分頁。</div>',
+        unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -3693,10 +3814,12 @@ def main() -> None:
     # ── 大盤脈搏 banner (pinned above all tabs) ───────────────────────────
     _render_market_pulse_banner()
 
-    # ── Tabs（P2.5 重構：12 → 6,心智模型「我有什麼 → 該不該出 → 能不能進 → 為什麼 → 深入 → 驗證」）─
-    tab_holdings, tab_entry, tab_exit, tab_market, tab_research, tab_backtest = st.tabs([
+    # ── Tabs（P2.5 重構 12→6;P2.7 加「潛力區」6→7:
+    #    心智模型「我有什麼 → 能不能進 → 有什麼在醞釀 → 該不該出 → 為什麼 → 深入 → 驗證」）─
+    tab_holdings, tab_entry, tab_potential, tab_exit, tab_market, tab_research, tab_backtest = st.tabs([
         "💼 我的持倉",
         "★ 進場機會",
+        "🌱 潛力區",
         "🔻 出場警示",
         "📊 市場全景",
         "🔬 深度研究",
@@ -3713,11 +3836,16 @@ def main() -> None:
         _render_holdings(snaps_to_date)
 
     with tab_entry:
-        # 進場機會 = 黃金名單 + 轉強訊號
+        # 進場機會 = 純黃金名單（P2.7:轉強/候補移潛力區,黃金=可執行）
         st.markdown(_SECTION_TITLE.format(label="★ 黃金名單"), unsafe_allow_html=True)
-        _render_golden(snaps_to_date)
+        _render_golden(snaps_to_date, show_near_miss=False)
+
+    with tab_potential:
+        # 潛力區 = 三層漏斗,由精到寬:精選觀察(top8) → 黃金候補(差一門) → 轉強全表(自己挖)
+        _render_watch_table(active_date)
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
-        st.markdown(_SECTION_TITLE.format(label="↑ 轉強訊號"), unsafe_allow_html=True)
+        _render_near_miss_table(snaps_to_date)
+        st.markdown(_SECTION_HR, unsafe_allow_html=True)
         _render_strengthening(snaps_to_date)
 
     with tab_exit:
@@ -3746,10 +3874,8 @@ def main() -> None:
         _render_leadership_rotation(snaps_to_date)
 
     with tab_research:
-        # 深度研究 = 持續吸籌 + 時序演化 + 信心風險
-        st.markdown(_SECTION_TITLE.format(label="◉ 持續吸籌"), unsafe_allow_html=True)
-        _render_persistent_accumulation(snaps_to_date)
-        st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        # 深度研究 = 時序演化 + 信心風險
+        # （持續吸籌已併入潛力區轉強全表的「只看持續吸籌」過濾,P2.7 去重複）
         st.markdown(_SECTION_TITLE.format(label="⌛ 時序演化"), unsafe_allow_html=True)
         _render_temporal_chains(snaps_to_date)
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
