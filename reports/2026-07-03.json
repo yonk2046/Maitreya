@@ -1,0 +1,6430 @@
+{
+  "schema_version": "1.8.0",
+  "date": "2026-07-03",
+  "generated_at": "2026-07-03T14:28:53Z",
+  "config_hash": "sha256:be47a5faabefab4baee98be71cea9bde96b1050fa7c916662a8133685e67a6c7",
+  "core_version": "core@0.1.0-p3a",
+  "environment": {
+    "core_commit_sha": "1f3d8913d96eda6ea7b3c9d8aac4736fd1764ec2",
+    "core_version": "core@0.1.0-p3a",
+    "python": "3.11.15",
+    "numpy": "2.4.6",
+    "pandas": "3.0.3",
+    "pyyaml": "6.0.3",
+    "jsonschema": "4.26.0",
+    "decimal_context": {
+      "prec": 28,
+      "rounding": "ROUND_HALF_EVEN"
+    },
+    "locale": {
+      "LC_ALL": "C.UTF-8",
+      "LC_NUMERIC": "C"
+    },
+    "timezone": "UTC",
+    "os": "linux-6.17.0-1018-azure-x86_64",
+    "lookback_snapshots": {
+      "2026-06-15": "sha256:a82d2c141b0a5da79390cb39eadf1073ade4324c16a498590f0face0c2e2ef53",
+      "2026-06-16": "sha256:6e94122c92a5d0fa211a1eeff0d0075d1b610ccf010843c547ed69b47e0307b8",
+      "2026-06-17": "sha256:1422a3d8bc1a5813e5f2bc9e1541fadafb2e573f872942968d51a534f77a86ce",
+      "2026-06-18": "sha256:14e9f4daf7fcf6ba9967a0ade7c011c127c41b0a2f56ca5c1fb1eb70b80850b1",
+      "2026-06-22": "sha256:4eb15f5df71eee604f0cedf9b6bbaa198f4a6e35c1474c746e847b5556ae1be8",
+      "2026-06-23": "sha256:d048a42794de851f9e96fb244a657fea475bc49613e974daec145b256d87f90d",
+      "2026-06-24": "sha256:d40b95c94239e08af272bc2f76db6f9b011f1fbd27916eee551d54769f0a403b",
+      "2026-06-25": "sha256:becd965d3c0022233ff469ce9e58c2ad184abd0eb1dab9534dd466438a079322",
+      "2026-06-26": "sha256:a05801eb57b17485d296ae401b789c786afd94554f9d37e71e52a0f9949e06d0",
+      "2026-06-29": "sha256:51a50b8dd868d669a9d3fc0da7bde0af6f0c9f9d2233f8d76634278a343ea08e",
+      "2026-06-30": "sha256:09e389d6ca2525a804019606ad7dad1f8185697a0d10d4b44ff1c2ded495dc7d",
+      "2026-07-01": "sha256:717d4d76779cc5dbbe25a030809818aecb77d88057c874698967472a574dcbd1",
+      "2026-07-02": "sha256:525bc4e4a979a942f6cc6ddcf73bba54f65cf0405408909b12c394de28af33d0"
+    },
+    "lookback_window_days": 13
+  },
+  "provenance": {
+    "sources": {
+      "legacy_today_json": {
+        "dataset": "SCD.legacy.today_json",
+        "url": "file://data/today.json",
+        "fetched_at": "2026-07-03T14:28:53Z",
+        "raw_file": "data/today.json",
+        "raw_sha256": "sha256:1cb5e6fed56bdd7ad30c8ec4cc03f600b24495647f7532ca33fa469672b6dcf7",
+        "row_count": 39,
+        "vendor_id": null,
+        "report_date": "2026-07-03",
+        "data_lag_days": 0,
+        "provides_fields": [
+          "ticker",
+          "name",
+          "rank",
+          "is_etf",
+          "current_price",
+          "change_pct",
+          "buy_vol_lots",
+          "fii_net_buy",
+          "investment_trust_net_buy",
+          "prop_dealer_net_buy",
+          "total3_net_buy",
+          "fii_sync_count"
+        ],
+        "archived_copy_path": "_raw_archive/2026-07-03/legacy_today_json",
+        "archived_sha256": "sha256:1cb5e6fed56bdd7ad30c8ec4cc03f600b24495647f7532ca33fa469672b6dcf7"
+      },
+      "legacy_branches": {
+        "dataset": "SCD.legacy.branches_dir",
+        "url": "file://data/branches/",
+        "fetched_at": "2026-07-03T14:28:49Z",
+        "raw_file": "data/branches/",
+        "raw_sha256": "sha256:741e8847c707f54913125dce8bfe4bccae6feb0e3057d7176a32c4cc6f7b2d21",
+        "row_count": 170,
+        "vendor_id": null,
+        "report_date": "2026-07-03",
+        "data_lag_days": 0,
+        "provides_fields": [
+          "top5_branches",
+          "total_buy_vol",
+          "total_sell_vol",
+          "avg_buy_cost",
+          "avg_sell_cost"
+        ],
+        "archived_copy_path": "_raw_archive/2026-07-03/legacy_branches/",
+        "archived_sha256": "sha256:741e8847c707f54913125dce8bfe4bccae6feb0e3057d7176a32c4cc6f7b2d21"
+      },
+      "tdcc_weekly": {
+        "dataset": "TDCC.weekly.distribution",
+        "url": "https://opendata.tdcc.com.tw/getOD.ashx?id=1-5&key=Open",
+        "fetched_at": "2026-06-27T11:07:13Z",
+        "raw_file": "data/tdcc/20260626.json",
+        "raw_sha256": "sha256:1a4a8f593b1cb89baecc95fe3abb3580142d72d5b1164108c10576b067276ff2",
+        "row_count": 3999,
+        "vendor_id": "TDCC",
+        "report_date": "2026-06-26",
+        "data_lag_days": 7,
+        "provides_fields": [
+          "shareholder_count",
+          "shareholder_count_delta_pct",
+          "large_holder_400_pct",
+          "large_holder_400_delta_pct",
+          "large_holder_1000_pct",
+          "large_holder_1000_delta_pct"
+        ],
+        "archived_copy_path": "_raw_archive/2026-07-03/tdcc_weekly",
+        "archived_sha256": "sha256:1a4a8f593b1cb89baecc95fe3abb3580142d72d5b1164108c10576b067276ff2"
+      }
+    },
+    "field_to_source": {
+      "ticker": "legacy_today_json",
+      "name": "legacy_today_json",
+      "rank": "legacy_today_json",
+      "is_etf": "legacy_today_json",
+      "current_price": "legacy_today_json",
+      "change_pct": "legacy_today_json",
+      "buy_vol_lots": "legacy_today_json",
+      "fii_net_buy": "legacy_today_json",
+      "investment_trust_net_buy": "legacy_today_json",
+      "prop_dealer_net_buy": "legacy_today_json",
+      "total3_net_buy": "legacy_today_json",
+      "fii_sync_count": "legacy_today_json",
+      "top5_branches": "legacy_branches",
+      "total_buy_vol": "legacy_branches",
+      "total_sell_vol": "legacy_branches",
+      "avg_buy_cost": "legacy_branches",
+      "avg_sell_cost": "legacy_branches",
+      "shareholder_count": "tdcc_weekly",
+      "shareholder_count_delta_pct": "tdcc_weekly",
+      "large_holder_400_pct": "tdcc_weekly",
+      "large_holder_400_delta_pct": "tdcc_weekly",
+      "large_holder_1000_pct": "tdcc_weekly",
+      "large_holder_1000_delta_pct": "tdcc_weekly"
+    },
+    "derived_fields": {}
+  },
+  "config_snapshot": {
+    "meta": {
+      "config_version": "1.3.0",
+      "scoring_rubric_version": "1.1.0",
+      "schema_version": "1.4.0",
+      "last_updated": "2026-05-22",
+      "supersedes": "1.2.0",
+      "patches_applied": [
+        "P0-1",
+        "P0-2",
+        "P0-3",
+        "P0-4",
+        "P0-5",
+        "P1-*",
+        "P2-*",
+        "T-1",
+        "T-2",
+        "T-3",
+        "T-4",
+        "T-5",
+        "T-6",
+        "T-7"
+      ]
+    },
+    "storage": {
+      "base_dir": ".",
+      "raw_dir": "data/raw",
+      "reports_dir": "reports",
+      "episodes_dir": "episodes",
+      "state_dir": "state",
+      "parquet_dir": "parquet",
+      "index_file": "reports/index.json",
+      "episodes_index": "episodes/index.json",
+      "state_index": "state/index.json"
+    },
+    "temporal": {
+      "lookback_window_days": 20,
+      "min_velocity_samples": 2,
+      "min_acceleration_samples": 3,
+      "ema_lookbacks": [
+        3,
+        5
+      ],
+      "score_tree_temporal_enabled_paths": [],
+      "track_tier_transitions": true,
+      "bootstrap": {
+        "abstain_temporal_until_window_full": true,
+        "emit_event": "BOOTSTRAP_SNAPSHOT"
+      }
+    },
+    "episodes": {
+      "enabled": false,
+      "index_file": "episodes/index.json",
+      "storage_dir": "episodes/",
+      "types": {
+        "accumulation": {
+          "enabled": false,
+          "rule_version": "v1",
+          "trigger_rule": "main_force_consecutive_days >= 3",
+          "ongoing_rule": "main_force_consecutive_days >= 1",
+          "resolve_rule": "main_force_consecutive_days == 0 for 2 days",
+          "fail_rule": null
+        },
+        "distribution": {
+          "enabled": false,
+          "rule_version": "v1",
+          "trigger_rule": "main_force_consecutive_days <= -3",
+          "ongoing_rule": "main_force_consecutive_days <= 0",
+          "resolve_rule": "main_force_consecutive_days >= 0 for 2 days",
+          "fail_rule": null
+        },
+        "breakout_attempt": {
+          "enabled": false,
+          "rule_version": "v1",
+          "trigger_rule": "current_price > rolling_high_20d",
+          "ongoing_rule": "current_price > breakout_level - 3%",
+          "resolve_rule": "current_price > rolling_high_20d for 3 days",
+          "fail_rule": "current_price < breakout_level - 3%"
+        },
+        "recovery_attempt": {
+          "enabled": false,
+          "rule_version": "v1"
+        },
+        "golden_persistence": {
+          "enabled": false,
+          "rule_version": "v1",
+          "trigger_rule": "tier == 'GOLDEN'",
+          "ongoing_rule": "tier == 'GOLDEN'",
+          "resolve_rule": "tier != 'GOLDEN' for 1 day"
+        },
+        "watch_persistence": {
+          "enabled": false,
+          "rule_version": "v1"
+        },
+        "margin_decompression": {
+          "enabled": false,
+          "rule_version": "v1"
+        },
+        "regime_shift": {
+          "enabled": false,
+          "rule_version": "v1"
+        }
+      }
+    },
+    "market_regime": {
+      "enabled": false,
+      "classifier": "stub_v0",
+      "features": {
+        "use_vix_proxy": false,
+        "use_breadth_index": false,
+        "use_regime_dwell": false
+      }
+    },
+    "feature_flags": {
+      "day_trader_exclusion": false,
+      "day_trader_exclusion_branches": [
+        "凱基-台北",
+        "元大-總公司",
+        "永豐金-台北"
+      ]
+    },
+    "gates": {
+      "cost_safety": {
+        "lookback_days": 5,
+        "max_premium_ratio": 1.05,
+        "divergence_alert_pct": 5,
+        "anchor": "conservative"
+      },
+      "fii_sync": {
+        "indicator_brokers": [
+          "JPM",
+          "UBS",
+          "GS",
+          "ML",
+          "Citi"
+        ],
+        "min_brokers": 2,
+        "min_consecutive_days": 3
+      },
+      "fii_alignment": {
+        "enabled": true,
+        "contra_days_cap": 2
+      },
+      "main_force": {
+        "min_consecutive_days": 3,
+        "volume_increasing_min_streaks": 2
+      }
+    },
+    "stage_1": {
+      "weights": {
+        "fii": 0.5,
+        "main_force": 0.5
+      },
+      "fii": {
+        "sync_count": {
+          "linear_range": [
+            3,
+            6
+          ],
+          "base_at_min": 0,
+          "base_at_max": 100
+        },
+        "buy_ratio": {
+          "linear_range": [
+            0.05,
+            0.15
+          ]
+        },
+        "holding_trend": {
+          "up": 100,
+          "flat": 50,
+          "down": 0
+        },
+        "sub_weights": {
+          "sync": 0.4,
+          "ratio": 0.4,
+          "trend": 0.2
+        }
+      },
+      "main_force": {
+        "consecutive_days": {
+          "linear_range": [
+            4,
+            8
+          ],
+          "base_at_min": 0,
+          "base_at_max": 100
+        },
+        "lock_strength": {
+          "linear_range": [
+            0.1,
+            0.3
+          ]
+        },
+        "increasing_streak": {
+          "per_segment": 25,
+          "cap": 100
+        },
+        "top5_concentration": {
+          "linear_range": [
+            0.5,
+            0.8
+          ]
+        },
+        "sub_weights": {
+          "days": 0.3,
+          "lock": 0.3,
+          "streak": 0.2,
+          "concentration": 0.2
+        }
+      }
+    },
+    "stage_2": {
+      "weights": {
+        "concentration": 0.5,
+        "margin": 0.5
+      },
+      "concentration": {
+        "shareholder_delta": {
+          "linear_range": [
+            0.0,
+            -0.05
+          ]
+        },
+        "broker_count_diff_negative_streak": {
+          "levels": {
+            "5": 100,
+            "3": 60,
+            "0": 0
+          }
+        },
+        "large_holder_400": {
+          "linear_range": [
+            0.0,
+            0.03
+          ]
+        },
+        "large_holder_1000": {
+          "linear_range": [
+            0.0,
+            0.02
+          ]
+        },
+        "sub_weights": {
+          "shareholders": 0.3,
+          "diff": 0.2,
+          "L400": 0.25,
+          "L1000": 0.25
+        }
+      },
+      "margin": {
+        "maintenance_curve": {
+          "130": 100,
+          "140": 80,
+          "150": 50,
+          "160": 20
+        },
+        "healthy_wash": {
+          "per_day": 10,
+          "cap": 100
+        },
+        "unhealthy_resistance": {
+          "per_day": -15,
+          "floor": 0
+        },
+        "panic_signal": {
+          "max_maintenance_ratio": 142,
+          "min_quiet_volume_days": 3
+        },
+        "sub_weights": {
+          "maintenance": 0.5,
+          "healthy_wash": 0.3,
+          "unhealthy_penalty": 0.2
+        }
+      }
+    },
+    "stage_3": {
+      "weights": {
+        "price_action": 0.6,
+        "trend_2h": 0.4
+      },
+      "price_action": {
+        "scores": {
+          "pin_bar": 40,
+          "engulfing": 50,
+          "terminal": 30,
+          "retest": 20
+        },
+        "pin_bar": {
+          "lower_shadow_to_body_ratio": 2.0
+        },
+        "aggregation": "max_with_retest_bonus"
+      },
+      "trend_2h": {
+        "above_ema_positive_slope": 100,
+        "above_ema_flat_slope": 60,
+        "below_ema": 0
+      },
+      "trade_type": {
+        "T1_conditions": {
+          "max_margin_maintenance_ratio": 140,
+          "requires_wash_completion": true
+        },
+        "T2_conditions": {
+          "requires_fii_lock": true,
+          "requires_main_force_lock": true,
+          "requires_breakout_retest": true
+        }
+      }
+    },
+    "composite": {
+      "weights": {
+        "stage_1": 0.4,
+        "stage_2": 0.35,
+        "stage_3": 0.25
+      }
+    },
+    "tiers": {
+      "golden_min": 85,
+      "watch_min": 70,
+      "neutral_min": 50
+    },
+    "ranking": {
+      "tie_breakers": [
+        {
+          "key": "composite_score",
+          "direction": "desc"
+        },
+        {
+          "key": "stage_1",
+          "direction": "desc"
+        },
+        {
+          "key": "main_force_consecutive_days",
+          "direction": "desc"
+        },
+        {
+          "key": "fii_sync_count",
+          "direction": "desc"
+        },
+        {
+          "key": "ticker",
+          "direction": "asc"
+        }
+      ]
+    },
+    "data_validation": {
+      "on_missing_field": "zero_with_warning",
+      "on_unknown_schema_version": "fail",
+      "tdcc_max_lag_days": 7
+    }
+  },
+  "universe_size": 39,
+  "eligible_count": 0,
+  "market_regime": {
+    "label": null,
+    "classifier": "stub_v0",
+    "confidence": null,
+    "features": {
+      "vix_proxy": null,
+      "breadth_index": null,
+      "regime_dwell": null
+    }
+  },
+  "episodes_active_at_start": [],
+  "episodes_changed_today": [],
+  "tier_transitions": [],
+  "stocks": [
+    {
+      "ticker": "1101",
+      "name": "台泥",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 23.65,
+      "open": 23.0,
+      "prev_close": null,
+      "change_pct": 0.55,
+      "volume": 6348,
+      "volume_5d_avg": 7342.0,
+      "volume_ratio": 0.865,
+      "velocity_3d": -4976,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": -8001,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 1,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 11497,
+      "top5_branches": [
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 3601,
+          "sell": 227,
+          "net": 3374
+        },
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 2932,
+          "sell": 639,
+          "net": 2293
+        },
+        {
+          "branch": "凱基-台北",
+          "buy": 3236,
+          "sell": 1111,
+          "net": 2125
+        },
+        {
+          "branch": "摩根大通",
+          "buy": 2301,
+          "sell": 1535,
+          "net": 766
+        },
+        {
+          "branch": "港商野村",
+          "buy": 722,
+          "sell": 0,
+          "net": 722
+        }
+      ],
+      "main_force_cost": 23.66,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 2,
+      "net_accumulation_in_window": 27970,
+      "main_force_volume_trend": [
+        16473,
+        11497
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": -67,
+      "is_day_trader_branch": false,
+      "shareholder_count": 514507,
+      "shareholder_count_delta_pct": -0.4206,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 55.52,
+      "large_holder_400_delta_pct": 0.11,
+      "large_holder_1000_pct": 51.34,
+      "large_holder_1000_delta_pct": 0.11,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "1216",
+      "name": "統一",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 76.3,
+      "open": 74.5,
+      "prev_close": null,
+      "change_pct": 1.4,
+      "volume": 6608,
+      "volume_5d_avg": 6608.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": -684,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 11621,
+      "top5_branches": [
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 4301,
+          "sell": 12,
+          "net": 4289
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 1906,
+          "sell": 329,
+          "net": 1577
+        },
+        {
+          "branch": "台新",
+          "buy": 1305,
+          "sell": 60,
+          "net": 1245
+        },
+        {
+          "branch": "凱基-台北",
+          "buy": 1571,
+          "sell": 530,
+          "net": 1041
+        },
+        {
+          "branch": "國泰證券",
+          "buy": 1003,
+          "sell": 66,
+          "net": 937
+        }
+      ],
+      "main_force_cost": 76.66,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 11621,
+      "main_force_volume_trend": [
+        11621
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 750,
+      "is_day_trader_branch": false,
+      "shareholder_count": 149214,
+      "shareholder_count_delta_pct": -0.3513,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 89.03,
+      "large_holder_400_delta_pct": 0.06,
+      "large_holder_1000_pct": 85.45,
+      "large_holder_1000_delta_pct": 0.03,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "1304",
+      "name": "台聚",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 15.5,
+      "open": 13.35,
+      "prev_close": null,
+      "change_pct": 1.4,
+      "volume": 5194,
+      "volume_5d_avg": 3790.5,
+      "volume_ratio": 1.37,
+      "velocity_3d": 0,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 2865,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 4442,
+      "top5_branches": [
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 1487,
+          "sell": 16,
+          "net": 1471
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 1405,
+          "sell": 68,
+          "net": 1337
+        },
+        {
+          "branch": "港商野村",
+          "buy": 378,
+          "sell": 0,
+          "net": 378
+        },
+        {
+          "branch": "美林",
+          "buy": 368,
+          "sell": 24,
+          "net": 344
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 342,
+          "sell": 99,
+          "net": 243
+        }
+      ],
+      "main_force_cost": 13.37,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 2,
+      "net_accumulation_in_window": 8884,
+      "main_force_volume_trend": [
+        4442,
+        4442
+      ],
+      "volume_increasing_streak": 1,
+      "top5_concentration": null,
+      "dealer_net_buy": 0,
+      "is_day_trader_branch": false,
+      "shareholder_count": 101049,
+      "shareholder_count_delta_pct": -0.4747,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 61.29,
+      "large_holder_400_delta_pct": 0.43,
+      "large_holder_1000_pct": 58.18,
+      "large_holder_1000_delta_pct": 0.26,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "1313",
+      "name": "聯成",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 14.3,
+      "open": 12.3,
+      "prev_close": null,
+      "change_pct": 1.3,
+      "volume": 14834,
+      "volume_5d_avg": 14834.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 7742,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 19034,
+      "top5_branches": [
+        {
+          "branch": "富邦證券",
+          "buy": 2818,
+          "sell": 11,
+          "net": 2807
+        },
+        {
+          "branch": "統一",
+          "buy": 2012,
+          "sell": 37,
+          "net": 1975
+        },
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 2628,
+          "sell": 1096,
+          "net": 1532
+        },
+        {
+          "branch": "美林",
+          "buy": 1497,
+          "sell": 0,
+          "net": 1497
+        },
+        {
+          "branch": "凱基-城中",
+          "buy": 1463,
+          "sell": 52,
+          "net": 1411
+        }
+      ],
+      "main_force_cost": 14.13,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 19034,
+      "main_force_volume_trend": [
+        19034
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 0,
+      "is_day_trader_branch": false,
+      "shareholder_count": 64491,
+      "shareholder_count_delta_pct": 1.6679,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 66.73,
+      "large_holder_400_delta_pct": -0.12,
+      "large_holder_1000_pct": 62.57,
+      "large_holder_1000_delta_pct": -0.04,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "1314",
+      "name": "中石化",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 9.88,
+      "open": 8.39,
+      "prev_close": null,
+      "change_pct": 0.89,
+      "volume": 74400,
+      "volume_5d_avg": 23415.8,
+      "volume_ratio": 3.177,
+      "velocity_3d": 40046,
+      "acceleration": 43862,
+      "market_volume": 121861,
+      "fii_net_buy": 32887,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 6,
+      "main_force_buy": 98451,
+      "top5_branches": [
+        {
+          "branch": "元大證券",
+          "buy": 48473,
+          "sell": 27273,
+          "net": 21200
+        },
+        {
+          "branch": "凱基-信義",
+          "buy": 36569,
+          "sell": 24341,
+          "net": 12228
+        },
+        {
+          "branch": "富邦證券",
+          "buy": 10513,
+          "sell": 666,
+          "net": 9847
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 10998,
+          "sell": 1673,
+          "net": 9325
+        },
+        {
+          "branch": "台新-虎尾",
+          "buy": 6562,
+          "sell": 112,
+          "net": 6450
+        }
+      ],
+      "main_force_cost": 9.68,
+      "main_force_consecutive_days": 8,
+      "main_force_strict_streak_days": 8,
+      "main_force_positive_days_in_window": 10,
+      "net_accumulation_in_window": 247136,
+      "main_force_volume_trend": [
+        10126,
+        25989,
+        18358,
+        18358,
+        98451
+      ],
+      "volume_increasing_streak": 1,
+      "top5_concentration": null,
+      "dealer_net_buy": 0,
+      "is_day_trader_branch": false,
+      "shareholder_count": 300015,
+      "shareholder_count_delta_pct": -0.7618,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 40.15,
+      "large_holder_400_delta_pct": 0.81,
+      "large_holder_1000_pct": 31.67,
+      "large_holder_1000_delta_pct": 0.82,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 148685,
+        "present_latest": true,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "1326",
+      "name": "台化",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 68.0,
+      "open": 55.5,
+      "prev_close": null,
+      "change_pct": 6.1,
+      "volume": 19808,
+      "volume_5d_avg": 13967.4,
+      "volume_ratio": 1.418,
+      "velocity_3d": 8826,
+      "acceleration": 2738,
+      "market_volume": null,
+      "fii_net_buy": 2353,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 33775,
+      "top5_branches": [
+        {
+          "branch": "凱基",
+          "buy": 16831,
+          "sell": 157,
+          "net": 16674
+        },
+        {
+          "branch": "凱基-民權",
+          "buy": 4930,
+          "sell": 39,
+          "net": 4891
+        },
+        {
+          "branch": "摩根大通",
+          "buy": 4991,
+          "sell": 674,
+          "net": 4317
+        },
+        {
+          "branch": "凱基-信義",
+          "buy": 5004,
+          "sell": 2869,
+          "net": 2135
+        },
+        {
+          "branch": "統一-城中",
+          "buy": 1964,
+          "sell": 13,
+          "net": 1951
+        }
+      ],
+      "main_force_cost": 67.18,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 6,
+      "net_accumulation_in_window": 118303,
+      "main_force_volume_trend": [
+        16124,
+        16124,
+        16124,
+        28298,
+        33775
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 0,
+      "is_day_trader_branch": false,
+      "shareholder_count": 178785,
+      "shareholder_count_delta_pct": -0.8221,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 82.97,
+      "large_holder_400_delta_pct": 0.57,
+      "large_holder_1000_pct": 80.44,
+      "large_holder_1000_delta_pct": 0.61,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "1402",
+      "name": "遠東新",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 29.1,
+      "open": 28.2,
+      "prev_close": null,
+      "change_pct": 0.7,
+      "volume": 6844,
+      "volume_5d_avg": 4629.0,
+      "volume_ratio": 1.479,
+      "velocity_3d": -2732,
+      "acceleration": -3408,
+      "market_volume": null,
+      "fii_net_buy": -813,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 10307,
+      "top5_branches": [
+        {
+          "branch": "台新",
+          "buy": 3270,
+          "sell": 62,
+          "net": 3208
+        },
+        {
+          "branch": "康和",
+          "buy": 3005,
+          "sell": 0,
+          "net": 3005
+        },
+        {
+          "branch": "元大證券",
+          "buy": 1914,
+          "sell": 371,
+          "net": 1543
+        },
+        {
+          "branch": "中國信託",
+          "buy": 532,
+          "sell": 11,
+          "net": 521
+        },
+        {
+          "branch": "元大-高雄",
+          "buy": 492,
+          "sell": 0,
+          "net": 492
+        }
+      ],
+      "main_force_cost": 28.58,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 10,
+      "net_accumulation_in_window": 155622,
+      "main_force_volume_trend": [
+        14188,
+        15771,
+        15771,
+        17122,
+        10307
+      ],
+      "volume_increasing_streak": 2,
+      "top5_concentration": null,
+      "dealer_net_buy": 1113,
+      "is_day_trader_branch": false,
+      "shareholder_count": 91610,
+      "shareholder_count_delta_pct": -2.1543,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 88.46,
+      "large_holder_400_delta_pct": 0.38,
+      "large_holder_1000_pct": 86.39,
+      "large_holder_1000_delta_pct": 0.47,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "red",
+        "flags": [
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買9日，缺席3日（最後 06-29）"
+          },
+          {
+            "code": "W5",
+            "zh": "分點賣壓",
+            "detail": "分點賣 13,739 vs 買 10,307"
+          }
+        ],
+        "flag_count": 2,
+        "label_zh": "出貨確認",
+        "net_cumulative": 145315,
+        "present_latest": false,
+        "snaps_since_seen": 3
+      }
+    },
+    {
+      "ticker": "1409",
+      "name": "新纖",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 31.0,
+      "open": 25.3,
+      "prev_close": null,
+      "change_pct": 2.8,
+      "volume": 17936,
+      "volume_5d_avg": 9010.33,
+      "volume_ratio": 1.991,
+      "velocity_3d": 12890,
+      "acceleration": 25779,
+      "market_volume": null,
+      "fii_net_buy": 5523,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 3,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 30368,
+      "top5_branches": [
+        {
+          "branch": "富邦證券",
+          "buy": 26828,
+          "sell": 3263,
+          "net": 23565
+        },
+        {
+          "branch": "摩根大通",
+          "buy": 3667,
+          "sell": 984,
+          "net": 2683
+        },
+        {
+          "branch": "台新-宜蘭",
+          "buy": 602,
+          "sell": 68,
+          "net": 534
+        },
+        {
+          "branch": "元大-新竹",
+          "buy": 505,
+          "sell": 30,
+          "net": 475
+        },
+        {
+          "branch": "元大-中壢",
+          "buy": 702,
+          "sell": 245,
+          "net": 457
+        }
+      ],
+      "main_force_cost": 30.81,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 3,
+      "net_accumulation_in_window": 39546,
+      "main_force_volume_trend": [
+        4589,
+        4589,
+        30368
+      ],
+      "volume_increasing_streak": 1,
+      "top5_concentration": null,
+      "dealer_net_buy": 359,
+      "is_day_trader_branch": false,
+      "shareholder_count": 146055,
+      "shareholder_count_delta_pct": 2.96,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 65.48,
+      "large_holder_400_delta_pct": -1.72,
+      "large_holder_1000_pct": 61.9,
+      "large_holder_1000_delta_pct": -2.17,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "1609",
+      "name": "大亞",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 39.8,
+      "open": 38.45,
+      "prev_close": null,
+      "change_pct": 1.65,
+      "volume": 4730,
+      "volume_5d_avg": 4730.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": -2915,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 6291,
+      "top5_branches": [
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 1438,
+          "sell": 122,
+          "net": 1316
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 1573,
+          "sell": 305,
+          "net": 1268
+        },
+        {
+          "branch": "日茂",
+          "buy": 1009,
+          "sell": 3,
+          "net": 1006
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 494,
+          "sell": 20,
+          "net": 474
+        },
+        {
+          "branch": "元大-竹科",
+          "buy": 456,
+          "sell": 17,
+          "net": 439
+        }
+      ],
+      "main_force_cost": 39.8,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 6291,
+      "main_force_volume_trend": [
+        6291
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 2,
+      "is_day_trader_branch": false,
+      "shareholder_count": 202047,
+      "shareholder_count_delta_pct": -0.2183,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 30.4,
+      "large_holder_400_delta_pct": -0.48,
+      "large_holder_1000_pct": 26.84,
+      "large_holder_1000_delta_pct": -0.5,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "1714",
+      "name": "和桐",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 22.75,
+      "open": 19.1,
+      "prev_close": null,
+      "change_pct": 2.05,
+      "volume": 4818,
+      "volume_5d_avg": 5688.0,
+      "volume_ratio": 0.847,
+      "velocity_3d": 0,
+      "acceleration": 0,
+      "market_volume": null,
+      "fii_net_buy": 1601,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 4,
+      "main_force_buy": 20342,
+      "top5_branches": [
+        {
+          "branch": "富邦-建國",
+          "buy": 7120,
+          "sell": 21,
+          "net": 7099
+        },
+        {
+          "branch": "港商野村",
+          "buy": 3886,
+          "sell": 0,
+          "net": 3886
+        },
+        {
+          "branch": "摩根大通",
+          "buy": 3708,
+          "sell": 3,
+          "net": 3705
+        },
+        {
+          "branch": "凱基-台北",
+          "buy": 1562,
+          "sell": 440,
+          "net": 1122
+        },
+        {
+          "branch": "凱基-中港",
+          "buy": 1854,
+          "sell": 1067,
+          "net": 787
+        }
+      ],
+      "main_force_cost": 16.64,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 4,
+      "net_accumulation_in_window": 81368,
+      "main_force_volume_trend": [
+        20342,
+        20342,
+        20342,
+        20342
+      ],
+      "volume_increasing_streak": 1,
+      "top5_concentration": null,
+      "dealer_net_buy": 0,
+      "is_day_trader_branch": false,
+      "shareholder_count": 96485,
+      "shareholder_count_delta_pct": 3.3362,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 61.98,
+      "large_holder_400_delta_pct": -0.95,
+      "large_holder_1000_pct": 56.99,
+      "large_holder_1000_delta_pct": -0.65,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "1717",
+      "name": "長興",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 81.6,
+      "open": 71.5,
+      "prev_close": null,
+      "change_pct": 7.4,
+      "volume": 23180,
+      "volume_5d_avg": 10513.0,
+      "volume_ratio": 2.205,
+      "velocity_3d": 10874,
+      "acceleration": 21747,
+      "market_volume": null,
+      "fii_net_buy": 2099,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 3,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 28451,
+      "top5_branches": [
+        {
+          "branch": "元大證券",
+          "buy": 10632,
+          "sell": 3874,
+          "net": 6758
+        },
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 5402,
+          "sell": 588,
+          "net": 4814
+        },
+        {
+          "branch": "凱基-信義",
+          "buy": 4501,
+          "sell": 28,
+          "net": 4473
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 3007,
+          "sell": 548,
+          "net": 2459
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 2102,
+          "sell": 117,
+          "net": 1985
+        }
+      ],
+      "main_force_cost": 79.95,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 3,
+      "net_accumulation_in_window": 41859,
+      "main_force_volume_trend": [
+        6704,
+        6704,
+        28451
+      ],
+      "volume_increasing_streak": 2,
+      "top5_concentration": null,
+      "dealer_net_buy": 457,
+      "is_day_trader_branch": false,
+      "shareholder_count": 101753,
+      "shareholder_count_delta_pct": -1.5814,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 65.14,
+      "large_holder_400_delta_pct": 0.57,
+      "large_holder_1000_pct": 59.0,
+      "large_holder_1000_delta_pct": 0.37,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 13408,
+        "present_latest": false,
+        "snaps_since_seen": 3
+      }
+    },
+    {
+      "ticker": "1718",
+      "name": "中纖",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 14.95,
+      "open": 12.6,
+      "prev_close": null,
+      "change_pct": 1.35,
+      "volume": 37719,
+      "volume_5d_avg": 19242.6,
+      "volume_ratio": 1.96,
+      "velocity_3d": 23088,
+      "acceleration": 26773,
+      "market_volume": null,
+      "fii_net_buy": 6878,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 68231,
+      "top5_branches": [
+        {
+          "branch": "凱基-城中",
+          "buy": 51850,
+          "sell": 10108,
+          "net": 41742
+        },
+        {
+          "branch": "摩根大通",
+          "buy": 11610,
+          "sell": 30,
+          "net": 11580
+        },
+        {
+          "branch": "富邦證券",
+          "buy": 10040,
+          "sell": 4871,
+          "net": 5169
+        },
+        {
+          "branch": "港商野村",
+          "buy": 5169,
+          "sell": 248,
+          "net": 4921
+        },
+        {
+          "branch": "元大-竹科",
+          "buy": 2034,
+          "sell": 105,
+          "net": 1929
+        }
+      ],
+      "main_force_cost": 14.87,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 5,
+      "net_accumulation_in_window": 189194,
+      "main_force_volume_trend": [
+        27748,
+        39265,
+        22055,
+        31895,
+        68231
+      ],
+      "volume_increasing_streak": 1,
+      "top5_concentration": null,
+      "dealer_net_buy": 0,
+      "is_day_trader_branch": false,
+      "shareholder_count": 167262,
+      "shareholder_count_delta_pct": -2.6131,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 56.17,
+      "large_holder_400_delta_pct": 1.26,
+      "large_holder_1000_pct": 51.29,
+      "large_holder_1000_delta_pct": 1.49,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "orange",
+        "flags": [
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買4日，缺席2日（最後 06-30）"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "轉弱",
+        "net_cumulative": 120963,
+        "present_latest": false,
+        "snaps_since_seen": 2
+      }
+    },
+    {
+      "ticker": "1810",
+      "name": "和成",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 23.25,
+      "open": 20.8,
+      "prev_close": null,
+      "change_pct": 2.1,
+      "volume": 3905,
+      "volume_5d_avg": 3905.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 102,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 7190,
+      "top5_branches": [
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 1419,
+          "sell": 198,
+          "net": 1221
+        },
+        {
+          "branch": "美林",
+          "buy": 966,
+          "sell": 9,
+          "net": 957
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 958,
+          "sell": 159,
+          "net": 799
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 718,
+          "sell": 112,
+          "net": 606
+        },
+        {
+          "branch": "元大-竹科",
+          "buy": 697,
+          "sell": 176,
+          "net": 521
+        }
+      ],
+      "main_force_cost": 22.97,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 7190,
+      "main_force_volume_trend": [
+        7190
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 0,
+      "is_day_trader_branch": false,
+      "shareholder_count": 19527,
+      "shareholder_count_delta_pct": 0.1693,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 66.02,
+      "large_holder_400_delta_pct": -0.59,
+      "large_holder_1000_pct": 61.44,
+      "large_holder_1000_delta_pct": -0.23,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "1909",
+      "name": "榮成",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 10.3,
+      "open": 9.47,
+      "prev_close": null,
+      "change_pct": 0.45,
+      "volume": 4387,
+      "volume_5d_avg": 4387.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 1866,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 7634,
+      "top5_branches": [
+        {
+          "branch": "摩根大通",
+          "buy": 1742,
+          "sell": 14,
+          "net": 1728
+        },
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 1364,
+          "sell": 41,
+          "net": 1323
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 1362,
+          "sell": 53,
+          "net": 1309
+        },
+        {
+          "branch": "凱基-台北",
+          "buy": 814,
+          "sell": 248,
+          "net": 566
+        },
+        {
+          "branch": "美林",
+          "buy": 539,
+          "sell": 1,
+          "net": 538
+        }
+      ],
+      "main_force_cost": 10.15,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 7634,
+      "main_force_volume_trend": [
+        7634
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 0,
+      "is_day_trader_branch": false,
+      "shareholder_count": 85105,
+      "shareholder_count_delta_pct": -0.2859,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 66.61,
+      "large_holder_400_delta_pct": -0.26,
+      "large_holder_1000_pct": 62.27,
+      "large_holder_1000_delta_pct": 0.03,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "2002",
+      "name": "中鋼",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 18.95,
+      "open": 18.65,
+      "prev_close": null,
+      "change_pct": 0.35,
+      "volume": 12244,
+      "volume_5d_avg": 12737.6,
+      "volume_ratio": 0.961,
+      "velocity_3d": 4018,
+      "acceleration": 8514,
+      "market_volume": null,
+      "fii_net_buy": -13713,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 1,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 17604,
+      "top5_branches": [
+        {
+          "branch": "美商高盛",
+          "buy": 4993,
+          "sell": 974,
+          "net": 4019
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 4554,
+          "sell": 573,
+          "net": 3981
+        },
+        {
+          "branch": "摩根大通",
+          "buy": 4230,
+          "sell": 1292,
+          "net": 2938
+        },
+        {
+          "branch": "華南永昌-三重",
+          "buy": 1614,
+          "sell": 3,
+          "net": 1611
+        },
+        {
+          "branch": "美林",
+          "buy": 3017,
+          "sell": 1531,
+          "net": 1486
+        }
+      ],
+      "main_force_cost": 18.92,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 6,
+      "net_accumulation_in_window": 436388,
+      "main_force_volume_trend": [
+        47899,
+        19320,
+        9568,
+        10329,
+        17604
+      ],
+      "volume_increasing_streak": 2,
+      "top5_concentration": null,
+      "dealer_net_buy": -78,
+      "is_day_trader_branch": false,
+      "shareholder_count": 1356576,
+      "shareholder_count_delta_pct": -0.5113,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 52.18,
+      "large_holder_400_delta_pct": 0.11,
+      "large_holder_1000_pct": 48.46,
+      "large_holder_1000_delta_pct": 0.1,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "orange",
+        "flags": [
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買5日，缺席3日（最後 06-29）"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "轉弱",
+        "net_cumulative": 418784,
+        "present_latest": false,
+        "snaps_since_seen": 3
+      }
+    },
+    {
+      "ticker": "2103",
+      "name": "台橡",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 23.5,
+      "open": 20.4,
+      "prev_close": null,
+      "change_pct": 2.1,
+      "volume": 4940,
+      "volume_5d_avg": 3401.5,
+      "volume_ratio": 1.452,
+      "velocity_3d": 5945,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 1075,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 7808,
+      "top5_branches": [
+        {
+          "branch": "凱基-台北",
+          "buy": 1507,
+          "sell": 159,
+          "net": 1348
+        },
+        {
+          "branch": "凱基-市政",
+          "buy": 1014,
+          "sell": 7,
+          "net": 1007
+        },
+        {
+          "branch": "富邦-南京",
+          "buy": 1886,
+          "sell": 1086,
+          "net": 800
+        },
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 949,
+          "sell": 186,
+          "net": 763
+        },
+        {
+          "branch": "摩根大通",
+          "buy": 694,
+          "sell": 185,
+          "net": 509
+        }
+      ],
+      "main_force_cost": 23.3,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 2,
+      "net_accumulation_in_window": 9671,
+      "main_force_volume_trend": [
+        1863,
+        7808
+      ],
+      "volume_increasing_streak": 1,
+      "top5_concentration": null,
+      "dealer_net_buy": 0,
+      "is_day_trader_branch": false,
+      "shareholder_count": 85625,
+      "shareholder_count_delta_pct": -0.4279,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 55.11,
+      "large_holder_400_delta_pct": 0.43,
+      "large_holder_1000_pct": 50.14,
+      "large_holder_1000_delta_pct": 0.34,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "2105",
+      "name": "正新",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 32.15,
+      "open": 30.5,
+      "prev_close": null,
+      "change_pct": 0.45,
+      "volume": 5992,
+      "volume_5d_avg": 5565.0,
+      "volume_ratio": 1.077,
+      "velocity_3d": 6749,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 14764,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 3,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 2,
+      "main_force_buy": 15854,
+      "top5_branches": [
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 4522,
+          "sell": 62,
+          "net": 4460
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 3808,
+          "sell": 962,
+          "net": 2846
+        },
+        {
+          "branch": "摩根大通",
+          "buy": 3300,
+          "sell": 598,
+          "net": 2702
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 2728,
+          "sell": 505,
+          "net": 2223
+        },
+        {
+          "branch": "花旗環球",
+          "buy": 662,
+          "sell": 28,
+          "net": 634
+        }
+      ],
+      "main_force_cost": 32.61,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 2,
+      "net_accumulation_in_window": 24959,
+      "main_force_volume_trend": [
+        9105,
+        15854
+      ],
+      "volume_increasing_streak": 1,
+      "top5_concentration": null,
+      "dealer_net_buy": 388,
+      "is_day_trader_branch": false,
+      "shareholder_count": 86436,
+      "shareholder_count_delta_pct": 1.6129,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 79.93,
+      "large_holder_400_delta_pct": -0.5,
+      "large_holder_1000_pct": 77.17,
+      "large_holder_1000_delta_pct": -0.76,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 9105,
+        "present_latest": false,
+        "snaps_since_seen": 3
+      }
+    },
+    {
+      "ticker": "2208",
+      "name": "台船",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 20.8,
+      "open": 18.45,
+      "prev_close": null,
+      "change_pct": 1.85,
+      "volume": 8875,
+      "volume_5d_avg": 8875.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 223,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 8875,
+      "top5_branches": [],
+      "main_force_cost": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 8875,
+      "main_force_volume_trend": [
+        8875
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 0,
+      "is_day_trader_branch": false,
+      "shareholder_count": 123702,
+      "shareholder_count_delta_pct": -0.2451,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 55.44,
+      "large_holder_400_delta_pct": -0.17,
+      "large_holder_1000_pct": 50.54,
+      "large_holder_1000_delta_pct": -0.27,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "2303",
+      "name": "聯電",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 170.5,
+      "open": 164.0,
+      "prev_close": null,
+      "change_pct": 5.0,
+      "volume": 17875,
+      "volume_5d_avg": 28511.6,
+      "volume_ratio": 0.627,
+      "velocity_3d": -13264,
+      "acceleration": 5684,
+      "market_volume": 83489,
+      "fii_net_buy": -12538,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 1,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 43755,
+      "top5_branches": [
+        {
+          "branch": "法銀巴黎",
+          "buy": 16674,
+          "sell": 61,
+          "net": 16613
+        },
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 10231,
+          "sell": 2847,
+          "net": 7384
+        },
+        {
+          "branch": "永豐金證券",
+          "buy": 4839,
+          "sell": 509,
+          "net": 4330
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 6999,
+          "sell": 3246,
+          "net": 3753
+        },
+        {
+          "branch": "凱基-台北",
+          "buy": 4413,
+          "sell": 1353,
+          "net": 3060
+        }
+      ],
+      "main_force_cost": 166.65,
+      "main_force_consecutive_days": 3,
+      "main_force_strict_streak_days": 3,
+      "main_force_positive_days_in_window": 6,
+      "net_accumulation_in_window": 325454,
+      "main_force_volume_trend": [
+        101839,
+        52286,
+        70284,
+        14390,
+        43755
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": -17511,
+      "is_day_trader_branch": false,
+      "shareholder_count": 863748,
+      "shareholder_count_delta_pct": -1.0665,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 77.62,
+      "large_holder_400_delta_pct": 0.54,
+      "large_holder_1000_pct": 75.02,
+      "large_holder_1000_delta_pct": 0.57,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "yellow",
+        "flags": [
+          {
+            "code": "W1",
+            "zh": "動能衰竭",
+            "detail": "連買5日但速度 -18,948/日"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "失速",
+        "net_cumulative": 281699,
+        "present_latest": true,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "2323",
+      "name": "中環",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 12.0,
+      "open": 11.0,
+      "prev_close": null,
+      "change_pct": 0.65,
+      "volume": 7387,
+      "volume_5d_avg": 4842.0,
+      "volume_ratio": 1.526,
+      "velocity_3d": 0,
+      "acceleration": -6680,
+      "market_volume": null,
+      "fii_net_buy": 635,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 16205,
+      "top5_branches": [
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 3769,
+          "sell": 90,
+          "net": 3679
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 3027,
+          "sell": 151,
+          "net": 2876
+        },
+        {
+          "branch": "凱基-台北",
+          "buy": 3181,
+          "sell": 836,
+          "net": 2345
+        },
+        {
+          "branch": "摩根大通",
+          "buy": 2090,
+          "sell": 26,
+          "net": 2064
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 1895,
+          "sell": 65,
+          "net": 1830
+        }
+      ],
+      "main_force_cost": 11.52,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 4,
+      "net_accumulation_in_window": 51461,
+      "main_force_volume_trend": [
+        2846,
+        16205,
+        16205,
+        16205
+      ],
+      "volume_increasing_streak": 1,
+      "top5_concentration": null,
+      "dealer_net_buy": 0,
+      "is_day_trader_branch": false,
+      "shareholder_count": 137343,
+      "shareholder_count_delta_pct": -0.7429,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 45.5,
+      "large_holder_400_delta_pct": 0.82,
+      "large_holder_1000_pct": 38.85,
+      "large_holder_1000_delta_pct": 1.2,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "2332",
+      "name": "友訊",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 20.0,
+      "open": 17.45,
+      "prev_close": null,
+      "change_pct": 1.8,
+      "volume": 6377,
+      "volume_5d_avg": 6410.67,
+      "volume_ratio": 0.995,
+      "velocity_3d": 462,
+      "acceleration": 169,
+      "market_volume": null,
+      "fii_net_buy": 873,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 2,
+      "main_force_buy": 7162,
+      "top5_branches": [
+        {
+          "branch": "台新-世貿",
+          "buy": 2373,
+          "sell": 46,
+          "net": 2327
+        },
+        {
+          "branch": "國泰-敦南",
+          "buy": 1469,
+          "sell": 350,
+          "net": 1119
+        },
+        {
+          "branch": "兆豐-東門",
+          "buy": 517,
+          "sell": 2,
+          "net": 515
+        },
+        {
+          "branch": "永豐金-松山",
+          "buy": 404,
+          "sell": 4,
+          "net": 400
+        },
+        {
+          "branch": "台新",
+          "buy": 430,
+          "sell": 70,
+          "net": 360
+        }
+      ],
+      "main_force_cost": 18.97,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 3,
+      "net_accumulation_in_window": 20017,
+      "main_force_volume_trend": [
+        6239,
+        6616,
+        7162
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 0,
+      "is_day_trader_branch": false,
+      "shareholder_count": 94499,
+      "shareholder_count_delta_pct": 3.9444,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 42.81,
+      "large_holder_400_delta_pct": -3.63,
+      "large_holder_1000_pct": 36.77,
+      "large_holder_1000_delta_pct": -3.31,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "2356",
+      "name": "英業達",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 67.6,
+      "open": 65.8,
+      "prev_close": null,
+      "change_pct": 0.4,
+      "volume": 4088,
+      "volume_5d_avg": 4572.33,
+      "volume_ratio": 0.894,
+      "velocity_3d": 0,
+      "acceleration": 0,
+      "market_volume": null,
+      "fii_net_buy": -3466,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 4883,
+      "top5_branches": [
+        {
+          "branch": "兆豐證券",
+          "buy": 1026,
+          "sell": 4,
+          "net": 1022
+        },
+        {
+          "branch": "國泰-敦南",
+          "buy": 2344,
+          "sell": 1771,
+          "net": 573
+        },
+        {
+          "branch": "港商麥格理",
+          "buy": 510,
+          "sell": 0,
+          "net": 510
+        },
+        {
+          "branch": "美林",
+          "buy": 741,
+          "sell": 302,
+          "net": 439
+        },
+        {
+          "branch": "國泰證券",
+          "buy": 403,
+          "sell": 32,
+          "net": 371
+        }
+      ],
+      "main_force_cost": 69.22,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 3,
+      "net_accumulation_in_window": 14649,
+      "main_force_volume_trend": [
+        4883,
+        4883,
+        4883
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 4781,
+      "is_day_trader_branch": false,
+      "shareholder_count": 274862,
+      "shareholder_count_delta_pct": 0.3292,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 72.8,
+      "large_holder_400_delta_pct": -0.33,
+      "large_holder_1000_pct": 69.78,
+      "large_holder_1000_delta_pct": -0.36,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "yellow",
+        "flags": [
+          {
+            "code": "W5",
+            "zh": "分點賣壓",
+            "detail": "分點賣 17,168 vs 買 4,883"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "失速",
+        "net_cumulative": 9766,
+        "present_latest": false,
+        "snaps_since_seen": 2
+      }
+    },
+    {
+      "ticker": "2603",
+      "name": "長榮",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 195.0,
+      "open": 185.5,
+      "prev_close": null,
+      "change_pct": 9.5,
+      "volume": 9485,
+      "volume_5d_avg": 9485.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 248,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 12724,
+      "top5_branches": [
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 4420,
+          "sell": 273,
+          "net": 4147
+        },
+        {
+          "branch": "富邦證券",
+          "buy": 1797,
+          "sell": 30,
+          "net": 1767
+        },
+        {
+          "branch": "元大證券",
+          "buy": 2680,
+          "sell": 1178,
+          "net": 1502
+        },
+        {
+          "branch": "凱基",
+          "buy": 1411,
+          "sell": 21,
+          "net": 1390
+        },
+        {
+          "branch": "美林",
+          "buy": 776,
+          "sell": 118,
+          "net": 658
+        }
+      ],
+      "main_force_cost": 193.92,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 12724,
+      "main_force_volume_trend": [
+        12724
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": -161,
+      "is_day_trader_branch": false,
+      "shareholder_count": 322165,
+      "shareholder_count_delta_pct": 3.1142,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 69.95,
+      "large_holder_400_delta_pct": -1.21,
+      "large_holder_1000_pct": 65.21,
+      "large_holder_1000_delta_pct": -1.22,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "2609",
+      "name": "陽明",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 52.4,
+      "open": 51.2,
+      "prev_close": null,
+      "change_pct": 1.4,
+      "volume": 12476,
+      "volume_5d_avg": 6980.0,
+      "volume_ratio": 1.787,
+      "velocity_3d": -2888,
+      "acceleration": 6449,
+      "market_volume": null,
+      "fii_net_buy": -2115,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 15935,
+      "top5_branches": [
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 3832,
+          "sell": 344,
+          "net": 3488
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 4778,
+          "sell": 1555,
+          "net": 3223
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 2705,
+          "sell": 301,
+          "net": 2404
+        },
+        {
+          "branch": "富邦證券",
+          "buy": 1687,
+          "sell": 215,
+          "net": 1472
+        },
+        {
+          "branch": "摩根大通",
+          "buy": 2238,
+          "sell": 899,
+          "net": 1339
+        }
+      ],
+      "main_force_cost": 52.61,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 5,
+      "net_accumulation_in_window": 81293,
+      "main_force_volume_trend": [
+        18901,
+        21710,
+        21710,
+        3037,
+        15935
+      ],
+      "volume_increasing_streak": 2,
+      "top5_concentration": null,
+      "dealer_net_buy": 56,
+      "is_day_trader_branch": false,
+      "shareholder_count": 396113,
+      "shareholder_count_delta_pct": -0.6037,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 55.87,
+      "large_holder_400_delta_pct": 0.28,
+      "large_holder_1000_pct": 53.14,
+      "large_holder_1000_delta_pct": 0.14,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "red",
+        "flags": [
+          {
+            "code": "W1",
+            "zh": "動能衰竭",
+            "detail": "連買4日但速度 -9,336/日"
+          },
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買4日，缺席3日（最後 06-29）"
+          }
+        ],
+        "flag_count": 2,
+        "label_zh": "出貨確認",
+        "net_cumulative": 65358,
+        "present_latest": false,
+        "snaps_since_seen": 3
+      }
+    },
+    {
+      "ticker": "2615",
+      "name": "萬海",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 82.8,
+      "open": 78.6,
+      "prev_close": null,
+      "change_pct": 3.9,
+      "volume": 9107,
+      "volume_5d_avg": 9107.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": -241,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 12260,
+      "top5_branches": [
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 3675,
+          "sell": 254,
+          "net": 3421
+        },
+        {
+          "branch": "摩根大通",
+          "buy": 3725,
+          "sell": 429,
+          "net": 3296
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 1366,
+          "sell": 354,
+          "net": 1012
+        },
+        {
+          "branch": "中國信託",
+          "buy": 1247,
+          "sell": 266,
+          "net": 981
+        },
+        {
+          "branch": "凱基-台北",
+          "buy": 2392,
+          "sell": 1473,
+          "net": 919
+        }
+      ],
+      "main_force_cost": 85.96,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 12260,
+      "main_force_volume_trend": [
+        12260
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 271,
+      "is_day_trader_branch": false,
+      "shareholder_count": 120756,
+      "shareholder_count_delta_pct": 0.6644,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 85.12,
+      "large_holder_400_delta_pct": -0.24,
+      "large_holder_1000_pct": 82.59,
+      "large_holder_1000_delta_pct": -0.31,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "2618",
+      "name": "長榮航",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 43.85,
+      "open": 44.0,
+      "prev_close": null,
+      "change_pct": -0.05,
+      "volume": 4657,
+      "volume_5d_avg": 17530.8,
+      "volume_ratio": 0.266,
+      "velocity_3d": 4706,
+      "acceleration": 12320,
+      "market_volume": null,
+      "fii_net_buy": -7358,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 27777,
+      "top5_branches": [
+        {
+          "branch": "富邦證券",
+          "buy": 14328,
+          "sell": 134,
+          "net": 14194
+        },
+        {
+          "branch": "華南永昌-中正",
+          "buy": 4274,
+          "sell": 19,
+          "net": 4255
+        },
+        {
+          "branch": "花旗環球",
+          "buy": 2867,
+          "sell": 158,
+          "net": 2709
+        },
+        {
+          "branch": "統一",
+          "buy": 2221,
+          "sell": 141,
+          "net": 2080
+        },
+        {
+          "branch": "統一-嘉義",
+          "buy": 1010,
+          "sell": 2,
+          "net": 1008
+        }
+      ],
+      "main_force_cost": 43.88,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 10,
+      "net_accumulation_in_window": 377383,
+      "main_force_volume_trend": [
+        45372,
+        29045,
+        18366,
+        13816,
+        27777
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 4147,
+      "is_day_trader_branch": false,
+      "shareholder_count": 221672,
+      "shareholder_count_delta_pct": -3.5676,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 78.83,
+      "large_holder_400_delta_pct": 1.49,
+      "large_holder_1000_pct": 75.77,
+      "large_holder_1000_delta_pct": 1.61,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "red",
+        "flags": [
+          {
+            "code": "W1",
+            "zh": "動能衰竭",
+            "detail": "連買9日但速度 -7,614/日"
+          },
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買9日，缺席2日（最後 06-30）"
+          },
+          {
+            "code": "W5",
+            "zh": "分點賣壓",
+            "detail": "分點賣 28,225 vs 買 27,777"
+          }
+        ],
+        "flag_count": 3,
+        "label_zh": "出貨確認",
+        "net_cumulative": 349606,
+        "present_latest": false,
+        "snaps_since_seen": 2
+      }
+    },
+    {
+      "ticker": "2634",
+      "name": "漢翔",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 60.0,
+      "open": 56.2,
+      "prev_close": null,
+      "change_pct": 5.4,
+      "volume": 19044,
+      "volume_5d_avg": 19384.0,
+      "volume_ratio": 0.982,
+      "velocity_3d": -618,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 684,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 3,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 2,
+      "main_force_buy": 23709,
+      "top5_branches": [
+        {
+          "branch": "富邦證券",
+          "buy": 3515,
+          "sell": 12,
+          "net": 3503
+        },
+        {
+          "branch": "元大-嘉義",
+          "buy": 3052,
+          "sell": 73,
+          "net": 2979
+        },
+        {
+          "branch": "元大證券",
+          "buy": 4853,
+          "sell": 2324,
+          "net": 2529
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 2388,
+          "sell": 66,
+          "net": 2322
+        },
+        {
+          "branch": "摩根大通",
+          "buy": 2404,
+          "sell": 212,
+          "net": 2192
+        }
+      ],
+      "main_force_cost": 59.37,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 2,
+      "net_accumulation_in_window": 48036,
+      "main_force_volume_trend": [
+        24327,
+        23709
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 168,
+      "is_day_trader_branch": false,
+      "shareholder_count": 104502,
+      "shareholder_count_delta_pct": -0.4307,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 49.4,
+      "large_holder_400_delta_pct": 0.4,
+      "large_holder_1000_pct": 47.26,
+      "large_holder_1000_delta_pct": 0.47,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 24327,
+        "present_latest": false,
+        "snaps_since_seen": 2
+      }
+    },
+    {
+      "ticker": "2812",
+      "name": "台中銀",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 20.4,
+      "open": 19.9,
+      "prev_close": null,
+      "change_pct": 0.25,
+      "volume": 7757,
+      "volume_5d_avg": 6268.0,
+      "volume_ratio": 1.238,
+      "velocity_3d": -2496,
+      "acceleration": 4487,
+      "market_volume": null,
+      "fii_net_buy": 8163,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 3,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 8696,
+      "top5_branches": [
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 1854,
+          "sell": 25,
+          "net": 1829
+        },
+        {
+          "branch": "凱基-台北",
+          "buy": 1730,
+          "sell": 263,
+          "net": 1467
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 1575,
+          "sell": 147,
+          "net": 1428
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 1456,
+          "sell": 215,
+          "net": 1241
+        },
+        {
+          "branch": "摩根大通",
+          "buy": 1080,
+          "sell": 98,
+          "net": 982
+        }
+      ],
+      "main_force_cost": 20.04,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 3,
+      "net_accumulation_in_window": 31334,
+      "main_force_volume_trend": [
+        13689,
+        8949,
+        8696
+      ],
+      "volume_increasing_streak": 1,
+      "top5_concentration": null,
+      "dealer_net_buy": 28,
+      "is_day_trader_branch": false,
+      "shareholder_count": 246196,
+      "shareholder_count_delta_pct": -0.4641,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 58.87,
+      "large_holder_400_delta_pct": 0.3,
+      "large_holder_1000_pct": 53.7,
+      "large_holder_1000_delta_pct": 0.3,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "2834",
+      "name": "臺企銀",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 17.95,
+      "open": 17.6,
+      "prev_close": null,
+      "change_pct": 0.2,
+      "volume": 10734,
+      "volume_5d_avg": 8313.4,
+      "volume_ratio": 1.291,
+      "velocity_3d": -872,
+      "acceleration": -3622,
+      "market_volume": null,
+      "fii_net_buy": 4406,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 3,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 21240,
+      "top5_branches": [
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 7261,
+          "sell": 483,
+          "net": 6778
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 5637,
+          "sell": 792,
+          "net": 4845
+        },
+        {
+          "branch": "摩根大通",
+          "buy": 6523,
+          "sell": 2107,
+          "net": 4416
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 1762,
+          "sell": 112,
+          "net": 1650
+        },
+        {
+          "branch": "凱基-台北",
+          "buy": 2482,
+          "sell": 1487,
+          "net": 995
+        }
+      ],
+      "main_force_cost": 17.97,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 6,
+      "net_accumulation_in_window": 126485,
+      "main_force_volume_trend": [
+        23240,
+        18772,
+        22984,
+        24271,
+        21240
+      ],
+      "volume_increasing_streak": 1,
+      "top5_concentration": null,
+      "dealer_net_buy": 36,
+      "is_day_trader_branch": false,
+      "shareholder_count": 378937,
+      "shareholder_count_delta_pct": -0.1065,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 61.23,
+      "large_holder_400_delta_pct": 0.08,
+      "large_holder_1000_pct": 55.6,
+      "large_holder_1000_delta_pct": 0.08,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "orange",
+        "flags": [
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買5日，缺席3日（最後 06-29）"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "轉弱",
+        "net_cumulative": 105245,
+        "present_latest": false,
+        "snaps_since_seen": 3
+      }
+    },
+    {
+      "ticker": "2845",
+      "name": "遠東銀",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 13.15,
+      "open": 12.9,
+      "prev_close": null,
+      "change_pct": 0.15,
+      "volume": 3512,
+      "volume_5d_avg": 5414.4,
+      "volume_ratio": 0.649,
+      "velocity_3d": 0,
+      "acceleration": 0,
+      "market_volume": null,
+      "fii_net_buy": 478,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 3,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 16965,
+      "top5_branches": [
+        {
+          "branch": "中國信託",
+          "buy": 10677,
+          "sell": 1,
+          "net": 10676
+        },
+        {
+          "branch": "群益金鼎",
+          "buy": 1469,
+          "sell": 47,
+          "net": 1422
+        },
+        {
+          "branch": "玉山-台南",
+          "buy": 1205,
+          "sell": 163,
+          "net": 1042
+        },
+        {
+          "branch": "中國信託-永康",
+          "buy": 1000,
+          "sell": 22,
+          "net": 978
+        },
+        {
+          "branch": "凱基-竹科",
+          "buy": 700,
+          "sell": 0,
+          "net": 700
+        }
+      ],
+      "main_force_cost": 12.94,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 6,
+      "net_accumulation_in_window": 102479,
+      "main_force_volume_trend": [
+        18961,
+        16965,
+        16965,
+        16965,
+        16965
+      ],
+      "volume_increasing_streak": 1,
+      "top5_concentration": null,
+      "dealer_net_buy": 2815,
+      "is_day_trader_branch": false,
+      "shareholder_count": 102069,
+      "shareholder_count_delta_pct": -0.3096,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 74.26,
+      "large_holder_400_delta_pct": 0.15,
+      "large_holder_1000_pct": 69.35,
+      "large_holder_1000_delta_pct": 0.08,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "2880",
+      "name": "華南金",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 37.65,
+      "open": 36.35,
+      "prev_close": null,
+      "change_pct": 1.05,
+      "volume": 4689,
+      "volume_5d_avg": 5112.2,
+      "volume_ratio": 0.917,
+      "velocity_3d": -9020,
+      "acceleration": 0,
+      "market_volume": null,
+      "fii_net_buy": -6025,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 37587,
+      "top5_branches": [
+        {
+          "branch": "統一",
+          "buy": 32691,
+          "sell": 1502,
+          "net": 31189
+        },
+        {
+          "branch": "國泰證券",
+          "buy": 2506,
+          "sell": 0,
+          "net": 2506
+        },
+        {
+          "branch": "花旗環球",
+          "buy": 2761,
+          "sell": 430,
+          "net": 2331
+        },
+        {
+          "branch": "港商野村",
+          "buy": 755,
+          "sell": 150,
+          "net": 605
+        },
+        {
+          "branch": "香港上海匯豐",
+          "buy": 470,
+          "sell": 101,
+          "net": 369
+        }
+      ],
+      "main_force_cost": 37.65,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 5,
+      "net_accumulation_in_window": 242055,
+      "main_force_volume_trend": [
+        55627,
+        55627,
+        55627,
+        37587,
+        37587
+      ],
+      "volume_increasing_streak": 1,
+      "top5_concentration": null,
+      "dealer_net_buy": 2068,
+      "is_day_trader_branch": false,
+      "shareholder_count": 480795,
+      "shareholder_count_delta_pct": -0.2316,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 81.26,
+      "large_holder_400_delta_pct": 0.06,
+      "large_holder_1000_pct": 78.8,
+      "large_holder_1000_delta_pct": 0.06,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "red",
+        "flags": [
+          {
+            "code": "W1",
+            "zh": "動能衰竭",
+            "detail": "連買4日但速度 -9,020/日"
+          },
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買4日，缺席3日（最後 06-29）"
+          }
+        ],
+        "flag_count": 2,
+        "label_zh": "出貨確認",
+        "net_cumulative": 204468,
+        "present_latest": false,
+        "snaps_since_seen": 3
+      }
+    },
+    {
+      "ticker": "2885",
+      "name": "元大金",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 67.2,
+      "open": 65.6,
+      "prev_close": null,
+      "change_pct": 1.4,
+      "volume": 3968,
+      "volume_5d_avg": 3968.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": -2976,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 11100,
+      "top5_branches": [
+        {
+          "branch": "美商高盛",
+          "buy": 5305,
+          "sell": 417,
+          "net": 4888
+        },
+        {
+          "branch": "富邦證券",
+          "buy": 1980,
+          "sell": 3,
+          "net": 1977
+        },
+        {
+          "branch": "中國信託",
+          "buy": 1861,
+          "sell": 12,
+          "net": 1849
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 1442,
+          "sell": 829,
+          "net": 613
+        },
+        {
+          "branch": "元大證券",
+          "buy": 1209,
+          "sell": 662,
+          "net": 547
+        }
+      ],
+      "main_force_cost": 66.61,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 11100,
+      "main_force_volume_trend": [
+        11100
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 1958,
+      "is_day_trader_branch": false,
+      "shareholder_count": 450719,
+      "shareholder_count_delta_pct": 0.5183,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 83.03,
+      "large_holder_400_delta_pct": -0.11,
+      "large_holder_1000_pct": 80.5,
+      "large_holder_1000_delta_pct": -0.14,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "2887",
+      "name": "台新新光金",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 34.15,
+      "open": 33.3,
+      "prev_close": null,
+      "change_pct": 1.15,
+      "volume": 31624,
+      "volume_5d_avg": 16117.0,
+      "volume_ratio": 1.962,
+      "velocity_3d": 7880,
+      "acceleration": 10266,
+      "market_volume": null,
+      "fii_net_buy": -3898,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 1,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 55662,
+      "top5_branches": [
+        {
+          "branch": "港商麥格理",
+          "buy": 15823,
+          "sell": 71,
+          "net": 15752
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 12300,
+          "sell": 3923,
+          "net": 8377
+        },
+        {
+          "branch": "新加坡商瑞銀",
+          "buy": 10589,
+          "sell": 2929,
+          "net": 7660
+        },
+        {
+          "branch": "摩根大通",
+          "buy": 7775,
+          "sell": 1068,
+          "net": 6707
+        },
+        {
+          "branch": "香港上海匯豐",
+          "buy": 4950,
+          "sell": 0,
+          "net": 4950
+        }
+      ],
+      "main_force_cost": 34.25,
+      "main_force_consecutive_days": 7,
+      "main_force_strict_streak_days": 7,
+      "main_force_positive_days_in_window": 11,
+      "net_accumulation_in_window": 449937,
+      "main_force_volume_trend": [
+        44403,
+        44677,
+        39903,
+        39903,
+        55662
+      ],
+      "volume_increasing_streak": 1,
+      "top5_concentration": null,
+      "dealer_net_buy": -1073,
+      "is_day_trader_branch": false,
+      "shareholder_count": 710749,
+      "shareholder_count_delta_pct": 0.0151,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 74.41,
+      "large_holder_400_delta_pct": 0.04,
+      "large_holder_1000_pct": 70.21,
+      "large_holder_1000_delta_pct": 0.02,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "yellow",
+        "flags": [
+          {
+            "code": "W2",
+            "zh": "雙引擎分歧",
+            "detail": "主力 +39,903 vs 外資 -23,794"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "失速",
+        "net_cumulative": 394275,
+        "present_latest": true,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "2892",
+      "name": "第一金",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 32.4,
+      "open": 33.0,
+      "prev_close": null,
+      "change_pct": 0.3,
+      "volume": 4369,
+      "volume_5d_avg": 9101.6,
+      "volume_ratio": 0.48,
+      "velocity_3d": -49588,
+      "acceleration": -48214,
+      "market_volume": null,
+      "fii_net_buy": -28970,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 10212,
+      "top5_branches": [
+        {
+          "branch": "摩根大通",
+          "buy": 3103,
+          "sell": 135,
+          "net": 2968
+        },
+        {
+          "branch": "富邦證券",
+          "buy": 1899,
+          "sell": 0,
+          "net": 1899
+        },
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 2434,
+          "sell": 768,
+          "net": 1666
+        },
+        {
+          "branch": "凱基",
+          "buy": 3587,
+          "sell": 2348,
+          "net": 1239
+        },
+        {
+          "branch": "美林",
+          "buy": 1409,
+          "sell": 775,
+          "net": 634
+        }
+      ],
+      "main_force_cost": 32.55,
+      "main_force_consecutive_days": 3,
+      "main_force_strict_streak_days": 3,
+      "main_force_positive_days_in_window": 11,
+      "net_accumulation_in_window": 396295,
+      "main_force_volume_trend": [
+        26594,
+        25428,
+        109389,
+        22678,
+        10212
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 18509,
+      "is_day_trader_branch": false,
+      "shareholder_count": 448173,
+      "shareholder_count_delta_pct": -0.6541,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 71.0,
+      "large_holder_400_delta_pct": 0.27,
+      "large_holder_1000_pct": 67.06,
+      "large_holder_1000_delta_pct": 0.28,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "orange",
+        "flags": [
+          {
+            "code": "W1",
+            "zh": "動能衰竭",
+            "detail": "連買10日但速度 -1,375/日"
+          },
+          {
+            "code": "W2",
+            "zh": "雙引擎分歧",
+            "detail": "主力 +22,678 vs 外資 -90,747"
+          }
+        ],
+        "flag_count": 2,
+        "label_zh": "轉弱",
+        "net_cumulative": 386083,
+        "present_latest": true,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "3042",
+      "name": "晶技",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 249.0,
+      "open": 200.0,
+      "prev_close": null,
+      "change_pct": 22.5,
+      "volume": 7783,
+      "volume_5d_avg": 7060.0,
+      "volume_ratio": 1.102,
+      "velocity_3d": 4160,
+      "acceleration": -284,
+      "market_volume": 74769,
+      "fii_net_buy": 2999,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 3,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 5,
+      "main_force_buy": 14514,
+      "top5_branches": [
+        {
+          "branch": "富邦證券",
+          "buy": 2989,
+          "sell": 666,
+          "net": 2323
+        },
+        {
+          "branch": "凱基",
+          "buy": 1823,
+          "sell": 121,
+          "net": 1702
+        },
+        {
+          "branch": "華南永昌",
+          "buy": 2028,
+          "sell": 559,
+          "net": 1469
+        },
+        {
+          "branch": "富邦-新店",
+          "buy": 1536,
+          "sell": 152,
+          "net": 1384
+        },
+        {
+          "branch": "國票-安和",
+          "buy": 1520,
+          "sell": 260,
+          "net": 1260
+        }
+      ],
+      "main_force_cost": 240.03,
+      "main_force_consecutive_days": 3,
+      "main_force_strict_streak_days": 3,
+      "main_force_positive_days_in_window": 5,
+      "net_accumulation_in_window": 57155,
+      "main_force_volume_trend": [
+        15168,
+        6195,
+        6195,
+        15083,
+        14514
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 855,
+      "is_day_trader_branch": false,
+      "shareholder_count": 93736,
+      "shareholder_count_delta_pct": 14.8177,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 55.51,
+      "large_holder_400_delta_pct": -6.75,
+      "large_holder_1000_pct": 47.41,
+      "large_holder_1000_delta_pct": -7.29,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 42641,
+        "present_latest": true,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "4989",
+      "name": "榮科",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 110.5,
+      "open": 89.5,
+      "prev_close": null,
+      "change_pct": 10.0,
+      "volume": 8607,
+      "volume_5d_avg": 8607.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 1342,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 1,
+      "main_force_buy": 11612,
+      "top5_branches": [
+        {
+          "branch": "摩根大通",
+          "buy": 2153,
+          "sell": 210,
+          "net": 1943
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 2220,
+          "sell": 603,
+          "net": 1617
+        },
+        {
+          "branch": "台灣摩根士丹利",
+          "buy": 1559,
+          "sell": 127,
+          "net": 1432
+        },
+        {
+          "branch": "群益金鼎-大安",
+          "buy": 910,
+          "sell": 8,
+          "net": 902
+        },
+        {
+          "branch": "康和",
+          "buy": 815,
+          "sell": 76,
+          "net": 739
+        }
+      ],
+      "main_force_cost": 106.7,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 11612,
+      "main_force_volume_trend": [
+        11612
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 0,
+      "is_day_trader_branch": false,
+      "shareholder_count": 42257,
+      "shareholder_count_delta_pct": 1.4111,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 23.05,
+      "large_holder_400_delta_pct": -0.75,
+      "large_holder_1000_pct": 17.94,
+      "large_holder_1000_delta_pct": 0.79,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "6213",
+      "name": "聯茂",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 394.0,
+      "open": 357.0,
+      "prev_close": null,
+      "change_pct": 35.5,
+      "volume": 3825,
+      "volume_5d_avg": 6641.0,
+      "volume_ratio": 0.576,
+      "velocity_3d": -3636,
+      "acceleration": 1172,
+      "market_volume": null,
+      "fii_net_buy": -43,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 2487,
+      "top5_branches": [
+        {
+          "branch": "凱基-台北",
+          "buy": 1263,
+          "sell": 838,
+          "net": 425
+        },
+        {
+          "branch": "美商高盛",
+          "buy": 1323,
+          "sell": 975,
+          "net": 348
+        },
+        {
+          "branch": "元大-福營",
+          "buy": 334,
+          "sell": 22,
+          "net": 312
+        },
+        {
+          "branch": "元大-土城永寧",
+          "buy": 206,
+          "sell": 5,
+          "net": 201
+        },
+        {
+          "branch": "元大-新生",
+          "buy": 204,
+          "sell": 7,
+          "net": 197
+        }
+      ],
+      "main_force_cost": 346.03,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 5,
+      "net_accumulation_in_window": 53025,
+      "main_force_volume_trend": [
+        13096,
+        18650,
+        9760,
+        9032,
+        2487
+      ],
+      "volume_increasing_streak": 1,
+      "top5_concentration": null,
+      "dealer_net_buy": 128,
+      "is_day_trader_branch": false,
+      "shareholder_count": 69782,
+      "shareholder_count_delta_pct": -19.0257,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 65.32,
+      "large_holder_400_delta_pct": 7.69,
+      "large_holder_1000_pct": 59.09,
+      "large_holder_1000_delta_pct": 8.0,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "8112",
+      "name": "至上",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 92.9,
+      "open": 88.3,
+      "prev_close": null,
+      "change_pct": 3.9,
+      "volume": 7705,
+      "volume_5d_avg": 8158.5,
+      "volume_ratio": 0.944,
+      "velocity_3d": 0,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": -6851,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 2193,
+      "top5_branches": [
+        {
+          "branch": "國泰-敦南",
+          "buy": 1383,
+          "sell": 1112,
+          "net": 271
+        },
+        {
+          "branch": "聯邦證券",
+          "buy": 234,
+          "sell": 36,
+          "net": 198
+        },
+        {
+          "branch": "兆豐-大同",
+          "buy": 195,
+          "sell": 2,
+          "net": 193
+        },
+        {
+          "branch": "元大-復北",
+          "buy": 156,
+          "sell": 2,
+          "net": 154
+        },
+        {
+          "branch": "統一-板橋",
+          "buy": 167,
+          "sell": 15,
+          "net": 152
+        }
+      ],
+      "main_force_cost": 98.46,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 2,
+      "net_accumulation_in_window": 4386,
+      "main_force_volume_trend": [
+        2193,
+        2193
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 3031,
+      "is_day_trader_branch": false,
+      "shareholder_count": 114218,
+      "shareholder_count_delta_pct": 0.0517,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 38.56,
+      "large_holder_400_delta_pct": -0.54,
+      "large_holder_1000_pct": 34.72,
+      "large_holder_1000_delta_pct": -0.25,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    },
+    {
+      "ticker": "8422",
+      "name": "可寧衛*",
+      "market": "TWSE",
+      "industry": null,
+      "current_price": 28.35,
+      "open": 27.1,
+      "prev_close": null,
+      "change_pct": 1.55,
+      "volume": 6164,
+      "volume_5d_avg": 6164.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": -4811,
+      "fii_buy_ratio": null,
+      "fii_holding_pct": null,
+      "fii_holding_trend_5d": null,
+      "fii_sync_count": 2,
+      "fii_brokers_buying": [],
+      "fii_consecutive_buy_days": 0,
+      "main_force_buy": 6164,
+      "top5_branches": [],
+      "main_force_cost": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 6164,
+      "main_force_volume_trend": [
+        6164
+      ],
+      "volume_increasing_streak": 0,
+      "top5_concentration": null,
+      "dealer_net_buy": 2591,
+      "is_day_trader_branch": false,
+      "shareholder_count": 154758,
+      "shareholder_count_delta_pct": -0.2488,
+      "broker_count_diff": null,
+      "broker_count_diff_negative_streak": null,
+      "large_holder_400_pct": 37.64,
+      "large_holder_400_delta_pct": -0.44,
+      "large_holder_1000_pct": 34.18,
+      "large_holder_1000_delta_pct": -0.54,
+      "margin_balance": null,
+      "margin_change": null,
+      "margin_maintenance_ratio": null,
+      "price_down_margin_down_days_10d": null,
+      "price_down_margin_up_days_10d": null,
+      "margin_panic_signal": false,
+      "pa_signals_30m": [],
+      "trend_2h": "flat",
+      "above_20ema_2h": false,
+      "ema_slope_2h": "flat",
+      "gates": {
+        "G1": false,
+        "G2": false,
+        "G3": false,
+        "eliminated_by": null
+      },
+      "stage_1": 0,
+      "stage_1_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_2": 0,
+      "stage_2_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "stage_3": 0,
+      "stage_3_breakdown": {
+        "_abstained": "P3a ingest-only"
+      },
+      "composite_score": 0,
+      "tier": "IGNORE",
+      "trade_type": null,
+      "safety_margin_pct": null,
+      "checklist": {
+        "dual_engine_aligned": false,
+        "cost_within_5pct": false,
+        "shareholders_dropping": false,
+        "margin_healthy": false,
+        "margin_ratio": null,
+        "pa_signal_present": false
+      },
+      "temporal_state": {
+        "prior_tier": null,
+        "tier_in_current_state_days": 1,
+        "tier_history_lookback": [],
+        "score_history_lookback": [],
+        "score_velocity": null,
+        "score_acceleration": null,
+        "trend": null,
+        "current_episode_ids": [],
+        "abstained": {
+          "velocity": true,
+          "acceleration": true,
+          "trend": true,
+          "reason": "P3a ingest-only; no scoring computed yet"
+        }
+      },
+      "data_completeness": 0.7273,
+      "confidence_tier": "PARTIAL",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
+      }
+    }
+  ],
+  "rankings": {
+    "golden": [],
+    "watch": [],
+    "neutral": [],
+    "ignored": [
+      "1101",
+      "1216",
+      "1304",
+      "1313",
+      "1314",
+      "1326",
+      "1402",
+      "1409",
+      "1609",
+      "1714",
+      "1717",
+      "1718",
+      "1810",
+      "1909",
+      "2002",
+      "2103",
+      "2105",
+      "2208",
+      "2303",
+      "2323",
+      "2332",
+      "2356",
+      "2603",
+      "2609",
+      "2615",
+      "2618",
+      "2634",
+      "2812",
+      "2834",
+      "2845",
+      "2880",
+      "2885",
+      "2887",
+      "2892",
+      "3042",
+      "4989",
+      "6213",
+      "8112",
+      "8422"
+    ],
+    "sort_keys_used": [
+      "P3a abstained — no scoring activated"
+    ]
+  },
+  "audit_log": [
+    {
+      "ticker": "2208",
+      "event": "DATA_WARNING",
+      "reason": "no branches file for 2208; top5_branches abstained",
+      "step": "adapters.legacy.branches"
+    },
+    {
+      "ticker": "8422",
+      "event": "DATA_WARNING",
+      "reason": "no branches file for 8422; top5_branches abstained",
+      "step": "adapters.legacy.branches"
+    },
+    {
+      "ticker": null,
+      "event": "LOOKBACK_VERIFIED",
+      "reason": "Lookback chain attached: 13 prior snapshots",
+      "step": "core.ingest.attach_lookback",
+      "data": {
+        "lookback_snapshots": {
+          "2026-06-15": "sha256:a82d2c141b0a5da79390cb39eadf1073ade4324c16a498590f0face0c2e2ef53",
+          "2026-06-16": "sha256:6e94122c92a5d0fa211a1eeff0d0075d1b610ccf010843c547ed69b47e0307b8",
+          "2026-06-17": "sha256:1422a3d8bc1a5813e5f2bc9e1541fadafb2e573f872942968d51a534f77a86ce",
+          "2026-06-18": "sha256:14e9f4daf7fcf6ba9967a0ade7c011c127c41b0a2f56ca5c1fb1eb70b80850b1",
+          "2026-06-22": "sha256:4eb15f5df71eee604f0cedf9b6bbaa198f4a6e35c1474c746e847b5556ae1be8",
+          "2026-06-23": "sha256:d048a42794de851f9e96fb244a657fea475bc49613e974daec145b256d87f90d",
+          "2026-06-24": "sha256:d40b95c94239e08af272bc2f76db6f9b011f1fbd27916eee551d54769f0a403b",
+          "2026-06-25": "sha256:becd965d3c0022233ff469ce9e58c2ad184abd0eb1dab9534dd466438a079322",
+          "2026-06-26": "sha256:a05801eb57b17485d296ae401b789c786afd94554f9d37e71e52a0f9949e06d0",
+          "2026-06-29": "sha256:51a50b8dd868d669a9d3fc0da7bde0af6f0c9f9d2233f8d76634278a343ea08e",
+          "2026-06-30": "sha256:09e389d6ca2525a804019606ad7dad1f8185697a0d10d4b44ff1c2ded495dc7d",
+          "2026-07-01": "sha256:717d4d76779cc5dbbe25a030809818aecb77d88057c874698967472a574dcbd1",
+          "2026-07-02": "sha256:525bc4e4a979a942f6cc6ddcf73bba54f65cf0405408909b12c394de28af33d0"
+        }
+      }
+    },
+    {
+      "ticker": null,
+      "event": "RAW_ARCHIVED",
+      "reason": "Archived 3 raw source(s) under _raw_archive/2026-07-03/; all archived sha equal raw_sha (WORM cryptographic proof)",
+      "step": "core.archive.archive_raw_inputs",
+      "data": {
+        "archived": [
+          {
+            "source_id": "legacy_today_json",
+            "kind": "file",
+            "archived_copy_path": "_raw_archive/2026-07-03/legacy_today_json"
+          },
+          {
+            "source_id": "legacy_branches",
+            "kind": "dir",
+            "archived_copy_path": "_raw_archive/2026-07-03/legacy_branches/"
+          },
+          {
+            "source_id": "tdcc_weekly",
+            "kind": "file",
+            "archived_copy_path": "_raw_archive/2026-07-03/tdcc_weekly"
+          }
+        ]
+      }
+    }
+  ]
+}
