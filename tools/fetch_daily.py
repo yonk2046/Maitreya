@@ -423,6 +423,7 @@ def run(dry_run=False):
         "mainForceSell": main_force_sell,  # 主力賣超
         "volRows": vol_rows,
         "openPrices": (twse_result.get("openPrices", {}) if not twse_err else {}),  # {code: 開盤價} 全市場, for backtest 次日開盤結算
+        "marketQuotes": (twse_result.get("marketQuotes", {}) if not twse_err else {}),  # {code: {vol張, close, chgPct真%, chgAmt元}} 全市場 (A2 fix)
         "marketMeta": market_meta,
         "stage3Prefill": stage3_prefill,
         "crossSignals": cross,         # 三榜 + 雙榜共現

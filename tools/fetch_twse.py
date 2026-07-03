@@ -25,12 +25,43 @@ def _parse_open_map(data) -> dict[str, float]:
     return out
 
 
+def _parse_market_quotes(data) -> dict[str, dict]:
+    """Pure: TWSE STOCK_DAY_ALL rows → {code: {vol(張), close, chgPct(真%), chgAmt(元)}}.
+
+    A2 fix (2026-07-03): full-market volume so market_volume coverage isn't
+    limited to the volume-top20 list, plus an authoritative real-percent
+    change (TWSE "Change" is the NT$ move — same mislabel 730fd4d fixed).
+    ETFs (00xx) skipped, consistent with _parse_open_map.
+    """
+    out: dict[str, dict] = {}
+    for item in data or []:
+        code = str(item.get("Code") or item.get("證券代號", "")).strip()
+        if not code or code.startswith("00"):
+            continue
+        vol_shares = parse_int_safe(item.get("TradeVolume") or item.get("成交股數", 0))
+        close = parse_float_safe(item.get("ClosingPrice") or item.get("收盤價", 0))
+        chg = parse_float_safe(item.get("Change") or item.get("漲跌價差", 0))
+        if not close:
+            continue
+        prev_close = close - chg
+        chg_pct = round(chg / prev_close * 100, 2) if prev_close else 0.0
+        out[code] = {
+            "vol":    int(round(vol_shares / 1000.0)),  # 張
+            "close":  close,
+            "chgPct": chg_pct,
+            "chgAmt": chg,
+        }
+    return out
+
+
 def fetch_open_map():
-    log("[twse] fetching STOCK_DAY_ALL (open prices)...")
+    """Fetch STOCK_DAY_ALL once; return (open_map, market_quotes)."""
+    log("[twse] fetching STOCK_DAY_ALL (open prices + market quotes)...")
     data = http_get_json(STOCK_DAY_ALL_URL, timeout=30)
     out = _parse_open_map(data)
-    log(f"[twse] STOCK_DAY_ALL: {len(out)} open prices")
-    return out
+    quotes = _parse_market_quotes(data)
+    log(f"[twse] STOCK_DAY_ALL: {len(out)} open prices, {len(quotes)} market quotes")
+    return out, quotes
 
 
 def fetch_volume_top20():
@@ -88,10 +119,11 @@ def fetch():
         result["marketMeta"] = {}
         result["marketMetaError"] = str(e)
     try:
-        result["openPrices"] = fetch_open_map()
+        result["openPrices"], result["marketQuotes"] = fetch_open_map()
     except Exception as e:
         log(f"[twse] STOCK_DAY_ALL failed: {e}")
         result["openPrices"] = {}
+        result["marketQuotes"] = {}
         result["openPricesError"] = str(e)
     return result
 

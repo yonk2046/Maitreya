@@ -277,8 +277,21 @@ def adapt_legacy(
         for r in (today.get("volRows") or [])
         if r.get("code") and r.get("todayVol")
     }
+    # A2 fix (2026-07-03): today.json["marketQuotes"] = {code: {vol(張), close,
+    # chgPct(真%), chgAmt}} from STOCK_DAY_ALL — full-market coverage, so
+    # market_volume is no longer limited to the volume-top20 list, and
+    # change_pct gets an authoritative real-percent source (the Fubon rows'
+    # chgPct was the NT$ move until the same-day fetch fix). Old raw archives
+    # have no marketQuotes → both fall back to prior behaviour (replay-safe).
+    market_quotes = today.get("marketQuotes") or {}
     for ticker, ri in raw_inputs_per_ticker.items():
-        ri["market_volume"] = vol_map.get(ticker)  # 市場成交量（張），None if not in top list
+        mq = market_quotes.get(ticker)
+        if mq and mq.get("vol"):
+            ri["market_volume"] = mq["vol"]          # 市場成交量（張）, full-market
+        else:
+            ri["market_volume"] = vol_map.get(ticker)  # top20 fallback, None if absent
+        if mq and mq.get("chgPct") is not None:
+            ri["change_pct"] = mq["chgPct"]          # TWSE authoritative real %
 
     # --- Merge next-day-settlement OPEN price (P3b backtest, spec §1) ---
     # today.json["openPrices"] = {code: 開盤價} full-market (STOCK_DAY_ALL).

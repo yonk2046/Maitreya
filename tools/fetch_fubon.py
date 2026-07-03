@@ -22,6 +22,13 @@ def parse_code_name(s):
     return s, ""
 
 
+def _real_chg_pct(close, chg):
+    """Fubon 表格的「漲跌」欄是新台幣元, 不是百分比 — 與 730fd4d 修掉的
+    TWSE `Change` 同款誤標 (A2/A4 殘留, 2026-07-03 修)。轉成真百分比。"""
+    prev_close = (close or 0) - (chg or 0)
+    return round(chg / prev_close * 100, 2) if prev_close else 0.0
+
+
 def fetch():
     log("[fubon] fetching ZGK_D via plain HTTP (BIG5)...")
     raw = http_get(URL, timeout=30)
@@ -47,7 +54,8 @@ def fetch():
             if code and not is_etf(code):
                 top_buy.append({
                     "rank": rank, "code": code, "name": name,
-                    "buyVol": vol, "close": close, "chgPct": chg,
+                    "buyVol": vol, "close": close,
+                    "chgPct": _real_chg_pct(close, chg), "chgAmt": chg,
                     "isETF": False,
                 })
         except (ValueError, IndexError):
@@ -62,7 +70,8 @@ def fetch():
             if code and not is_etf(code):
                 top_sell.append({
                     "rank": rank, "code": code, "name": name,
-                    "sellVol": abs(vol), "close": close, "chgPct": chg,
+                    "sellVol": abs(vol), "close": close,
+                    "chgPct": _real_chg_pct(close, chg), "chgAmt": chg,
                     "isETF": False,
                 })
         except (ValueError, IndexError):
@@ -99,7 +108,8 @@ def fetch_institutional():
             if code and not is_etf(code) and vol > 0:
                 top_buy.append({
                     "rank": rank, "code": code, "name": name,
-                    "buyVol": vol, "close": close, "chgPct": chg,
+                    "buyVol": vol, "close": close,
+                    "chgPct": _real_chg_pct(close, chg), "chgAmt": chg,
                     "isETF": False,
                 })
         except (ValueError, IndexError):
@@ -113,7 +123,8 @@ def fetch_institutional():
             if code and not is_etf(code):
                 top_sell.append({
                     "rank": rank, "code": code, "name": name,
-                    "sellVol": abs(vol), "close": close, "chgPct": chg,
+                    "sellVol": abs(vol), "close": close,
+                    "chgPct": _real_chg_pct(close, chg), "chgAmt": chg,
                     "isETF": False,
                 })
         except (ValueError, IndexError):
