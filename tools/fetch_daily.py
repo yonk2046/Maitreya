@@ -322,12 +322,17 @@ def run(dry_run=False):
         if td and len(td) == 8 and td.isdigit():
             trading_date_yyyymmdd = td
     from fetch_twse_t86 import fetch as t86_fetch
+    import fetch_twse_t86 as _t86_mod
     t86_result, t86_err = safe_fetch("twse_t86", t86_fetch, trading_date_yyyymmdd)
+    # Which date the T86 payload actually belongs to (freshness stamp for
+    # daily.py fii_gate — stale FII must never masquerade as today's).
+    t86_date_used = _t86_mod.LAST_FETCH_DATE
     if t86_err or not t86_result:
         emit(8, TOTAL_STEPS, f"T86 失敗: {t86_err or '空資料'}", status="warn", detail=t86_err or "")
         t86_result = {}
+        t86_date_used = None
     else:
-        emit(8, TOTAL_STEPS, f"T86 全市場 {len(t86_result)} 檔已取得", status="done")
+        emit(8, TOTAL_STEPS, f"T86 全市場 {len(t86_result)} 檔已取得 ({t86_date_used})", status="done")
 
     # ── Step 9: 多源交叉驗證 (Fubon vs T86 vs WantGoo for top 5) ───────────────
     emit(9, TOTAL_STEPS, "多源交叉驗證 (top 5 三榜共現)...", status="running")
@@ -429,6 +434,7 @@ def run(dry_run=False):
         "crossSignals": cross,         # 三榜 + 雙榜共現
         "tripleSignals": triple,       # 三榜全部共現（最強信號）
         "t86": t86_result,             # 全市場 三大法人 daily (TWSE 權威)
+        "t86Date": t86_date_used,      # T86 資料實際屬於哪個交易日 (yyyymmdd) — fii_gate 驗新鮮度
         "crossVerify": cross_verify,   # 多源驗證結果
         "branchData": branch_fetch_summary,  # 分點抓取摘要 (fetched/failed/skipped)
     }

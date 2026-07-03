@@ -8,10 +8,19 @@ Used in Wave E.4 as cross-verification against Fubon ZGK_D (外資) and ZGK_F (�
 
 import json
 import sys
+import time
 from datetime import datetime, timedelta
 from _common import http_get_json, parse_int_safe, log
 
 URL_TEMPLATE = "https://www.twse.com.tw/rwd/zh/fund/T86?response=json&date={date}&selectType=ALL"
+
+# The yyyymmdd actually requested by the most recent fetch() call.
+# fetch_daily reads this to stamp today.json["t86Date"] so the fii_gate can
+# verify the T86 payload belongs to the trading date (2026-07-03 lag bug:
+# HiNetCDN 307-blocks *today's* uncached T86 from datacenter IPs while
+# happily serving cached prior days → yesterday's FII silently entered
+# today's snapshot).
+LAST_FETCH_DATE = None
 
 # Verified field indices (2026-05-15 sample):
 # 0  證券代號
@@ -35,21 +44,38 @@ def _shares_to_lots(shares):
     return int(round(shares / 1000.0))
 
 
-def fetch(date_yyyymmdd=None):
+def fetch(date_yyyymmdd=None, retries=3, retry_sleep=5):
     """Fetch T86 for given trading date (YYYYMMDD). Defaults to today, with weekend fallback.
+
+    Retries up to `retries` times (CDN intermittently 307-blocks datacenter
+    IPs on uncached same-day resources — transient more often than not).
 
     Returns dict keyed by stock code: { code: {code, name, foreign, trust, prop, total3} }
     All values in 張 (lots). Negative = net sell.
     """
+    global LAST_FETCH_DATE
     if not date_yyyymmdd:
         d = datetime.now()
         while d.weekday() >= 5:  # back off to last weekday
             d = d - timedelta(days=1)
         date_yyyymmdd = d.strftime("%Y%m%d")
+    LAST_FETCH_DATE = date_yyyymmdd
 
     url = URL_TEMPLATE.format(date=date_yyyymmdd)
-    log(f"[t86] fetching {url}")
-    raw = http_get_json(url, timeout=30)
+    raw = None
+    last_err = None
+    for attempt in range(1, retries + 1):
+        try:
+            log(f"[t86] fetching {url} (attempt {attempt}/{retries})")
+            raw = http_get_json(url, timeout=30)
+            break
+        except Exception as e:  # HTTPError 307 / URLError / timeout
+            last_err = e
+            log(f"[t86] attempt {attempt}/{retries} failed: {e}")
+            if attempt < retries:
+                time.sleep(retry_sleep)
+    if raw is None:
+        raise last_err
 
     if raw.get("stat") and raw["stat"] != "OK":
         log(f"[t86] stat={raw.get('stat')} — no data for {date_yyyymmdd}")

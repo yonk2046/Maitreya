@@ -3,7 +3,10 @@ name: Maitreya Daily Pipeline
 # launchd job (deploy/daily_and_push.sh) at 19:00 Asia/Taipei. This
 # workflow runs one hour later and SKIPS itself when the primary already
 # committed today's snapshot — the two pipelines no longer race on main.
-# workflow_dispatch always runs the full pipeline (manual override).
+# 2026-07-03: the guard now applies to ALL triggers (schedule + dispatch).
+# A cron-job.org trigger fires workflow_dispatch daily at ~19:05; without
+# the guard it re-ran the full pipeline even when a snapshot was already
+# published (supersede churn / half-baked data-only commits).
 on:
   schedule:
     - cron: '0 12 * * 1-5'   # 20:00 Asia/Taipei (primary runs 19:00)
@@ -22,16 +25,17 @@ jobs:
         with:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Skip if primary pipeline already ran today
+      - name: Skip if today's snapshot is already published
         id: guard
-        if: github.event_name == 'schedule'
         run: |
           TODAY=$(date +%F)   # Asia/Taipei via env.TZ
+          # Fresh checkout of origin/main → file existence == published state.
+          # Applies to ALL triggers (schedule / dispatch / cron-job.org).
           if [ -f "reports/${TODAY}.json" ]; then
-            echo "Primary (launchd) already produced reports/${TODAY}.json — backup not needed."
+            echo "reports/${TODAY}.json already on origin/main — nothing to do."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
-            echo "No snapshot for ${TODAY} yet — running backup pipeline."
+            echo "No snapshot for ${TODAY} yet — running pipeline."
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Set up Python

@@ -90,7 +90,19 @@ def _fii_published() -> bool:
         d = json.loads(TODAY_JSON.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return False
-    return bool(d.get("t86"))
+    if not d.get("t86"):
+        return False
+    # Freshness check (2026-07-03 lag bug): HiNetCDN 307-blocks *today's*
+    # uncached T86 from datacenter IPs while serving cached prior days, so a
+    # stale t86 can masquerade as fresh — 7/03's snapshot carried 7/02's FII
+    # (聯電 -12,538 vs actual +35,293). If the fetcher stamped which date it
+    # pulled (t86Date), require it to match the trading date. Old today.json
+    # without t86Date keeps prior behaviour.
+    t86_date = str(d.get("t86Date") or "").strip()
+    trading  = str(d.get("tradingDate") or d.get("date") or "").replace("-", "").strip()
+    if t86_date and trading and t86_date != trading:
+        return False
+    return True
 
 
 _ISO_DATE = __import__("re").compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -280,8 +292,8 @@ def run(
         if not _fii_published():
             log_lines.append({
                 "step": "fii_gate", "status": "skip",
-                "reason": "today.json has no t86 (三大法人 not yet published) — likely an "
-                          "intraday run before ~15:30; skipping so a post-close run builds it",
+                "reason": "today.json t86 missing OR t86Date != tradingDate (stale FII must "
+                          "not enter a snapshot) — skipping so a later run with fresh T86 builds it",
             })
             _finalize(log_lines, "skip_fii_not_published", target_date)
             print("[daily] 三大法人(T86) 尚未公布 — 跳過,等盤後重跑 (exit 0)", file=sys.stderr)
