@@ -1099,9 +1099,7 @@ def _render_strengthening(snaps: list[dict]) -> None:
             "窗口買(日)": _stock_buy_days_in_window_or_none(stock),  # 1.7.0 缺欄位顯示「—」
             "累計(張)": net,
             "速度(張/日)": round(vel) if vel is not None else None,
-            # 樣本 <3 天的贊助分不可信（1/1=100% 假訊號）→ 加 ⚠ 標記
-            "贊助分": f"{spon_score:.2f} ⚠" if spon_days < 3 else f"{spon_score:.2f}",
-            "樣本(天)": spon_days,
+            "主力回頭率": _lvl_sponsor(spon_score, spon_days),
             "成本": f"NT${cost:,.2f}" if cost else "—",
             "Tier A": "★" if ticker in TIER_A else "",
             "_mom": mom_rank,
@@ -1116,7 +1114,7 @@ def _render_strengthening(snaps: list[dict]) -> None:
         q = st.text_input("🔍 搜尋代號或名稱", "", key="strong_search",
                           placeholder="例如 2330 或 台積電").strip()
     with col_f:
-        only_acc = st.checkbox("◉ 只看持續吸籌（贊助分 ≥0.35 且樣本 ≥3 天）",
+        only_acc = st.checkbox("◉ 只看持續吸籌（主力回頭率 中等以上）",
                                key="strong_acc_filter")
     if q:
         rows = [r for r in rows
@@ -1126,9 +1124,9 @@ def _render_strengthening(snaps: list[dict]) -> None:
 
     _section_header("↑", "轉強訊號", "Strengthening Signals", len(rows))
     st.markdown(_EXPLAIN_DIV.format(
-        text="連續 2 日以上主力買超的全部標的（最寬的潛力篩網）。"
-             "贊助分＝最常出現分點的出現天數 ÷ 有分點資料天數（主力黏性）；⚠＝樣本 <3 天，數值不可信。"
-             "勾「只看持續吸籌」即原深度研究的持續吸籌名單。"),
+        text="連續 2 日以上主力買超的全部標的（最寬的潛力篩網），想自己挖的人從這裡找。"
+             "主力回頭率＝同一家分點回頭買的頻率（高＝同一個主力在鎖碼；低＝每天換人像散戶追價；"
+             "樣本不足＝分點資料未滿 3 天，不評分）。"),
         unsafe_allow_html=True)
 
     if not rows:
@@ -1992,11 +1990,11 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
         # 2. Sponsorship strength
         spon = e.sponsorship_score
         if spon >= 0.7:
-            items.append(("✓", "贊助強度", f"贊助分數 {spon:.0%}（≥70%）", True))
+            items.append(("✓", "主力回頭率", f"回頭率 {spon:.0%}（≥70%,同一主力鎖碼）", True))
         elif spon >= 0.45:
-            items.append(("△", "贊助強度", f"贊助分數 {spon:.0%}（≥70% 視為強）", None))
+            items.append(("△", "主力回頭率", f"回頭率 {spon:.0%}（≥70% 視為強）", None))
         else:
-            items.append(("✗", "贊助強度", f"贊助分數 {spon:.0%}，偏低", False))
+            items.append(("✗", "主力回頭率", f"回頭率 {spon:.0%}，偏低（買盤分散）", False))
 
         # 3. Institutional alignment — from T86 fii_sync_count (0-3)
         sync = stock.get("fii_sync_count")
@@ -2631,9 +2629,9 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
         with st.expander(f"▼ 診斷資料 — {e.ticker} {e.name}", expanded=False):
             st.markdown(
                 f'<div style="font-size:13px;color:#CDD5E0;margin-bottom:8px;line-height:1.6;">'
-                f'<b style="color:#D4A84B;">信念分數 {conv_pct}%</b> — 綜合所有觀測指標後的加權總分（0–100%）。'
-                f' 分數越高代表證據越多元且一致：連買天數長、贊助集中、動能為正且加速、處於強勢狀態。'
-                f' ≥65% → PRIME，40–64% → STRONG，&lt;40% → QUALIFIED。'
+                f'<b style="color:#D4A84B;">黃金分 {conv_pct}%</b> — 過五道門後的加分賽總分（0–100%）。'
+                f' 分數越高代表證據越多元且一致：連買天數長、主力回頭率高、動能為正且加速、處於強勢狀態。'
+                f' ≥65% 為最高級（搭配價格條件才會顯示 🟢可買進），40–64% 增強，&lt;40% 中。'
                 f'</div>'
                 f'{gates_html}'
                 f'<div style="margin-top:8px;"><div class="g5-section-label">各項得分拆解</div>'
@@ -2856,13 +2854,64 @@ _EXPLAIN_DIV = ('<div style="font-size:11.5px;color:#6B8EAA;margin:-4px 0 10px 0
                 'line-height:1.5;">{text}</div>')
 
 
+# ── P2.8 降維顯示:分數不放 %,改 高/中/低 色點(門檻見 📖 說明) ──────────
+def _lvl(score, hi: float, mid: float) -> str:
+    """0-1 分數 → 🟢高/🟡中/⚪低(正向指標用)。"""
+    if score is None:
+        return "—"
+    return f"🟢高" if score >= hi else (f"🟡中" if score >= mid else "⚪低")
+
+
+def _lvl_risk(score) -> str:
+    """警訊分(越高越糟)→ 🔴高/🟠中/🟢低。"""
+    if score is None:
+        return "—"
+    return "🔴高" if score >= 0.5 else ("🟠中" if score >= 0.3 else "🟢低")
+
+
+def _lvl_sponsor(score, days) -> str:
+    """主力回頭率;分點樣本 <3 天 → 樣本不足(1/1=100% 假訊號防呆)。"""
+    if not days or days < 3:
+        return "⚪樣本不足"
+    return _lvl(score, 0.7, 0.4)
+
+
+def _render_score_glossary() -> None:
+    """📖 分數白話說明 — 潛力區頂部折疊區(P2.8, Yonki 要求所有特殊用字都有解釋)。"""
+    with st.expander("📖 這些分數怎麼看（30 秒版）", expanded=False):
+        st.markdown(
+            """
+**兩套獨立的計分系統，互相對照用:**
+
+**① 黃金引擎**（★進場機會 tab）— 五道門檻 + 加分賽
+```
+過五道門   = ⭐   進黃金名單（G1 有在持續吃貨 / G2 行為已成型 / G3 主力有回頭 /
+                            G4 無出貨嫌疑 / G5 整體淨買）
+黃金分高   = ⭐⭐  增強（過門後加分賽:連買越久、回頭率越高、動能越正,分越高）
+價格也對   = ⭐⭐⭐ 🟢可買進（現價 ≤ 主力成本×1.05 且未轉弱 — 5% 鐵則）
+```
+
+**② 多空計分**（本 tab 精選觀察）— 獨立的證據天平
+- **多頭分** = 多頭證據總量:連買+回頭率+動能+黃金身分加權（🟢高≥60%｜🟡中≥40%）
+- **警訊分** = 空頭證據總量:疑似出貨+25%、假突破+20%、速度轉負+15%…（🔴高≥50%｜🟠中≥30%）
+- 兩者獨立,可能同時高——代表多空證據並存,要特別小心
+
+**共用的基礎指標:**
+- **主力回頭率** = 同一家分點回頭買的頻率（🟢高≥70%:同一主力鎖碼｜🟡中≥40%｜⚪低:每天換人像散戶追價｜樣本不足:分點資料未滿 3 天不評分）
+- **連買(日)** = 主力連續淨買超天數 ／ **累計(張)** = 20 日窗口總買超 ／ **速度** = 近 3 日平均每天買幾張
+- **疑似出貨** = 之前強勢吸籌但買超動能連續轉負——主力可能在倒貨的「嫌疑」狀態（未定罪:缺席買超榜≠一定在賣）
+            """
+        )
+
+
 def _render_watch_table(active_date: str) -> None:
     """精選觀察 — intelligence report watch_list rendered as a sortable table."""
     report = _intel_load(active_date) if active_date else None
     _section_header("◉", "精選觀察", "Top Watch (next 3–5 sessions)",
                     len(report.watch_list) if report else 0)
     st.markdown(_EXPLAIN_DIV.format(
-        text="狀態機已達 吸籌中/轉強/已確認 的股票，依「狀態層級＋贊助分＋連買＋信心」加權排序取前 8。"
+        text="狀態機已達 吸籌中/轉強/已確認 的股票，依「狀態層級＋主力回頭率＋連買＋多頭分」加權排序取前 8。"
+             "多頭分/警訊分是獨立於黃金名單的另一套多空證據計分——兩邊互相對照用。"
              "只有 10 秒的話，看這張表就夠。"),
         unsafe_allow_html=True)
     if not report or not report.watch_list:
@@ -2875,9 +2924,9 @@ def _render_watch_table(active_date: str) -> None:
         "名稱": w.name,
         "狀態": w.sm_state_zh,
         "連買(日)": w.streak,
-        "贊助分": round(w.sponsorship, 2),
-        "信心": f"{w.confidence:.0%}",
-        "風險": f"{w.risk_score:.0%}",
+        "主力回頭率": _lvl(w.sponsorship, 0.7, 0.4),
+        "多頭分": _lvl(w.confidence, 0.6, 0.4),
+        "警訊分": _lvl_risk(w.risk_score),
         "在此狀態(天)": w.days_in_state,
         "入選理由": w.reason_zh,
     } for w in report.watch_list]
@@ -2891,15 +2940,16 @@ def _render_near_miss_table(snaps: list[dict]) -> None:
     near = sorted(result.near_miss, key=lambda e: e.conviction, reverse=True)
     _section_header("△", "黃金候補", "Near-Miss Watchzone", len(near))
     st.markdown(_EXPLAIN_DIV.format(
-        text="黃金名單 5 道門檻（G1 漏斗確認／G2 狀態強勢／G3 贊助≥45%／G4 風險非臨界／G5 淨累計>0）"
-             "剛好通過 4 道的股票——距離升級黃金最近的預備隊。「缺門檻」欄標出還差哪一道。"),
+        text="黃金名單 5 道門檻（G1 漏斗確認／G2 狀態強勢／G3 回頭率≥45%／G4 無疑似出貨等臨界風險／G5 淨累計>0）"
+             "剛好通過 4 道的股票——距離升級黃金最近的預備隊。「缺門檻」欄標出還差哪一道。"
+             "黃金分＝過門後的加分賽總分（連買越久、回頭率越高、動能越正分數越高）。"),
         unsafe_allow_html=True)
     if not near:
         st.markdown('<div class="data-gap-notice">今日無候補標的（沒有剛好過 4 道門檻的股票）</div>',
                     unsafe_allow_html=True)
         return
     latest_stocks = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
-    _gate_zh = {"G1": "漏斗確認", "G2": "狀態強勢", "G3": "贊助≥45%",
+    _gate_zh = {"G1": "漏斗確認", "G2": "狀態強勢", "G3": "回頭率≥45%",
                 "G4": "風險<臨界", "G5": "淨累計>0"}
     import pandas as _pd
     rows = []
@@ -2914,11 +2964,11 @@ def _render_near_miss_table(snaps: list[dict]) -> None:
         rows.append({
             "代號": e.ticker,
             "名稱": e.name,
-            "信念": f"{e.conviction:.0%}",
+            "黃金分": _lvl(e.conviction, 0.65, 0.40),
             "缺門檻": "、".join(_gate_zh.get(g, g) for g in failed) or "—",
             "狀態": e.sm_state_zh,
             "連買(日)": e.streak or 0,
-            "贊助分": round(e.sponsorship_score or 0, 2),
+            "主力回頭率": _lvl(e.sponsorship_score, 0.7, 0.4),
             "現價": f"NT${price:,.2f}" if price else "—",
             "漲跌": f"{chg:+.2f}%" if chg is not None else "—",
             "距主力成本": f"{premium:+.1f}%" if premium is not None else "—",
@@ -2932,12 +2982,12 @@ _EVT_LABEL = {
     "golden_entry":            ("進入黃金名單", False),
     "golden_exit":             ("退出黃金名單", False),
     "golden_tier_change":      ("黃金分級變化", False),
-    "confidence_upgrade":      ("信心分上升", True),
-    "confidence_downgrade":    ("信心分下降", True),
-    "sponsorship_jump":        ("贊助分跳升", True),
-    "sponsorship_collapse":    ("贊助分崩落", True),
-    "risk_elevation":          ("風險分上升", True),
-    "risk_reduction":          ("風險分下降", True),
+    "confidence_upgrade":      ("多頭分上升", True),
+    "confidence_downgrade":    ("多頭分下降", True),
+    "sponsorship_jump":        ("主力回頭率跳升", True),
+    "sponsorship_collapse":    ("主力回頭率崩落", True),
+    "risk_elevation":          ("警訊分上升", True),
+    "risk_reduction":          ("警訊分下降", True),
 }
 
 _SEV_MARK = {"info": "·", "watch": "👀", "alert": "⚠", "critical": "🔴"}
@@ -3347,8 +3397,8 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
         # Upgrades
         _section_header("↑", "升級", "Upgrades", report.upgrade_count)
         st.markdown(_EXPLAIN_DIV.format(
-            text="與昨日相比顯著改善（變化≥15%）的指標。贊助分＝最常出現分點的出現天數 ÷ 有分點資料天數，"
-                 "衡量同一批主力是否持續回來買；⚠ 分點資料只有 1-2 天的股票，贊助分 0%→100% 多為樣本太少的跳動，非真訊號。"),
+            text="與昨日相比顯著改善（變化≥15%）的指標。主力回頭率＝同一家分點回頭買的頻率；"
+                 "⚠ 分點資料只有 1-2 天的股票，回頭率 0%→100% 多為樣本太少的跳動，非真訊號。"),
             unsafe_allow_html=True)
         if report.upgrades:
             _event_table(report.upgrades)
@@ -3359,7 +3409,7 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
         # Risk Alerts
         _section_header("⚠", "風險警報", "Risk Alerts", report.risk_count)
         st.markdown(_EXPLAIN_DIV.format(
-            text="風險分＝因子加總：疑似出貨 +25%、假突破 +20%、買超速度轉負 +15%、狀態轉換風險 +10~40% 等；"
+            text="警訊分＝空頭證據加總：疑似出貨 +25%、假突破 +20%、買超速度轉負 +15%、狀態轉換風險 +10~40% 等；"
                  "單日上升 ≥15% 即列入警報，≥60% 標 ⚠。"),
             unsafe_allow_html=True)
         if report.risk_alerts:
@@ -3376,7 +3426,7 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
         # Downgrades
         _section_header("↓", "降級", "Downgrades", report.downgrade_count)
         st.markdown(_EXPLAIN_DIV.format(
-            text="與昨日相比顯著轉差（變化≥15%）的指標：信心/贊助分下滑、狀態降級。"),
+            text="與昨日相比顯著轉差（變化≥15%）的指標：多頭分/主力回頭率下滑、狀態降級。"),
             unsafe_allow_html=True)
         if report.downgrades:
             _event_table(report.downgrades)
@@ -3396,15 +3446,15 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
     # ── Biggest Changes — 3 ranked tables ────────────────────────────────
     _section_header("△", "最大變化排行", "Biggest Changes (last 24h)")
     st.markdown(_EXPLAIN_DIV.format(
-        text="三個核心指標 24 小時變化最大的股票。贊助分＝主力分點黏性（0~100%）；"
-             "速度＝近 3 日平均買超張數/日；信心＝連買/贊助/動能/黃金身分的加權綜合分。"),
+        text="三個核心指標 24 小時變化最大的股票。主力回頭率＝同一家分點回頭買的頻率；"
+             "速度＝近 3 日平均買超張數/日；多頭分＝連買/回頭率/動能/黃金身分的加權綜合分。"),
         unsafe_allow_html=True)
     col_s, col_v, col_c = st.columns(3, gap="small")
 
     with col_s:
         st.markdown(
             '<div style="font-size:11px;color:#6B8EAA;text-transform:uppercase;'
-            'letter-spacing:.08em;margin-bottom:8px;">贊助分 Sponsorship Δ</div>',
+            'letter-spacing:.08em;margin-bottom:8px;">主力回頭率 Δ</div>',
             unsafe_allow_html=True,
         )
         st.markdown(_delta_table(report.biggest_sponsorship_changes, pct_format=True),
@@ -3422,7 +3472,7 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
     with col_c:
         st.markdown(
             '<div style="font-size:11px;color:#6B8EAA;text-transform:uppercase;'
-            'letter-spacing:.08em;margin-bottom:8px;">信心 Confidence Δ</div>',
+            'letter-spacing:.08em;margin-bottom:8px;">多頭分 Δ</div>',
             unsafe_allow_html=True,
         )
         st.markdown(_delta_table(report.biggest_confidence_changes, pct_format=True),
@@ -3836,15 +3886,17 @@ def main() -> None:
         _render_holdings(snaps_to_date)
 
     with tab_entry:
-        # 進場機會 = 純黃金名單（P2.7:轉強/候補移潛力區,黃金=可執行）
+        # 進場機會 = 黃金引擎全家:黃金名單(過五門) + 黃金候補(過四門)
+        # (P2.8:候補與名單同引擎,按模組歸位 — Yonki 2026-07-04 定案)
         st.markdown(_SECTION_TITLE.format(label="★ 黃金名單"), unsafe_allow_html=True)
         _render_golden(snaps_to_date, show_near_miss=False)
-
-    with tab_potential:
-        # 潛力區 = 三層漏斗,由精到寬:精選觀察(top8) → 黃金候補(差一門) → 轉強全表(自己挖)
-        _render_watch_table(active_date)
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
         _render_near_miss_table(snaps_to_date)
+
+    with tab_potential:
+        # 潛力區 = 另一套多空計分體系(精選觀察) + 原始行為數據(轉強全表)
+        _render_score_glossary()
+        _render_watch_table(active_date)
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
         _render_strengthening(snaps_to_date)
 
