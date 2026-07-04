@@ -22,7 +22,12 @@ sys.path.insert(0, TOOLS_DIR)
 
 from _common import log
 from fetch_twse_t86 import fetch as t86_fetch
-from fetch_tdcc import fetch as tdcc_fetch
+# fetch_tdcc 的舊版 fetch(codes) API 已在 TDCC adapter 化(2026-06-11)時移除;
+# 股東人數在歷史重建裡只是 stage3_prefill 配菜,拿不到就跳過(下方已有 try/except)。
+try:
+    from fetch_tdcc import fetch as tdcc_fetch  # type: ignore[attr-defined]
+except ImportError:
+    tdcc_fetch = None
 
 
 def emit(label, status="running", detail=""):
@@ -72,12 +77,18 @@ def run(target_iso):
         emit(f"T86 失敗: {e}", "warn")
         t86 = {}
 
-    # ── Step 2: 從 T86 建立 buyList 替代（外資淨買超 top 8，排除 ETF）────────
-    def is_etf(code): return str(code).startswith("00")
+    # ── Step 2: 從 T86 建立 buyList 替代（外資淨買超 top 15，只留 4 碼普通股）──
+    # 2026-07-04 修:原本只排除 00 開頭 ETF,但 T86 selectType=ALL 含大量權證
+    # (5-6 碼,自營商避險單) → 自營商榜 20 檔裡 19 檔權證,重建 universe 每天
+    # 只剩 ~3 檔真股票,4 個月回測只擠出 2 筆交易。改成只收 4 碼普通股。
+    def is_common(code) -> bool:
+        c = str(code).strip()
+        # 4 碼數字 + 排除 00 開頭(ETF: 0050/0056...) → 只留普通股
+        return len(c) == 4 and c.isdigit() and not c.startswith("00")
     foreign_top = sorted(
-        [r for r in t86.values() if not is_etf(r["code"]) and r.get("foreign", 0) > 0],
+        [r for r in t86.values() if is_common(r["code"]) and r.get("foreign", 0) > 0],
         key=lambda r: r["foreign"], reverse=True
-    )[:8]
+    )[:15]
     buy_list = [
         {"rank": i+1, "code": r["code"], "name": r["name"],
          "buyVol": r["foreign"], "close": 0, "chgPct": 0, "isETF": False,
@@ -88,9 +99,9 @@ def run(target_iso):
 
     # ── Step 3: 主力 (自營商 dealer) top from T86 ─────────────────────────────
     dealer_top = sorted(
-        [r for r in t86.values() if not is_etf(r["code"]) and r.get("prop", 0) > 0],
+        [r for r in t86.values() if is_common(r["code"]) and r.get("prop", 0) > 0],
         key=lambda r: r["prop"], reverse=True
-    )[:20]
+    )[:15]
     main_force_buy = [
         {"rank": i+1, "code": r["code"], "name": r["name"],
          "buyVol": r["prop"], "close": 0, "chgPct": 0, "isETF": False,
@@ -103,6 +114,8 @@ def run(target_iso):
     all_codes = list({r["code"] for r in buy_list + main_force_buy})
     emit(f"TDCC 股東人數（共 {len(all_codes)} 支）...", "running")
     try:
+        if tdcc_fetch is None:
+            raise RuntimeError("fetch_tdcc.fetch 已移除(adapter 化) — 歷史重建跳過股東人數")
         tdcc = tdcc_fetch(all_codes) or {}
         stage3_prefill = {
             code: {"holderNow": d.get("totalHolders", 0), "bigHolderPct": d.get("bigHolderPct", 0)}
