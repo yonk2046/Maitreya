@@ -2250,7 +2250,7 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
                     _golden_mod.DTIER_STRENGTHEN: "qualified",
                     _golden_mod.DTIER_MID: "strong"}[_dt]
         _dt_zh   = _golden_mod.DTIER_ZH[_dt]
-        _dt_icon = _golden_mod.DTIER_ICON[_dt]
+        _dt_icon = _dt_stars(_dt)   # P2.9: 星級取代色點 icon
         if near_miss:
             card_cls = "gc-card gc-qualified"
             badge_cls = "gc-badge gc-badge-qualified"
@@ -2682,7 +2682,7 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
     # ── Summary metric strip — action-first (P2) ─────────────────────────
     _metric_strip([
         ("黃金總覽 Total", str(prime_n + strong_n + qual_n),
-         f"🟢可買進{_buy_n} ◆增強{_str_n} ●中{_mid_n}", "val-cyan"),
+         f"⭐⭐⭐可買進{_buy_n} ⭐⭐增強{_str_n} ⭐中{_mid_n}", "val-cyan"),
         ("🟢 可執行",   str(_n_of[_golden_mod.ACTION_EXECUTABLE]),    "價格在保守錨容忍內", "val-green"),
         ("🟡 等回檔",   str(_n_of[_golden_mod.ACTION_WAIT_PULLBACK]), "結構好、價格延伸",   "val-amber"),
         ("🔵 資料待補", str(_n_of[_golden_mod.ACTION_DATA_PENDING]),  "SKELETON/缺錨點",   "val-cyan"),
@@ -2698,7 +2698,7 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
     if total_n == 0:
         bullets.append("目前黃金名單無符合標的，需要更多歷史快照積累。")
     else:
-        bullets.append(f"本日黃金名單共 {total_n} 檔，其中 🟢可買進 {_buy_n} / ◆增強 {_str_n} / ●中 {_mid_n}。可買進＝結構強且現價在主力成本5%內。")
+        bullets.append(f"本日黃金名單共 {total_n} 檔，其中 ⭐⭐⭐可買進 {_buy_n} / ⭐⭐增強 {_str_n} / ⭐中 {_mid_n}。三星＝結構強＋現價在主力成本5%內＋未轉弱。")
     if new_entrants:
         tickers_s = "、".join(f"{e.ticker} {e.name}" for e in new_entrants[:3])
         suffix = f"等{len(new_entrants)}檔" if len(new_entrants) > 3 else ""
@@ -2850,8 +2850,14 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
 # 全部讀既有 core 計算結果, 不做任何 render-time 業務邏輯)
 # ─────────────────────────────────────────────────────────────────────────────
 
-_EXPLAIN_DIV = ('<div style="font-size:11.5px;color:#6B8EAA;margin:-4px 0 10px 0;'
+_EXPLAIN_DIV = ('<div style="font-size:10px;color:#969696;margin:-4px 0 10px 0;'
                 'line-height:1.5;">{text}</div>')
+
+
+# ── P2.9 星級顯示:黃金分級 = 星數(Yonki 2026-07-04:與三星階梯統一) ──────
+def _dt_stars(dt: str) -> str:
+    """display_tier → 星級(⭐進名單/⭐⭐增強/⭐⭐⭐可買進)。"""
+    return {"buy": "⭐⭐⭐", "strengthen": "⭐⭐", "mid": "⭐"}.get(dt, "⭐")
 
 
 # ── P2.8 降維顯示:分數不放 %,改 高/中/低 色點(門檻見 📖 說明) ──────────
@@ -2877,30 +2883,29 @@ def _lvl_sponsor(score, days) -> str:
 
 
 def _render_score_glossary() -> None:
-    """📖 分數白話說明 — 潛力區頂部折疊區(P2.8, Yonki 要求所有特殊用字都有解釋)。"""
-    with st.expander("📖 這些分數怎麼看（30 秒版）", expanded=False):
+    """📖 邏輯說明 — 折疊區(P2.9:無粗體、灰字、無 code block —
+    fenced block 會觸發 Streamlit SyntaxHighlighter 動態載入,雲端曾 TypeError)。"""
+    with st.expander("📖 邏輯說明", expanded=False):
         st.markdown(
-            """
-**兩套獨立的計分系統，互相對照用:**
-
-**① 黃金引擎**（★進場機會 tab）— 五道門檻 + 加分賽
-```
-過五道門   = ⭐   進黃金名單（G1 有在持續吃貨 / G2 行為已成型 / G3 主力有回頭 /
-                            G4 無出貨嫌疑 / G5 整體淨買）
-黃金分高   = ⭐⭐  增強（過門後加分賽:連買越久、回頭率越高、動能越正,分越高）
-價格也對   = ⭐⭐⭐ 🟢可買進（現價 ≤ 主力成本×1.05 且未轉弱 — 5% 鐵則）
-```
-
-**② 多空計分**（本 tab 精選觀察）— 獨立的證據天平
-- **多頭分** = 多頭證據總量:連買+回頭率+動能+黃金身分加權（🟢高≥60%｜🟡中≥40%）
-- **警訊分** = 空頭證據總量:疑似出貨+25%、假突破+20%、速度轉負+15%…（🔴高≥50%｜🟠中≥30%）
-- 兩者獨立,可能同時高——代表多空證據並存,要特別小心
-
-**共用的基礎指標:**
-- **主力回頭率** = 同一家分點回頭買的頻率（🟢高≥70%:同一主力鎖碼｜🟡中≥40%｜⚪低:每天換人像散戶追價｜樣本不足:分點資料未滿 3 天不評分）
-- **連買(日)** = 主力連續淨買超天數 ／ **累計(張)** = 20 日窗口總買超 ／ **速度** = 近 3 日平均每天買幾張
-- **疑似出貨** = 之前強勢吸籌但買超動能連續轉負——主力可能在倒貨的「嫌疑」狀態（未定罪:缺席買超榜≠一定在賣）
-            """
+            '<div style="font-size:11px;color:#969696;line-height:1.9;">'
+            '兩套獨立的計分系統，互相對照用:'
+            '<br><br>'
+            '① 黃金引擎（★進場機會）— 五道門檻＋加分賽，用星級表示:'
+            '<br>⭐ 進黃金名單 ＝ 過五道門（G1 有在持續吃貨／G2 行為已成型／G3 主力有回頭／G4 無出貨嫌疑／G5 整體淨買）'
+            '<br>⭐⭐ 增強 ＝ 黃金分高（過門後的加分賽:連買越久、回頭率越高、動能越正，分越高）'
+            '<br>⭐⭐⭐ 可買進 ＝ 再加價格條件（現價 ≤ 主力成本×1.05 且未轉弱 — 5% 鐵則）'
+            '<br><br>'
+            '② 多空計分（🌱潛力區的精選觀察）— 獨立的證據天平:'
+            '<br>多頭分 ＝ 多頭證據總量:連買＋回頭率＋動能＋黃金身分加權（🟢高≥60%｜🟡中≥40%）'
+            '<br>警訊分 ＝ 空頭證據總量:疑似出貨+25%、假突破+20%、速度轉負+15% 等（🔴高≥50%｜🟠中≥30%）'
+            '<br>兩者獨立計算，可能同時高——代表多空證據並存，要特別小心'
+            '<br><br>'
+            '共用的基礎指標:'
+            '<br>主力回頭率 ＝ 同一家分點回頭買的頻率（🟢高≥70%:同一主力鎖碼｜🟡中≥40%｜⚪低:每天換人像散戶追價｜樣本不足:分點資料未滿 3 天不評分）'
+            '<br>連買(日) ＝ 主力連續淨買超天數 ｜ 累計(張) ＝ 20 日窗口總買超 ｜ 速度 ＝ 近 3 日平均每天買幾張'
+            '<br>疑似出貨 ＝ 之前強勢吸籌但買超動能連續轉負——主力可能在倒貨的「嫌疑」狀態（未定罪:缺席買超榜 ≠ 一定在賣）'
+            '</div>',
+            unsafe_allow_html=True,
         )
 
 
@@ -3888,6 +3893,7 @@ def main() -> None:
     with tab_entry:
         # 進場機會 = 黃金引擎全家:黃金名單(過五門) + 黃金候補(過四門)
         # (P2.8:候補與名單同引擎,按模組歸位 — Yonki 2026-07-04 定案)
+        _render_score_glossary()
         st.markdown(_SECTION_TITLE.format(label="★ 黃金名單"), unsafe_allow_html=True)
         _render_golden(snaps_to_date, show_near_miss=False)
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
