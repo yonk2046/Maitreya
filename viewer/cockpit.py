@@ -955,8 +955,7 @@ def _render_watchlist_radar(snaps: list[dict]) -> None:
                 unsafe_allow_html=True,
             )
 
-    # ── P3: 全市場熱度觀察 ────────────────────────────────────────────────────
-    _render_heat_radar(snaps)
+    # ── P3.0: 全市場熱度觀察已拆出,由 tab 佈線獨立呼叫(排序:Yonki 2026-07-04)──
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1678,7 +1677,9 @@ def _cached_narrative(n_dates: int) -> dict:
     return _narrative_generate(lookback=n_dates)
 
 
-def _render_narrative(snaps: list[dict]) -> None:
+def _render_narrative(snaps: list[dict], part: str = "all") -> None:
+    """P3.0 拆分:part='themes' 只渲染主題觀察;'watchpoints' 只渲染
+    持續出現/重要轉換/可能假突破;'all' 含雙語長文(已無人呼叫,封存備查)。"""
     if not snaps:
         st.info("尚無快照資料 No snapshot data.")
         return
@@ -1686,6 +1687,19 @@ def _render_narrative(snaps: list[dict]) -> None:
     with st.spinner("生成市場敘事… generating narrative…"):
         report = _cached_narrative(len(snaps))
 
+    if part in ("all", "themes"):
+        _render_narrative_bullets_and_themes(report, include_bullets=(part == "all"))
+    if part in ("all", "watchpoints"):
+        _render_narrative_watchpoints(report)
+
+
+def _render_narrative_bullets_and_themes(report: dict, include_bullets: bool) -> None:
+    if include_bullets:
+        _render_narrative_bullets(report)
+    _render_narrative_themes(report)
+
+
+def _render_narrative_bullets(report: dict) -> None:
     dr = report.get("date_range", [])
     dr_str = f"{dr[0]}  →  {dr[-1]}" if len(dr) == 2 else report.get("latest_date", "")
 
@@ -1718,8 +1732,14 @@ def _render_narrative(snaps: list[dict]) -> None:
 
     st.markdown('<div style="margin:28px 0 0 0;"></div>', unsafe_allow_html=True)
 
+
+def _render_narrative_themes(report: dict) -> None:
     # ── Section B: Key Themes  (3 columns) ───────────────────────────────
     _section_header("🔑", "主題觀察", "Key Themes")
+    st.markdown(_EXPLAIN_DIV.format(
+        text="從近幾日快照歸納的三個市場主題：板塊輪動（錢在換場子嗎）、資金方向（整體進或出）、"
+             "強弱對比（誰在領漲誰在破位）。"),
+        unsafe_allow_html=True)
     themes = report.get("key_themes", {})
     theme_defs = [
         ("sector_rotation",      "⟳", "板塊輪動", "Sector Rotation"),
@@ -1744,7 +1764,13 @@ def _render_narrative(snaps: list[dict]) -> None:
 
     st.markdown('<div style="margin:28px 0 0 0;"></div>', unsafe_allow_html=True)
 
+
+def _render_narrative_watchpoints(report: dict) -> None:
     # ── Section C: Notable Entities ──────────────────────────────────────
+    st.markdown(_EXPLAIN_DIV.format(
+        text="持續出現＝在每日買超榜反覆現身的個股（主力沒走）；重要轉換＝首次上榜或消失後重現；"
+             "可能假突破＝放量急漲後連續回落，籌碼沒跟上價格。"),
+        unsafe_allow_html=True)
     ent = report.get("notable_entities", {})
     col_left, col_mid, col_right = st.columns(3, gap="small")
 
@@ -3363,18 +3389,13 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
         unsafe_allow_html=True,
     )
 
-    # ── Summary metrics ───────────────────────────────────────────────────
-    _metric_strip([
-        ("今日新增",  str(report.new_count),              "狀態/名單變化", "val-green"),
-        ("升級",      str(report.upgrade_count),           "各層提升",     "val-cyan"),
-        ("降級",      str(report.downgrade_count),         "各層下降",     "val-amber"),
-        ("風險警報",  str(report.risk_count),              "需要注意",     "val-red"),
-        ("市場結構",  str(report.market_structure_count),  "體制/板塊",    "val-dim"),
-    ])
-    st.markdown("<br>", unsafe_allow_html=True)
+    # ── 數字條已刪(P3.0:與各事件表標題計數重複) ──────────────────────────
 
     # ── Market Story ──────────────────────────────────────────────────────
     _section_header("📖", "市場故事", "Market Story")
+    st.markdown(_EXPLAIN_DIV.format(
+        text="把今天所有事件濃縮成幾句事實陳述——深度數據的摘要版。"),
+        unsafe_allow_html=True)
     if report.market_story:
         for s in report.market_story:
             st.markdown(f'<div class="intel-story-item">• {s}</div>', unsafe_allow_html=True)
@@ -3438,14 +3459,7 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
         else:
             st.markdown('<div class="data-gap-notice">無降級事件</div>', unsafe_allow_html=True)
 
-    # ── Market Structure ──────────────────────────────────────────────────
-    if report.market_structure:
-        _section_header("◆", "市場結構變化", "Market Structure", report.market_structure_count)
-        st.markdown(
-            "".join(_event_card(e, "struct") for e in report.market_structure),
-            unsafe_allow_html=True,
-        )
-
+    # ── 市場結構變化已刪(P3.0:與市場敘事 tab 的體制/輪動區塊重複,Yonki 拍板)──
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Biggest Changes — 3 ranked tables ────────────────────────────────
@@ -3483,13 +3497,7 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
         st.markdown(_delta_table(report.biggest_confidence_changes, pct_format=True),
                     unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # ── Watch List → 已搬到「🌱 潛力區」tab（_render_watch_table），此處不再
-    #    重複渲染（P2.7 去重複）。 ────────────────────────────────────────
-    st.markdown(
-        '<div style="font-size:11.5px;color:#6B8EAA;">◉ 持續觀察名單已移至「🌱 潛力區」分頁。</div>',
-        unsafe_allow_html=True)
+    # ── Watch List 在「🌱 潛力區」(P2.7);指路行已刪(P3.0) ────────────────
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -3869,14 +3877,15 @@ def main() -> None:
     # ── 大盤脈搏 banner (pinned above all tabs) ───────────────────────────
     _render_market_pulse_banner()
 
-    # ── Tabs（P2.5 重構 12→6;P2.7 加「潛力區」6→7:
-    #    心智模型「我有什麼 → 能不能進 → 有什麼在醞釀 → 該不該出 → 為什麼 → 深入 → 驗證」）─
-    tab_holdings, tab_entry, tab_potential, tab_exit, tab_market, tab_research, tab_backtest = st.tabs([
+    # ── Tabs（P3.0 重構 7→8,Yonki 2026-07-04:開頁先看市場全貌 → 市場敘事移第一;
+    #    市場全景拆成「市場敘事(環境)」+「深度數據(事件明細)」兩個 tab）─
+    tab_market, tab_holdings, tab_entry, tab_potential, tab_exit, tab_data, tab_research, tab_backtest = st.tabs([
+        "📰 市場敘事",
         "💼 我的持倉",
         "★ 進場機會",
         "🌱 潛力區",
         "🔻 出場警示",
-        "📊 市場全景",
+        "🧮 深度數據",
         "🔬 深度研究",
         "📈 模擬績效",
     ])
@@ -3915,21 +3924,28 @@ def main() -> None:
         _render_failed_breakouts(snaps_to_date)
 
     with tab_market:
-        # 市場全景 = 今日綜述 + 市場體制 + 雷達 + 資金輪動
-        st.markdown(_SECTION_TITLE.format(label="📰 今日綜述"), unsafe_allow_html=True)
-        _render_intelligence(active_date, snaps_to_date)
-        st.markdown('<hr style="border:none;border-top:1px solid #1F2D3D;margin:18px 0;">',
-                    unsafe_allow_html=True)
-        _render_narrative(snaps_to_date)
-        st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        # 市場敘事 = 今天市場全貌(環境層),順序 Yonki 2026-07-04 定案:
+        # 體制 → 龍頭雷達 → 主題觀察 → 資金輪動(含族群走勢) → 全市場熱度 → 三個觀察點
         st.markdown(_SECTION_TITLE.format(label="📊 市場體制"), unsafe_allow_html=True)
+        st.markdown(_EXPLAIN_DIV.format(
+            text="用全市場廣度（幾 % 股票在漲）、平均漲跌、量能綜合判定今天屬於哪種環境"
+                 "（吸籌期／觀望期／防禦期…），決定今天適不適合出手。"),
+            unsafe_allow_html=True)
         _render_regime(snaps_to_date)
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
-        st.markdown(_SECTION_TITLE.format(label="🎯 雷達觀察"), unsafe_allow_html=True)
         _render_watchlist_radar(snaps_to_date)
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        _render_narrative(snaps_to_date, part="themes")
+        st.markdown(_SECTION_HR, unsafe_allow_html=True)
         st.markdown(_SECTION_TITLE.format(label="⟳ 資金輪動"), unsafe_allow_html=True)
+        st.markdown(_EXPLAIN_DIV.format(
+            text="各板塊的主力資金流向排名與 5 日走勢；偵測到「錢從 A 板塊搬去 B 板塊」時會顯示輪動警報。"),
+            unsafe_allow_html=True)
         _render_leadership_rotation(snaps_to_date)
+        st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        _render_heat_radar(snaps_to_date)
+        st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        _render_narrative(snaps_to_date, part="watchpoints")
 
     with tab_research:
         # 深度研究 = 時序演化 + 信心風險
@@ -3939,6 +3955,11 @@ def main() -> None:
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
         st.markdown(_SECTION_TITLE.format(label="◈ 信心風險"), unsafe_allow_html=True)
         _render_confidence(snaps_to_date)
+
+    with tab_data:
+        # 深度數據 = 今日事件明細(昨天 vs 今天變了什麼),Yonki 2026-07-04 定案
+        st.markdown(_SECTION_TITLE.format(label="🧮 今日綜述"), unsafe_allow_html=True)
+        _render_intelligence(active_date, snaps_to_date)
 
     with tab_backtest:
         _render_backtest(snaps_to_date)
