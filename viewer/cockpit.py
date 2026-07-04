@@ -1051,11 +1051,9 @@ def _style_signal_df(df, color_cols: list[str], text_cols: list[str], fmt: dict)
     return sty
 
 
-def _render_strengthening(snaps: list[dict]) -> None:
-    if not snaps:
-        st.info("無快照資料")
-        return
-
+@st.cache_data(ttl=120, show_spinner=False)
+def _strengthening_rows(key: str, snaps: list[dict]) -> list[dict]:
+    """轉強表資料列(P3.1 加快取:full_ticker_context 很重,每次 rerun 別重算)。"""
     all_tickers: set[str] = set()
     for snap in snaps:
         for s in snap.get("stocks", []):
@@ -1106,33 +1104,34 @@ def _render_strengthening(snaps: list[dict]) -> None:
             "_spon": spon_score,
             "_spon_days": spon_days,
         })
+    return rows
 
-    # 搜尋欄:輸入代號或名稱即時過濾
-    col_q, col_f = st.columns([3, 2])
-    with col_q:
-        q = st.text_input("🔍 搜尋代號或名稱", "", key="strong_search",
-                          placeholder="例如 2330 或 台積電").strip()
-    with col_f:
-        only_acc = st.checkbox("◉ 只看持續吸籌（主力回頭率 中等以上）",
-                               key="strong_acc_filter")
-    if q:
-        rows = [r for r in rows
-                if q.lower() in str(r["代號"]).lower() or q in str(r["名稱"])]
+
+def _render_strengthening(snaps: list[dict]) -> None:
+    if not snaps:
+        st.info("無快照資料")
+        return
+
+    rows = list(_strengthening_rows(_snaps_key(snaps), snaps))
+
+    # P3.1:獨立搜尋框已移除——它每打一個字就觸發整頁重算(慢);
+    # 表格右上角內建 🔍(hover 出現)是純前端搜尋,即時零延遲。
+    only_acc = st.checkbox("◉ 只看持續吸籌（主力回頭率 中等以上）",
+                           key="strong_acc_filter")
     if only_acc:
         rows = [r for r in rows if r["_spon"] >= 0.35 and r["_spon_days"] >= 3]
 
     _section_header("↑", "轉強訊號", "Strengthening Signals", len(rows))
     st.markdown(_EXPLAIN_DIV.format(
         text="連續 2 日以上主力買超的全部標的（最寬的潛力篩網），想自己挖的人從這裡找。"
+             "搜尋:滑鼠移到表格右上角點 🔍（即時、不重算頁面）。"
              "主力回頭率＝同一家分點回頭買的頻率（高＝同一個主力在鎖碼；低＝每天換人像散戶追價；"
              "樣本不足＝分點資料未滿 3 天，不評分）。"),
         unsafe_allow_html=True)
 
     if not rows:
         st.markdown(
-            '<div class="data-gap-notice">'
-            + (f'查無符合「{q}」的標的。' if q else '目前無連續2日以上買超的標的。')
-            + '</div>',
+            '<div class="data-gap-notice">目前無符合條件的標的。</div>',
             unsafe_allow_html=True,
         )
         return
@@ -3389,12 +3388,10 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
         unsafe_allow_html=True,
     )
 
-    # ── 數字條已刪(P3.0:與各事件表標題計數重複) ──────────────────────────
-
-    # ── Market Story ──────────────────────────────────────────────────────
-    _section_header("📖", "市場故事", "Market Story")
+    # ── 今日綜述(=市場故事,P3.1 合併為單一區塊) ───────────────────────────
+    _section_header("📖", "今日綜述", "Market Story")
     st.markdown(_EXPLAIN_DIV.format(
-        text="把今天所有事件濃縮成幾句事實陳述——深度數據的摘要版。"),
+        text="把今天所有事件濃縮成幾句事實陳述——本頁其餘表格的摘要版，先讀這裡再往下。"),
         unsafe_allow_html=True)
     if report.market_story:
         for s in report.market_story:
@@ -3404,7 +3401,44 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── Event Timeline — 5 buckets in 2 columns ───────────────────────────
+    # ── Biggest Changes — 拉到事件表之前(Yonki 2026-07-04:排行先看) ───────
+    _section_header("△", "最大變化排行", "Biggest Changes (last 24h)")
+    st.markdown(_EXPLAIN_DIV.format(
+        text="三個核心指標 24 小時變化最大的股票。主力回頭率＝同一家分點回頭買的頻率；"
+             "速度＝近 3 日平均買超張數/日；多頭分＝連買/回頭率/動能/黃金身分的加權綜合分。"),
+        unsafe_allow_html=True)
+    col_s, col_v, col_c = st.columns(3, gap="small")
+
+    with col_s:
+        st.markdown(
+            '<div style="font-size:11px;color:#6B8EAA;text-transform:uppercase;'
+            'letter-spacing:.08em;margin-bottom:8px;">主力回頭率 Δ</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(_delta_table(report.biggest_sponsorship_changes, pct_format=True),
+                    unsafe_allow_html=True)
+
+    with col_v:
+        st.markdown(
+            '<div style="font-size:11px;color:#6B8EAA;text-transform:uppercase;'
+            'letter-spacing:.08em;margin-bottom:8px;">速度 Velocity Δ (張/日)</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(_delta_table(report.biggest_velocity_changes, pct_format=False),
+                    unsafe_allow_html=True)
+
+    with col_c:
+        st.markdown(
+            '<div style="font-size:11px;color:#6B8EAA;text-transform:uppercase;'
+            'letter-spacing:.08em;margin-bottom:8px;">多頭分 Δ</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(_delta_table(report.biggest_confidence_changes, pct_format=True),
+                    unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── Event Timeline — 4 buckets in 2 columns ───────────────────────────
     col_left, col_right = st.columns(2, gap="medium")
 
     with col_left:
@@ -3460,44 +3494,7 @@ def _render_intelligence(active_date: str, snaps: list[dict]) -> None:
             st.markdown('<div class="data-gap-notice">無降級事件</div>', unsafe_allow_html=True)
 
     # ── 市場結構變化已刪(P3.0:與市場敘事 tab 的體制/輪動區塊重複,Yonki 拍板)──
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # ── Biggest Changes — 3 ranked tables ────────────────────────────────
-    _section_header("△", "最大變化排行", "Biggest Changes (last 24h)")
-    st.markdown(_EXPLAIN_DIV.format(
-        text="三個核心指標 24 小時變化最大的股票。主力回頭率＝同一家分點回頭買的頻率；"
-             "速度＝近 3 日平均買超張數/日；多頭分＝連買/回頭率/動能/黃金身分的加權綜合分。"),
-        unsafe_allow_html=True)
-    col_s, col_v, col_c = st.columns(3, gap="small")
-
-    with col_s:
-        st.markdown(
-            '<div style="font-size:11px;color:#6B8EAA;text-transform:uppercase;'
-            'letter-spacing:.08em;margin-bottom:8px;">主力回頭率 Δ</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown(_delta_table(report.biggest_sponsorship_changes, pct_format=True),
-                    unsafe_allow_html=True)
-
-    with col_v:
-        st.markdown(
-            '<div style="font-size:11px;color:#6B8EAA;text-transform:uppercase;'
-            'letter-spacing:.08em;margin-bottom:8px;">速度 Velocity Δ (張/日)</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown(_delta_table(report.biggest_velocity_changes, pct_format=False),
-                    unsafe_allow_html=True)
-
-    with col_c:
-        st.markdown(
-            '<div style="font-size:11px;color:#6B8EAA;text-transform:uppercase;'
-            'letter-spacing:.08em;margin-bottom:8px;">多頭分 Δ</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown(_delta_table(report.biggest_confidence_changes, pct_format=True),
-                    unsafe_allow_html=True)
-
-    # ── Watch List 在「🌱 潛力區」(P2.7);指路行已刪(P3.0) ────────────────
+    # ── Δ排行已上移至事件表之前(P3.1) ── Watch List 在「🌱 潛力區」(P2.7) ──
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -3886,7 +3883,7 @@ def main() -> None:
         "🌱 潛力區",
         "🔻 出場警示",
         "🧮 深度數據",
-        "🔬 深度研究",
+        "🔬 個股顯微鏡",
         "📈 模擬績效",
     ])
 
@@ -3958,7 +3955,7 @@ def main() -> None:
 
     with tab_data:
         # 深度數據 = 今日事件明細(昨天 vs 今天變了什麼),Yonki 2026-07-04 定案
-        st.markdown(_SECTION_TITLE.format(label="🧮 今日綜述"), unsafe_allow_html=True)
+        # (今日綜述標題與市場故事已在 _render_intelligence 內合併為單一區塊)
         _render_intelligence(active_date, snaps_to_date)
 
     with tab_backtest:
