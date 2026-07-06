@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SCD 回測報告 · 2026-03-02 → 07-03</title>
+<style>
+:root{--bg:#0f0f13;--bg2:#16161c;--bg3:#1e1e26;--bg4:#26262f;
+  --text:#e8e8ee;--text2:#b0b0bc;--text3:#70707c;
+  --gold:#c9973a;--green:#4a9e6b;--blue:#4a7fc4;--red:#c94a4a;
+  --border:rgba(255,255,255,0.07)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;line-height:1.6;padding:24px;max-width:1100px;margin:0 auto}
+h1{font-size:22px;font-weight:700;color:var(--gold);margin-bottom:4px}
+.sub{font-size:12px;color:var(--text3);margin-bottom:28px;font-family:monospace}
+.section{margin-bottom:28px}
+.sec-title{font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;color:var(--text3);font-weight:500;text-align:left;padding:5px 8px;border-bottom:1px solid var(--border)}
+td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.code{font-family:monospace;color:var(--gold);font-weight:600}
+.num{font-family:monospace;text-align:right}
+.alert{background:rgba(201,151,58,.08);border:1px solid rgba(201,151,58,.25);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--text2);margin-bottom:16px}
+.alert-red{background:rgba(201,74,74,.08);border:1px solid rgba(201,74,74,.25);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--text2);margin-bottom:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:680px){.grid2{grid-template-columns:1fr}}
+.stat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:8px}
+@media(max-width:680px){.stat-grid{grid-template-columns:repeat(3,1fr)}}
+.stat-box{background:var(--bg3);border-radius:6px;padding:8px 10px;text-align:center}
+.stat-label{font-size:10px;color:var(--text3)}
+.stat-val{font-family:monospace;font-size:15px;font-weight:700}
+.up{color:var(--green)}.dn{color:var(--red)}
+.tag{border-radius:4px;padding:1px 7px;font-size:11px;font-weight:600}
+.tag-gold{background:#c9973a22;color:#c9973a;border:1px solid #c9973a66}
+.tag-blue{background:rgba(74,127,196,.15);color:#4a7fc4;border:1px solid rgba(74,127,196,.3)}
+.footnote{font-size:11px;color:var(--text3);line-height:1.7;margin-top:8px}
+</style></head><body>
+
+<h1>📈 SCD 四個月回測報告 · 動能延續策略</h1>
+<div class="sub">窗口 2026-03-02 → 2026-07-03（90 交易日）&nbsp;·&nbsp; 歷史重建資料集 &nbsp;·&nbsp; 生成 2026-07-04 &nbsp;·&nbsp; Maitreya Paper-Trading Engine</div>
+
+<div class="alert">⚠️ <strong>資料集說明</strong> — T86 全市場三大法人（權威）＋ TWSE STOCK_DAY 歷史股價（覆蓋 98.7%），每日 universe＝外資買超 Top15＋自營買超 Top15（4 碼普通股，排除權證/ETF）。<strong>A 系籌碼錨定策略因 Fubon 分點無歷史 API 無法回測</strong>，本報告只含 B 系動能延續。規則：次日開盤價進出、固定 1 單位、無前視。</div>
+
+<div class="section">
+<div class="sec-title">① 總覽 KPI</div>
+<div class="card">
+<div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:8px">動能延續 v1 <span class="tag tag-blue" style="margin-left:6px">7 筆</span></div>
+<div class="stat-grid">
+<div class="stat-box"><div class="stat-label">勝率</div><div class="stat-val up">86%</div></div>
+<div class="stat-box"><div class="stat-label">平均/筆</div><div class="stat-val up">+15.13%</div></div>
+<div class="stat-box"><div class="stat-label">中位數</div><div class="stat-val up">+18.58%</div></div>
+<div class="stat-box"><div class="stat-label">最差單筆</div><div class="stat-val dn">-1.02%</div></div>
+<div class="stat-box"><div class="stat-label">疊加報酬*</div><div class="stat-val up">+105.9%</div></div>
+<div class="stat-box"><div class="stat-label">平均持有</div><div class="stat-val">15.0 天</div></div>
+</div>
+<div style="font-size:13px;font-weight:700;color:var(--text2);margin:14px 0 8px 0">動能延續 v2 <span class="tag tag-blue" style="margin-left:6px">8 筆</span></div>
+<div class="stat-grid">
+<div class="stat-box"><div class="stat-label">勝率</div><div class="stat-val up">88%</div></div>
+<div class="stat-box"><div class="stat-label">平均/筆</div><div class="stat-val up">+13.16%</div></div>
+<div class="stat-box"><div class="stat-label">中位數</div><div class="stat-val up">+18.58%</div></div>
+<div class="stat-box"><div class="stat-label">最差單筆</div><div class="stat-val dn">-1.02%</div></div>
+<div class="stat-box"><div class="stat-label">疊加報酬*</div><div class="stat-val up">+104.2%</div></div>
+<div class="stat-box"><div class="stat-label">平均持有</div><div class="stat-val">13.6 天</div></div>
+</div>
+<div class="footnote">*疊加報酬＝每筆 1 單位的報酬直接加總（非複利組合報酬）。所有出場均由「轉弱偵測」觸發——出場器是本策略獲利保全的核心部件。</div>
+</div></div>
+
+<div class="section">
+<div class="sec-title">② 按月拆解（v1）</div>
+<div class="card"><table>
+<tr><th>月份</th><th class="num">進場筆數</th><th class="num">勝</th><th class="num">平均/筆</th><th>環境備註</th></tr>
+<tr><td class="code">2026-03</td><td class="num">1</td><td class="num">1</td><td class="num up">+21.55%</td><td style="color:var(--text3);font-size:12px">仁寶長波段起點</td></tr>
+<tr><td class="code">2026-04</td><td class="num">1</td><td class="num">1</td><td class="num up">+27.32%</td><td style="color:var(--text3);font-size:12px">聯電第一段主升</td></tr>
+<tr><td class="code">2026-05</td><td class="num">2</td><td class="num">1</td><td class="num up">+8.78%</td><td style="color:var(--text3);font-size:12px">面板行情（群創）；唯一虧損在此月</td></tr>
+<tr><td class="code">2026-06</td><td class="num">3</td><td class="num">3</td><td class="num up">+13.16%</td><td style="color:var(--text3);font-size:12px">進場最活躍；聯電第二段</td></tr>
+</table>
+<div class="footnote">四個月每月平均皆為正。單月樣本 1-3 筆，月間差異參考即可，勿過度解讀。</div>
+</div></div>
+
+<div class="section">
+<div class="sec-title">③ 逐筆交易明細（v1 · 7 筆）</div>
+<div class="card"><table>
+<tr><th>代號</th><th>名稱</th><th>進場</th><th>出場</th><th class="num">買進</th><th class="num">賣出</th><th class="num">報酬</th><th class="num">持有</th><th>出場原因</th></tr>
+<tr><td class="code">2324</td><td>仁寶</td><td class="num">03-23</td><td class="num">06-01</td><td class="num">32.95</td><td class="num">40.05</td><td class="num up">+21.55%</td><td class="num">50 天</td><td><span class="tag tag-gold">轉弱</span></td></tr>
+<tr><td class="code">2303</td><td>聯電</td><td class="num">04-22</td><td class="num">05-07</td><td class="num">76.50</td><td class="num">97.40</td><td class="num up">+27.32%</td><td class="num">11 天</td><td><span class="tag tag-gold">轉弱</span></td></tr>
+<tr><td class="code">2867</td><td>三商壽</td><td class="num">05-08</td><td class="num">05-14</td><td class="num">7.81</td><td class="num">7.73</td><td class="num dn">-1.02%</td><td class="num">4 天</td><td><span class="tag tag-gold">轉弱</span></td></tr>
+<tr><td class="code">3481</td><td>群創</td><td class="num">05-13</td><td class="num">05-22</td><td class="num">35.80</td><td class="num">42.45</td><td class="num up">+18.58%</td><td class="num">7 天</td><td><span class="tag tag-gold">轉弱</span></td></tr>
+<tr><td class="code">2867</td><td>三商壽</td><td class="num">06-03</td><td class="num">06-24</td><td class="num">7.80</td><td class="num">8.66</td><td class="num up">+11.03%</td><td class="num">15 天</td><td><span class="tag tag-gold">轉弱</span></td></tr>
+<tr><td class="code">2891</td><td>中信金 <span class="tag tag-blue">金融股</span></td><td class="num">06-12</td><td class="num">06-29</td><td class="num">67.80</td><td class="num">71.30</td><td class="num up">+5.16%</td><td class="num">11 天</td><td><span class="tag tag-gold">轉弱</span></td></tr>
+<tr><td class="code">2303</td><td>聯電</td><td class="num">06-15</td><td class="num">06-24</td><td class="num">139.50</td><td class="num">172.00</td><td class="num up">+23.30%</td><td class="num">7 天</td><td><span class="tag tag-gold">轉弱</span></td></tr>
+</table>
+<div class="footnote">v2 額外多 1 筆（三商壽 06-03 拆兩段：+2.18% 減速減半出場 ×0.5 ＋ +8.18% 轉弱出場）。聯電兩段合計貢獻 +50.6%，是本窗口的行情主角（股價 76→172）。</div>
+</div></div>
+
+<div class="section">
+<div class="sec-title">④ 對照：主 Archive 真實資料（5/08–7/03 · 含 A 系）</div>
+<div class="grid2">
+<div class="card"><table>
+<tr><th>策略</th><th class="num">筆數</th><th class="num">勝率</th><th class="num">平均/筆</th></tr>
+<tr><td>籌碼錨定 v1</td><td class="num">4</td><td class="num">75%</td><td class="num up">+4.98%</td></tr>
+<tr><td>籌碼錨定 v2</td><td class="num">10</td><td class="num">70%</td><td class="num up">+2.89%</td></tr>
+<tr><td>動能延續 v1</td><td class="num">8</td><td class="num">75%</td><td class="num up">+3.29%</td></tr>
+<tr><td>動能延續 v2</td><td class="num">9</td><td class="num">78%</td><td class="num up">+3.20%</td></tr>
+</table></div>
+<div class="card" style="font-size:13px;color:var(--text2);line-height:1.8">
+<strong style="color:var(--gold)">為什麼重建資料的報酬高這麼多？</strong><br>
+重建 universe＝「全市場外資買超 Top15」，天然鎖定最強勢股；主 archive universe＝Fubon 榜 ~40 檔，含較多雜訊股。兩者都是 70-88% 勝率，但選股池品質決定了平均報酬的量級。<strong>這正是 1.9.0 要擴大 universe 的實證理由。</strong>
+</div>
+</div></div>
+
+<div class="section">
+<div class="sec-title">⑤ 誠實聲明（下結論前必讀）</div>
+<div class="alert-red">
+<strong>1. 樣本小</strong>：7-8 筆，勝率 86% 的信賴區間很寬，不能當常態預期。<br>
+<strong>2. 多頭偏差</strong>：這四個月是大多頭（聯電 76→172），universe 又天然選強勢股；<strong>策略尚未經歷空頭考驗</strong>，硬止損從未被觸發＝跳空崩盤情境未測試。<br>
+<strong>3. 無交易成本</strong>：未計手續費＋證交稅（台股來回約 0.6%）與滑價。<br>
+<strong>4. 主力欄位為代理</strong>：重建資料的主力＝T86 自營商，與真實 Fubon 分點不同；B 策略主要依賴外資欄位（T86 權威），可信度尚可。
+</div>
+<div class="card" style="font-size:13px;color:var(--text2);line-height:1.8">
+<strong style="color:var(--gold)">結論</strong>：「動能進場＋轉弱出場」的組合在多頭段驗證有效——賺大賠小的分布形狀（最差 -1%、最佳 +27%）正是轉弱出場器在工作的證據。下一步：1.9.0 擴大真實 universe 後重驗，並持續累積樣本等待空頭段的壓力測試。
+</div></div>
+
+<div class="sub" style="margin-top:20px">Maitreya SCD Engine · 決定論回測（同輸入必同輸出）· 彌勒觀市，不測，只記</div>
+</body></html>
