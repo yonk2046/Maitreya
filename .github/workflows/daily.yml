@@ -10,6 +10,14 @@ name: Maitreya Daily Pipeline
 on:
   schedule:
     - cron: '0 12 * * 1-5'   # 20:00 Asia/Taipei (primary runs 19:00)
+    # 2026-07-06: T+1 morning catch-up (08:35 Taipei, Tue-Sat covers Mon-Fri
+    # sessions). HiNetCDN 307-blocks *same-day* T86 for datacenter IPs even
+    # late evening, so when the Mac is off the evening runs can never build a
+    # fresh snapshot. By next morning the resource is CDN-cached everywhere →
+    # this run builds YESTERDAY's snapshot reliably (date resolution, Fubon
+    # rankings and STOCK_DAY_ALL all naturally point at the prior session in
+    # the morning). Skips itself when the snapshot already exists.
+    - cron: '35 0 * * 2-6'   # 08:35 Asia/Taipei next morning
   workflow_dispatch:
 env:
   TZ: Asia/Taipei
