@@ -316,11 +316,14 @@ def run(dry_run=False):
 
     # ── Step 8: TWSE T86 三大法人 daily (authoritative full-market) ─────────────
     emit(8, TOTAL_STEPS, "抓取 TWSE T86 三大法人 daily (全市場)...", status="running")
+    # 2026-07-06 修:改用 derive_trading_date 的「解析後權威交易日」——
+    # MI_INDEX20 的 tradingDate 在盤後可能仍是前一交易日(CDN/更新滯後),
+    # 直接拿它抓 T86 會拿到舊日資料 → t86Date gate 擋下 → 當天永遠建不了快照。
+    # 用解析日:開盤日抓到當日 T86;休市日 T86 自然回空 → gate 乾淨跳過。
     trading_date_yyyymmdd = None
-    if not twse_err and twse_result.get("tradingDate"):
-        td = twse_result["tradingDate"]
-        if td and len(td) == 8 and td.isdigit():
-            trading_date_yyyymmdd = td
+    _resolved_iso = derive_trading_date(twse_result if not twse_err else None)
+    if _resolved_iso and len(_resolved_iso) == 10:
+        trading_date_yyyymmdd = _resolved_iso.replace("-", "")
     from fetch_twse_t86 import fetch as t86_fetch
     import fetch_twse_t86 as _t86_mod
     t86_result, t86_err = safe_fetch("twse_t86", t86_fetch, trading_date_yyyymmdd)
