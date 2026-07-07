@@ -129,6 +129,9 @@ daily:  # run the full daily flow once: fetch -> ingest+archive -> verify-all-re
 daily-skip-fetch:  # same, but use the existing data/today.json instead of refetching
 	SCD_PROJECT_ROOT="$(CURDIR)" $(PY) -m tools.daily --skip-fetch
 
+daily-partial:  # 兩段式快照晚班(雲端 20:00 GHA 專用): T86 不可得時建 fii_pending 部分快照
+	SCD_PROJECT_ROOT="$(CURDIR)" $(PY) -m tools.daily --allow-partial
+
 daily-install:  # macOS only — install ~/Library/LaunchAgents/com.scd.daily.plist (weekdays 19:00)
 	bash deploy/install_launchd.sh install
 

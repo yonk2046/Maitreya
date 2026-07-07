@@ -51,11 +51,19 @@ fi
 TODAY_TPE=$(TZ=Asia/Taipei date +%F)
 SNAP="reports/${TODAY_TPE}.json"
 if git cat-file -e "origin/main:${SNAP}" 2>/dev/null; then
-    echo "[daily_and_push] ${SNAP} already on origin/main (GHA backup ran first?) — nothing to do"
-    exit 0
+    # 兩段式快照 (2026-07-07): 雲端晚班可能只建了 partial (fii_pending) 快照
+    # (CDN 擋 datacenter 抓當日 T86)。Mac 是台灣 IP、當晚就抓得到 T86 —
+    # partial 視為「未完成」, 落到下面的 pipeline 分支; tools/daily.py 的
+    # 補完路徑 (fii_pending + 新鮮 T86 → 放行重建) 會 supersede 補完。
+    if git cat-file -p "origin/main:${SNAP}" | grep -q '"fii_pending": true'; then
+        echo "[daily_and_push] ${SNAP} on origin/main is PARTIAL (fii_pending) — Mac 有台灣 IP, 跑全套 pipeline 補完"
+    else
+        echo "[daily_and_push] ${SNAP} already on origin/main (GHA backup ran first?) — nothing to do"
+        exit 0
+    fi
 fi
 
-if [ -f "${SNAP}" ]; then
+if [ -f "${SNAP}" ] && ! grep -q '"fii_pending": true' "${SNAP}"; then
     echo "[daily_and_push] ${SNAP} exists locally but NOT on origin/main (stray run without push?) — skipping regeneration, publishing existing artifacts"
 else
     # ── 2. Market pulse (non-blocking: fails on non-trading days) ───────────

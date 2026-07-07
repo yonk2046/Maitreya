@@ -303,7 +303,23 @@ def adapt_legacy(
 
     # --- Merge T86 三大法人 data into per-ticker raw_inputs ---
     # today.json["t86"] = { code: {foreign, trust, prop, total3} } all in 張
+    # 兩段式快照 (2026-07-07,schema 1.8.1):T86 必須屬於快照當日 — t86Date
+    # 不符即整組丟棄(鐵律:絕不把非當日 T86 寫進快照)。過去這條只由
+    # tools/daily.py 的 fii_gate 把守,直接呼叫 run_pipeline 會繞過;現在
+    # adapter 層結構性擋死。t86 缺席(或被丟棄)→ fii_pending=True 進快照,
+    # 標記「外資待補」,早晨 T86 到手後由 supersede 重建補完。
     t86 = today.get("t86") or {}
+    _t86_date = str(today.get("t86Date") or "").strip()
+    if t86 and _t86_date and _t86_date != target_date.replace("-", ""):
+        audit_events.append({
+            "ticker": None,
+            "event": "DATA_WARNING",
+            "reason": f"t86Date={_t86_date} != snapshot date {target_date} — "
+                      "stale FII dropped entirely (fii_pending)",
+            "step": "adapters.legacy.t86",
+        })
+        t86 = {}
+    fii_pending = not t86
     for ticker, ri in raw_inputs_per_ticker.items():
         t86_row = t86.get(ticker) or {}
         ri["fii_net_buy"]              = t86_row.get("foreign")    # 外資淨買（張）
@@ -423,6 +439,7 @@ def adapt_legacy(
         "universe":              universe,
         "provenance_sources":    provenance_sources,
         "audit_events":          audit_events,
+        "fii_pending":           fii_pending,
         "_today_meta": {
             "fetchedAt": today.get("fetchedAt"),
             "sources":   today.get("sources", []),

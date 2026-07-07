@@ -29,7 +29,12 @@ from core.hashing import canonical_sha256
 from core.market_context import weakening_profile, temporal_enrich
 
 
-SCHEMA_VERSION = "1.8.0"
+SCHEMA_VERSION = "1.8.1"
+# 1.8.1 (2026-07-07): 兩段式快照 — 新增頂層布林 fii_pending。
+#   - True = 建快照時當日 T86(三大法人)不可得,fii 欄位全 None(誠實標缺,
+#     絕不塞滯後值);早晨 T86 到手後由 supersede 重建為 fii_pending=False。
+#   - adapter 層同時立結構性鐵律:t86Date != date 整組丟棄。
+#   舊 1.8.0 快照走 legacy-epoch-clean(hash 鎖定,不重 replay)。
 # 1.8.0 (2026-06-29): 寫回前後端一致的衍生欄位 + lookback 5→20。
 #   - rename main_force_consecutive_days → main_force_strict_streak_days(語意更精確:嚴格連續、缺日視為中斷)
 #   - 新增 main_force_positive_days_in_window(窗口內買超天數,缺日透明)
@@ -369,6 +374,9 @@ def ingest(
         "config_snapshot": config,
         "universe_size":  len(universe),
         "eligible_count": 0,        # all abstained
+        # 1.8.1 兩段式快照:True = 當日 T86 未到手,fii 欄位全 None 待補
+        # (rollup/backfill adapter 不帶此鍵 → False)。
+        "fii_pending":    bool(adapter_output.get("fii_pending", False)),
         "market_regime": {
             "label": None,
             "classifier": "stub_v0",

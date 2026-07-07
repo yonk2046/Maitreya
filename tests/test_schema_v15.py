@@ -187,7 +187,8 @@ def test_schema_version_is_current():
     # 1.8.0 = 衍生欄位前後端一致化(main_force_strict_streak_days /
     #         main_force_positive_days_in_window / net_accumulation_in_window)
     #         + lookback_window_days 5→20。
-    assert SCHEMA_VERSION == "1.8.0"
+    # 1.8.1 = 兩段式快照:頂層 fii_pending(T86 未到手誠實標缺,早晨 supersede 補完)。
+    assert SCHEMA_VERSION == "1.8.1"
 
 
 # ---------------------------------------------------------------------------

@@ -65,7 +65,16 @@ jobs:
       # replay mismatches now indicate real corruption, not schema drift.)
       - name: Run daily pipeline
         if: steps.guard.outputs.skip != 'true'
-        run: make daily
+        # 兩段式快照 (2026-07-07): 只有 20:00 晚班 schedule 允許建 partial
+        # (fii_pending) 快照 — CDN 擋 datacenter IP 抓當日 T86, 晚班永遠拿不到。
+        # 早班 (08:35) 與所有 dispatch 維持 strict: 沒有新鮮 T86 就不建,
+        # 早班抓「昨日」T86 必成功 → 自動 supersede 補完晚班的 partial。
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "0 12 * * 1-5" ]; then
+            make daily-partial
+          else
+            make daily
+          fi
       - name: Verify index
         if: steps.guard.outputs.skip != 'true'
         run: make verify-index
