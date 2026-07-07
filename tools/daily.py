@@ -105,6 +105,23 @@ def _fii_published() -> bool:
     return True
 
 
+def _snapshot_is_partial(date: str) -> bool:
+    """True iff reports/<date>.json exists and carries fii_pending=True.
+
+    兩段式快照 (2026-07-07):雲端晚班在 T86 不可得時建的「部分快照」帶
+    fii_pending=True;早晨 T86 到手後,trading_day_gate 的 skip 分支據此
+    放行重建(supersede 補完)。讀檔失敗一律當 False(寧可跳過,不誤重建)。
+    """
+    path = REPORTS_DIR / f"{date}.json"
+    if not path.is_file():
+        return False
+    try:
+        snap = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return False
+    return bool(snap.get("fii_pending"))
+
+
 _ISO_DATE = __import__("re").compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -205,12 +222,20 @@ def run(
     date: str | None = None,
     *,
     skip_fetch: bool = False,
+    allow_partial: bool = False,
 ) -> int:
-    """Execute the daily flow. Returns the process exit code (0 / 1 / 2 / 3)."""
+    """Execute the daily flow. Returns the process exit code (0 / 1 / 2 / 3).
+
+    allow_partial: 兩段式快照的晚班模式(只給雲端 20:00 GHA schedule 用)。
+    T86 不可得時不再 skip,改建 fii_pending=True 的部分快照(價格+分點);
+    滯後 T86 已在 fetch/adapter 兩層被丟棄,絕不混入。早晨班次(strict)
+    會經 trading_day_gate 的補完路徑 supersede 成完整快照。
+    """
     log_lines: list[dict[str, Any]] = [{
         "step": "orchestrator_start",
         "at":   _now_utc(),
         "skip_fetch": skip_fetch,
+        "allow_partial": allow_partial,
         "requested_date": date,
         "pid":  os.getpid(),
     }]
@@ -274,15 +299,29 @@ def run(
                   f"{latest}; refusing to run (exit 3)", file=sys.stderr)
             return 3
         if decision == "skip":
-            log_lines.append({
-                "step": "trading_day_gate", "status": "skip",
-                "reason": f"resolved target_date={target_date} == latest committed report={latest}; "
-                          f"no new trading session (holiday/weekend/pre-publish) — skipping cleanly",
-            })
-            _finalize(log_lines, "skip_no_new_trading_day", target_date)
-            print(f"[daily] no new trading session — target_date={target_date} already "
-                  f"committed; skipping cleanly (exit 0)", file=sys.stderr)
-            return 0
+            # 兩段式快照補完:latest 是昨晚的部分快照(fii_pending)且 T86
+            # 現在到手(t86Date==tradingDate 由 _fii_published 把關)→ 放行
+            # 重建,run_pipeline 會走 supersede 鏈把它補完。兩個條件缺一
+            # 仍走原 skip(partial 但 T86 又沒到 → 留給下一班次重試)。
+            if _snapshot_is_partial(target_date) and _fii_published():
+                log_lines.append({
+                    "step": "trading_day_gate", "status": "proceed_complete_partial",
+                    "reason": f"reports/{target_date}.json is a partial snapshot "
+                              f"(fii_pending) and fresh T86 is now available — "
+                              f"rebuilding to supersede-complete it",
+                })
+                print(f"[daily] 部分快照補完 — {target_date} fii_pending 且 T86 已到手,"
+                      f"重建 supersede", file=sys.stderr)
+            else:
+                log_lines.append({
+                    "step": "trading_day_gate", "status": "skip",
+                    "reason": f"resolved target_date={target_date} == latest committed report={latest}; "
+                              f"no new trading session (holiday/weekend/pre-publish) — skipping cleanly",
+                })
+                _finalize(log_lines, "skip_no_new_trading_day", target_date)
+                print(f"[daily] no new trading session — target_date={target_date} already "
+                      f"committed; skipping cleanly (exit 0)", file=sys.stderr)
+                return 0
 
         # ----- FII-published gate -----
         # Don't build a canonical snapshot before 三大法人(T86) is published —
@@ -290,14 +329,27 @@ def run(
         # would then block the proper post-close run. Skip cleanly so 19:00/20:00
         # (or a later manual run after close) builds the complete snapshot.
         if not _fii_published():
-            log_lines.append({
-                "step": "fii_gate", "status": "skip",
-                "reason": "today.json t86 missing OR t86Date != tradingDate (stale FII must "
-                          "not enter a snapshot) — skipping so a later run with fresh T86 builds it",
-            })
-            _finalize(log_lines, "skip_fii_not_published", target_date)
-            print("[daily] 三大法人(T86) 尚未公布 — 跳過,等盤後重跑 (exit 0)", file=sys.stderr)
-            return 0
+            if allow_partial:
+                # 兩段式快照晚班:CDN 擋雲端抓當日 T86 → 建部分快照
+                # (fii_pending=True,fii 欄位全 None — 滯後 T86 已在
+                # fetch/adapter 層丟棄,不會混入)。早晨班次補完。
+                log_lines.append({
+                    "step": "fii_gate", "status": "partial",
+                    "reason": "T86 unavailable and allow_partial=True — building PARTIAL "
+                              "snapshot (fii_pending=True); a later strict run with fresh "
+                              "T86 will supersede-complete it",
+                })
+                print("[daily] 三大法人(T86) 不可得 — 建部分快照 (fii_pending),"
+                      "早晨班次自動補完", file=sys.stderr)
+            else:
+                log_lines.append({
+                    "step": "fii_gate", "status": "skip",
+                    "reason": "today.json t86 missing OR t86Date != tradingDate (stale FII must "
+                              "not enter a snapshot) — skipping so a later run with fresh T86 builds it",
+                })
+                _finalize(log_lines, "skip_fii_not_published", target_date)
+                print("[daily] 三大法人(T86) 尚未公布 — 跳過,等盤後重跑 (exit 0)", file=sys.stderr)
+                return 0
 
     # ----- Step 2: pipeline -----
     rc, _, err = _run_step(
@@ -384,8 +436,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--date", help="target YYYY-MM-DD; default = today.json's tradingDate")
     ap.add_argument("--skip-fetch", action="store_true",
                     help="skip the upstream fetch step (use existing data/today.json)")
+    ap.add_argument("--allow-partial", action="store_true",
+                    help="兩段式快照晚班模式:T86 不可得時建 fii_pending 部分快照而非跳過 "
+                         "(只給雲端 20:00 GHA schedule 用)")
     args = ap.parse_args(argv)
-    return run(date=args.date, skip_fetch=args.skip_fetch)
+    return run(date=args.date, skip_fetch=args.skip_fetch,
+               allow_partial=args.allow_partial)
 
 
 if __name__ == "__main__":

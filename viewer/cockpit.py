@@ -3804,6 +3804,16 @@ def main() -> None:
     # ── 大盤脈搏 banner (pinned above all tabs) ───────────────────────────
     _render_market_pulse_banner()
 
+    # ── 兩段式快照:外資待補橫幅(fii_pending 由 pipeline 寫入,純渲染)──
+    if snaps_to_date and snaps_to_date[-1].get("fii_pending"):
+        st.markdown(
+            '<div style="background:#2A230D;border:1px solid #8A6D1A;border-radius:8px;'
+            'padding:10px 14px;margin:0 0 14px 0;color:#E8C55A;font-size:13px;">'
+            '⏳ <b>部分快照</b> — 今日外資(三大法人)數據尚未取得,'
+            '外資相關欄位暫缺;明晨引擎自動補完後即顯示完整數據。</div>',
+            unsafe_allow_html=True,
+        )
+
     # ── Tabs（P3.2 定稿 7 tabs,Yonki 2026-07-04:深度數據解散,內容各自歸位 —
     #    故事→市場敘事頂 / Δ+質變事件→潛力區 / 風險警報→出場警示）─
     tab_market, tab_holdings, tab_entry, tab_potential, tab_exit, tab_research, tab_backtest = st.tabs([

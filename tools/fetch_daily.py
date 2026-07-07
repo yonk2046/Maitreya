@@ -334,6 +334,14 @@ def run(dry_run=False):
         emit(8, TOTAL_STEPS, f"T86 失敗: {t86_err or '空資料'}", status="warn", detail=t86_err or "")
         t86_result = {}
         t86_date_used = None
+    elif trading_date_yyyymmdd and t86_date_used and t86_date_used != trading_date_yyyymmdd:
+        # 兩段式快照 (2026-07-07):滯後 T86 在源頭直接丟棄,連 today.json 都不落地
+        # (鐵律:絕不把非當日 T86 寫進快照;fii_gate/adapter 是後面兩道防線)。
+        emit(8, TOTAL_STEPS,
+             f"T86 滯後 ({t86_date_used} ≠ {trading_date_yyyymmdd}) — 丟棄不落地",
+             status="warn")
+        t86_result = {}
+        t86_date_used = None
     else:
         emit(8, TOTAL_STEPS, f"T86 全市場 {len(t86_result)} 檔已取得 ({t86_date_used})", status="done")
 
