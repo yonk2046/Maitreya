@@ -1788,7 +1788,7 @@ def _render_narrative_watchpoints(report: dict) -> None:
                 f'<span class="stock-ticker">{e["ticker"]}</span>'
                 f'<span class="stock-name">{_short_name(e["ticker"])}</span>'
                 f'<div style="margin-top:6px;">'
-                f'<span class="radar-streak {sc}">{streak}日連續</span>'
+                f'<span class="radar-streak {sc}">連續在榜{streak}日</span>'
                 f'<span class="signal-tag" style="margin-left:6px;">覆蓋率 {cov:.0f}%</span>'
                 f'</div>'
                 f'<div style="font-size:12px;color:#6B8EAA;margin-top:6px;font-style:italic;">'
