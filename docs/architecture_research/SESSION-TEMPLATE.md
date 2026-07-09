@@ -23,10 +23,21 @@ Raw / Observation / Derived / Classification / Presentation / Metadata
 （理想態描述：輸入是什麼、輸出是什麼、絕不做什麼。與現況的差距列表。）
 
 ## §5 裁定（fable 填）
+
+> **裁定 rubric**（Chief-Architect 框架，Yonki 2026-07-09 立；範例見 S05 §5）。目標是**壓縮複雜度，不是增產發現**——把 §3 的實作發現壓成最少的架構真相：
+> ① Root-cause 聚類：全部發現壓成最小集合，敢挑戰證據包的切分（一病拆多條要併回）
+> ② 雜訊分離：哪些技術正確但架構不重要，說明為何
+> ③ 責任洩漏檢查：有無混入他 session 範疇（Data/Replay/Presentation/Engine/Governance）
+> ④ 缺失概念：SoT/ownership/lifecycle/versioning/boundary……只列真正有用的
+> ⑤ 挑戰證據包：重複發現/隱藏假設/錯誤抽象/過度工程（只對已驗證證據挑戰，不做第三次 code review）
+> ⑥ Architecture Verdict：P0(架構阻斷=後續 session 的裁定依賴) / P1(重要) / P2(治理改善) + 理由。凍結期語意＝立約順序，非修復排程
+> ⑦ Executive Summary ≤5 條，另一位架構師兩分鐘讀懂
+
+- 系統身份判準：Observation-First / snapshot=System of Record（NOTES #10）之下，本模組的角色是什麼
 - 責任邊界結論：
 - 需要改的（**只記錄，不執行**；影響他 session 的 → 同步 append 到 CROSS-SESSION-NOTES）：
 - 不需要改的（現況即合理，避免未來被誤重構）：
-- 對已鎖決策的相容性檢查（扁平前綴 / additive 遷移 / C1–C6）：
+- 對已鎖決策的相容性檢查（扁平前綴 / additive 遷移 / C1–C7 / 三態詞彙 NOTES #11）：
 
 ## §6 收尾 checklist
 - [ ] CROSS-SESSION-NOTES 已 append 本 session 新發現
