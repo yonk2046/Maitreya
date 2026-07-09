@@ -3,7 +3,7 @@
 > *彌勒觀市，不測，只記。*
 > **Maitreya**（彌勒）= TWSE 股票的決定論狀態偵測引擎（SCD = Stock Condition Detection）。
 >
-> 最後更新：2026-07-02（合併自舊 ARCHITECTURE.md 2026-05-30 + PROJECT_STATUS.md 2026-06-04）
+> 最後更新：2026-07-10（§5 改四觸發器表：補 08:35 T+1 補班、1.8.1 兩段式快照、cron-job dispatch 移 18:05；launchd 維持 19:00。原合併自舊 ARCHITECTURE.md 2026-05-30 + PROJECT_STATUS.md 2026-06-04）
 > ⚠️ **Phase / 進度狀態一律以最新的 `MAITREYA_HANDOFF_*.md` 為準**——本文件只寫「不常變的結構性知識」，避免再次過期。
 
 ---
@@ -135,10 +135,17 @@ core/market_context.temporal_enrich ──► 窗口欄位寫進快照
 
 ---
 
-## 5. 部署與兩條 pipeline（OPS-1）
+## 5. 部署與三條 pipeline 觸發器（OPS-1，唯一正本——README/RUNBOOK 只指到這裡，不重寫細節）
 
-- **主**：本機 launchd 每交易日 **19:00**（Fubon ZGK ~18:00-18:30 結算後）。
-- **備**：GitHub Actions `daily.yml` 週一~五 **20:00**，含 skip-guard（主已 commit 當日快照則跳過）。
+| 觸發器 | 時間（台北） | 角色 |
+|---|---|---|
+| 本機 launchd `com.maitreya.daily` | **19:00**（交易日） | 主。Mac 開機時跑，台灣 IP 抓得到當日 T86；19:00 刻意設在 Fubon ZGK 結算（~18:00-18:30）之後 |
+| cron-job.org → `workflow_dispatch` | **18:05**（2026-07-10 Yonki 由 ~19:05 移前） | 雲端提早探測（strict 模式）。雲端 IP 抓不到當日 T86 → fii gate 乾淨跳過（無害）；實測 Actions run #67/#70/#73 連日 18:05 觸發 |
+| GHA `daily.yml` schedule | 20:00（GH cron 常遲到 1-3h，實測多在 22-23 點跑） | 備援。skip-guard：主已 commit 當日快照則跳過；T86 不可得時建 **partial** 快照（1.8.1） |
+| GHA `daily.yml` schedule | 隔日 08:35（同樣常遲到） | **T+1 補班**（2026-07-06 加）。HiNetCDN 對雲端 IP 307-block「當日」T86、只放行「昨日」——Mac 關機時晚班拿不到完整資料，這條隔晨抓「昨日」T86 必成功，1.8.1 起把晚班 partial 快照 supersede 補完 |
+
+- **1.8.1 兩段式快照**：晚班（20:00）T86 不可得時不再整段跳過，改建 `fii_pending=true` 的 partial 快照（價格+分點齊全，外資待補）；隔晨 08:35 班次偵測到 partial + 新鮮 T86 到手 → 自動重建、透過 supersede 鏈補完為完整快照。viewer 顯示待補橫幅（`fii_pending` 為 true 時）。
+- **排程變更記錄**：2026-07-10 Yonki 把 cron-job.org dispatch 由 ~19:05 移前到 18:05（launchd 主排程維持 19:00 未動，plist 為準）。18:05 dispatch 在雲端因當日 T86 被 CDN 擋、必被 fii gate 跳過，無資料品質風險；唯若未來把 **launchd** 移到 18:30 前，才會撞 Fubon ZGK 結算窗口（~18:00-18:30），屆時分點資料可能未結算完——動 launchd 時間前先看這條。
 - **原則：同一時間只有一個來源在 push。** 改 code 後 commit+push，等排程自動跑，別手動觸發 Actions。
 - Viewer 部署：Streamlit Community Cloud，讀 GitHub repo，日常操作見 `RUNBOOK.md`。
 - **GitHub 是 source of truth**；本機/沙箱可能落後，push 前先 `git pull --rebase`。
@@ -170,7 +177,7 @@ core/market_context.temporal_enrich ──► 窗口欄位寫進快照
 |------|------|------|------|
 | TWSE | 個股日成交、TAIEX（MI_INDEX）、T86 三大法人 | 收盤後 ~14:30 | `fetch_twse.py` / `fetch_daily.py` |
 | Sinotrade | 主力分點買超（branches/） | T+1 | `fetch_daily.py`（前 40 + MEMORY_ANCHORS） |
-| Fubon ZGK | 外資分點最終結算 | ~18:00-18:30 | `fetch_daily.py`（19:00 排程原因） |
+| Fubon ZGK | 外資分點最終結算 | ~18:00-18:30 | `fetch_daily.py`（launchd 19:00 刻意設在此結算之後） |
 | TDCC 集保 | 股東人數（週報，有 lag） | 每週 | `fetch_tdcc.py` |
 
 板塊分類：21 群，基於官方 TWSE/TPEx 產業代碼（sector taxonomy v2）。

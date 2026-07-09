@@ -1,15 +1,17 @@
 # Maitreya — 操作手冊 Runbook
 
-> 最後更新：2026-07-02（併入 STREAMLIT_DEPLOY.md 精華，修正兩條 pipeline 說明）
+> 最後更新：2026-07-10（四觸發器表＋cron-job dispatch 18:05，去重複指向 ARCHITECTURE 正本；原 2026-07-02 併入 STREAMLIT_DEPLOY.md 精華）
 
 ## 正常情況（不需要做任何事）
 
-每個交易日有兩條 pipeline（OPS-1）：
+每個交易日有四條觸發器（OPS-1，完整說明見 `ARCHITECTURE.md` §5）：
 
 | | 時間（台灣） | 執行者 |
 |---|---|---|
 | **主** | 19:00 | 本機 launchd（Mac 要開機） |
-| **備** | 20:00 | GitHub Actions `daily.yml`（主已 commit 當日快照則自動跳過） |
+| 雲端探測 | 18:05 | cron-job.org dispatch；雲端抓不到當日 T86，必跳過（無害） |
+| **備** | 20:00（常遲到 1-3h） | GitHub Actions `daily.yml`（主已 commit 則跳過；抓不到 T86 建 partial） |
+| **T+1 補班** | 隔日 08:35 | GHA；晚班只建了 partial 快照時，補完 T86 |
 
 每次執行：
 1. 抓大盤脈搏（TAIEX / 台指期 / 三大法人）
@@ -78,7 +80,7 @@ git push
 | 台指期 | 13:45 後 |
 | T86 外資/投信 | 14:00–14:30 |
 
-排程在 19:00/20:00 跑，所有資料都已出來。
+launchd 19:00 / 雲端班次 18:05-20:00+ 跑，所有資料屆時都已出來。
 手動在開盤前/盤中觸發 → TAIEX 會是空值，這是正常的。
 
 ---
@@ -103,7 +105,7 @@ git push
 3. **不要**手動觸發 Actions（等 19:00 launchd 自動跑）
 4. 如果需要立即測試，等推完 code 再去 Actions Run workflow
 
-**核心原則：同一時間只有一個來源在 push（launchd / Actions / 你，不要同時）**
+**核心原則：同一時間只有一個來源在 push**（launchd / Actions / 你，不要同時；理由見 `ARCHITECTURE.md` §5）。
 
 ---
 

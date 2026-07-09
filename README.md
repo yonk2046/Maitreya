@@ -3,7 +3,7 @@
 > *彌勒觀市，不測，只記。*
 >
 > Repo：`yonk2046/Maitreya` · Viewer：Streamlit Cloud（`viewer/cockpit.py`）
-> 最後更新：2026-07-02
+> 最後更新：2026-07-10（黃金名單/每日流程改指向 ARCHITECTURE 正本，去重複；補雲端 dispatch 18:05 與 T+1 補班）
 
 ---
 
@@ -31,20 +31,18 @@
 
 ## 黃金名單（現行制）
 
-`core/golden.py`：G1-G5 五道 gate 全過 → conviction 加權分 → 內部 tier（prime/strong/qualified）→ 前端顯示 **🟢可買進 / ◆增強 / ●中**（`display_tier()`，可買進 = PRIME + 現價≤主力成本×1.05 + 未轉弱）。
-
-門檻全在 `config/scd.example.yaml`。
-⚠️ 舊制「GOLDEN ≥85 / WATCH ≥70」（docs/SCORING_RUBRIC.md）已不用，以 `core/golden.py` 為準。
+`core/golden.py`：G1-G5 gate + conviction + `display_tier()`。細節與門檻見 `ARCHITECTURE.md` §4，不在此重複。
 
 ---
 
 ## 每日自動流程
 
 ```
-launchd 19:00（主）/ GHA 20:00（備，skip-guard）
+launchd 19:00（主）/ 雲端 dispatch 18:05 + GHA 20:00 + 08:35 次晨（備援＋T+1 補班）
 fetch → ingest → verify replay → intelligence → backtest×4 → commit+push
 Streamlit Cloud 下次載入頁面即更新
 ```
+四條觸發器的完整說明（含 1.8.1 兩段式快照）見 `ARCHITECTURE.md` §5。
 
 ---
 
