@@ -47,6 +47,16 @@
 | 22 | **排程級約束（重要）**：S05 RC-1 已核准 observation 逐步落地進 snapshot；S01–S04/S07 完成時各自會觸發 minor bump。依 RC-6，**每次 bump 讓此前全部快照的 full-replay 保證瞬間歸零**、無任何訊號提示。排定各 session 落地順序與時機時，須知道這個代價；是否需要 version-pinned replay 才能安心繼續 bump，留待後續裁定 | S01–S04/S07 排程 | 待各 session 排程時參考 |
 | 23 | **P2 操作面查證（廉價、不違反凍結）**：`make verify-all-replay` 的標準流程是否曾經/可能對非-tip(superseded) 版本嘗試 full-replay，而非只查 current tip？若會，1.8.1 partial→supersede 一旦在正式環境真的發生，可能撞上 `archive.py:148-155` 的 sha mismatch。本裁定判斷此為優先查證項，不預先斷定會炸 | S06 遺留/操作軌 | 待查證 |
 
+## S01 裁定產出 — 2026-07-10（fable；詳見 sessions/S01-golden-layer.md §5）
+
+| # | 事項 | 歸屬 | 狀態 |
+|---|---|---|---|
+| 24 | **新契約原則 C8（組裝權）**：跨引擎判斷的組裝屬 core 生產者、輸出必落地；presentation 只映射，不組裝、不搬運判斷輸入（違例現行犯：viewer 中轉 weakening 進 golden 行動函式，cockpit.py:2672-2680）。S02/S03/S04 的組合判斷（resonance/chip/distribution）裁定時直接引用 | 全 session | 📌 已立 |
+| 25 | **新契約原則 C9（可純派生者不落地）**：能由已落地欄位純函數派生的顯示標籤不進 snapshot（判例：display_tier=f(tier,conviction,action_group)→不落）；判斷不適用、判斷必落。與 C2 一正一反閉合 | 全 session | 📌 已立 |
+| 26 | **golden 落地清單已核准（六欄）**：obs_golden_tier/conviction/action_group/gates_passed/tier_caps/near_miss(含missed_gate,**不落tier**)。前置條件：golden 寫死門檻(conviction權重/tier切點,golden.py:68-78)先 config 化——config_snapshot 參與 hash,code 內權重對 replay 不可見,先落地=判定帶不可見參數。時序:計算移 pipeline 即可落,不需等上游全落 | 遷移案/S05 registry | 待遷移期 |
+| 27 | **資格 vs 行動 = 兩種 O 態**（S01 RC-8）：gates/conviction/tier=資格;action_group(5%鐵則+weakening)=進場行動,是判斷非顯示。S09 回測消費名單時需分清用哪一種;S04/S03 提供 weakening 材料時知道下游是行動層 | S03/S04/S08/S09 | 📌 已立 |
+| 28 | **ownership 缺口**：外資賣超 streak 無 owner，golden 自建快照迭代撿走（golden.py:371-388）。遷移期由 temporal_enrich 一系補一欄（additive），golden 改讀 | 遷移案 | 登記 |
+
 ## 操作軌（與研究平行，不動 schema，不記入 session 範圍）
 - 合併 claude/sleepy-nobel-3d007c → main（1.8.1 生效前提）＋隔日驗收 partial→supersede。
 - Handoff 待辦 #2：重建 7/02、7/03 滯後快照（資料修正）。
