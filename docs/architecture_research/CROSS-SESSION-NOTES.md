@@ -18,6 +18,17 @@
 | 8 | 兩段式快照 1.8.1（fii_pending partial → 早晨 supersede 補完）已出貨（commit a0577ec，分支 claude/sleepy-nobel-3d007c，**待合 main**）。supersede 鏈 + partial 語意成為 replay contract 的一部分 | ⏳ 待驗收 | S06 | S06 分析 replay contract 時把 partial/supersede 語意納入 |
 | 9 | 已鎖決策：扁平前綴 domain（market_/mf_/foreign_/trust_/dealer_/derived_/obs_）、additive+alias 跨 minor 遷移、深 nested 留 2.0 | 📌 決策 | S05 前提 | 不重議 |
 
+## S05 裁定產出 — 2026-07-09（fable；詳見 sessions/S05-data-contract.md §5）
+
+| # | 事項 | 歸屬 | 狀態 |
+|---|---|---|---|
+| 10 | **系統身份正式採納**：SCD = Observation-First 情報系統，snapshot 終局角色 = System of Record。所有 session 的 Q4 以此為判準 | 全 session | 📌 已立 |
+| 11 | **三態詞彙 I/O/M 正式採納**為分層語言；Protocol 六層映射：Raw→I、Observation/Derived/Classification→O 子型、Presentation→非資料層、Metadata→M。各 session Q2 用此作答 | 全 session | 📌 已立 |
+| 12 | **立法/列舉分工**：observation 落地準則已立法（呈現給使用者或被 backtest 消費者必落 snapshot；stubs=補完、render-time=新增 obs_*）。**個別引擎的落地清單由 S01–S04 各自在 Q4 列舉**，S05 不代決 | S01–S04 | 待各 session |
+| 13 | **S06 介面需求**：Canonical Field Registry 必須帶 replay 等級欄；replay 等級定義、metadata strip 白名單、跨機測試、observation lifecycle（含 1.8.1 partial→supersede 重算語意）歸 S06 設計 | S06 | 待 S06 |
+| 14 | **today.json 形狀無主**：fetch→adapter 契約只隱含在 fetch_daily.py，是第四個欄位定義點。registry 是否向上游多管一跳＝P2 治理題 | S05 遺留/S06 | P2 登記 |
+| 15 | **新契約原則 C7 非破壞性 ingest**：raw→record 轉換不得銷毀資訊（volume 正值裁切為違例先例）；lossy 轉換必須保留完整值或依構造可自 archive 回復 | 全 session | 📌 已立 |
+
 ## 操作軌（與研究平行，不動 schema，不記入 session 範圍）
 - 合併 claude/sleepy-nobel-3d007c → main（1.8.1 生效前提）＋隔日驗收 partial→supersede。
 - Handoff 待辦 #2：重建 7/02、7/03 滯後快照（資料修正）。
