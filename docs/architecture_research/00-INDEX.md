@@ -14,7 +14,7 @@ S08 前端要等「哪些 observation 會落地」明朗；S09 消費一切故�
 |---|---|---|---|---|---|---|
 | 1 | S05 | Data Contract | **✅ 完成** | ✅ opus 2026-07-09 | ✅ fable 2026-07-09（3 RC＋P0-P2 verdict） | `sessions/S05-data-contract.md` |
 | 2 | S06 | Replay Contract | **✅ 完成** | ✅ opus 2026-07-10 | ✅ fable 2026-07-10（3 RC＋P0-P2 verdict） | `sessions/S06-replay-contract.md` |
-| 3 | S01 | Golden Layer | 未開始 | — | — | — |
+| 3 | S01 | Golden Layer | **✅ 完成** | ✅ opus 2026-07-10 | ✅ fable 2026-07-10（RC-8/9＋C8/C9＋落地六欄核准） | `sessions/S01-golden-layer.md` |
 | 4 | S04 | State Machine | 未開始 | — | — | — |
 | 5 | S02 | Chip Momentum | 未開始 | — | — | — |
 | 6 | S03 | Distribution | 未開始 | — | — | — |
