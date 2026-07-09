@@ -29,6 +29,24 @@
 | 14 | **today.json 形狀無主**：fetch→adapter 契約只隱含在 fetch_daily.py，是第四個欄位定義點。registry 是否向上游多管一跳＝P2 治理題 | S05 遺留/S06 | P2 登記 |
 | 15 | **新契約原則 C7 非破壞性 ingest**：raw→record 轉換不得銷毀資訊（volume 正值裁切為違例先例）；lossy 轉換必須保留完整值或依構造可自 archive 回復 | 全 session | 📌 已立 |
 
+## S06 證據包產出 — 2026-07-10（opus；詳見 sessions/S06-replay-contract.md §3/§4，待 fable 裁定）
+
+| # | 發現 | 嚴重度 | 歸屬 | 狀態 |
+|---|---|---|---|---|
+| 16 | **refine #3**：跨機 full-replay 假失敗現況已被 `verify_all_replay.py:213-242` 的 strip 清單擋住（抹 environment/audit_log/mtime 衍生 provenance）；`run_pipeline.py:235` 只抹 generated_at 但那是同機二跑不涉跨機。#3「只抹 generated_at→跨機假失敗」的機制需修正。**真病＝strip 清單是驗證器內硬編碼、兩份不同步（run_pipeline{generated_at} vs verify_all_replay 6 欄），新增 metadata 欄會無聲重引入 false-fail** | 🔴 replay | S06 | 證據包待裁定；設計面接 S05 RC-4 registry replay 等級欄 |
+| 17 | **full-replay 保證隨每次 schema bump 歸零**：實測 `SCHEMA_VERSION=1.8.1`、磁碟 41 份全 <1.8.1 → full-replay 覆蓋 **0/41**，全走 legacy-epoch(disk-hash)。`verify_all_replay.py:176-194` epoch 分流語意正確，但後果是「同輸入可重算出同 O」對全部歷史歸零，只剩防竄改。O 態可重算保證需 version-pinned replay 才不歸零 | 🔴 replay 結構 | S06 | 證據包待裁定（epoch bump 保證如何不歸零＝S06 核心懸置） |
+| 18 | **archive 無版本維度 → supersede 後舊版本只保 disk-hash、不可從 archive 重建**：`core/archive.py:94-114` 歸檔以 date 為鍵、per-date 覆寫。partial 被 complete supersede 後 archive today.json 被換成含 T86 版，舊 partial 的 raw_sha256 不再匹配 → full-replay 會拋 sha mismatch。supersede 鏈(`run_pipeline.py:86-136`)記錄 hash 曾存在，卻不保證可復現。verify_only 信任鏈(`legacy.py:395-431`)只對 current tip 完整 | 🔴 replay | S06 | 證據包待裁定；archive 加版本維度屬 additive |
+| 19 | **1.8.1 partial→supersede 重算語意 production 零覆蓋**：磁碟 fii_pending 快照 0 份、20 條 supersede 鏈無一是 partial→complete（全來自 backfill/epoch re-ingest）。機制齊備(`daily.py:108-122,306`＋`legacy.py:322`＋`ingest.py:379`)但無真實樣本可作證。呼應 #8「待驗收」 | ⏳ 待驗收 | S06＋操作軌 | 證據包待裁定；隔日驗收 partial→supersede |
+
+## S06 裁定產出 — 2026-07-10（fable；詳見 sessions/S06-replay-contract.md §5）
+
+| # | 事項 | 歸屬 | 狀態 |
+|---|---|---|---|
+| 20 | **系統身份延伸**：Replay Contract 是「Snapshot=System of Record」得以被驗證的機制，非附加特性；沒有它 SoR 只是命名慣例 | 全 session | 📌 已立 |
+| 21 | **新缺失概念「Replay Guarantee Strength」**：與三態 I/O/M 正交的第二軸——可重算/僅防竄改/不可驗。現況把此軸焊死在 schema epoch 這一個開關上，是 RC-6 得以無聲發生的根因。供任何 session 判斷「這個 observation 落地後我能許諾到哪一級」時引用 | 全 session | 📌 已立 |
+| 22 | **排程級約束（重要）**：S05 RC-1 已核准 observation 逐步落地進 snapshot；S01–S04/S07 完成時各自會觸發 minor bump。依 RC-6，**每次 bump 讓此前全部快照的 full-replay 保證瞬間歸零**、無任何訊號提示。排定各 session 落地順序與時機時，須知道這個代價；是否需要 version-pinned replay 才能安心繼續 bump，留待後續裁定 | S01–S04/S07 排程 | 待各 session 排程時參考 |
+| 23 | **P2 操作面查證（廉價、不違反凍結）**：`make verify-all-replay` 的標準流程是否曾經/可能對非-tip(superseded) 版本嘗試 full-replay，而非只查 current tip？若會，1.8.1 partial→supersede 一旦在正式環境真的發生，可能撞上 `archive.py:148-155` 的 sha mismatch。本裁定判斷此為優先查證項，不預先斷定會炸 | S06 遺留/操作軌 | 待查證 |
+
 ## 操作軌（與研究平行，不動 schema，不記入 session 範圍）
 - 合併 claude/sleepy-nobel-3d007c → main（1.8.1 生效前提）＋隔日驗收 partial→supersede。
 - Handoff 待辦 #2：重建 7/02、7/03 滯後快照（資料修正）。
