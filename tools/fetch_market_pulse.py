@@ -34,8 +34,35 @@ Output schema (data/market_pulse.json):
     "dealer":           {"net_oi": -1500, "oi_change": 200},
     "source":           "taifex-openapi"
   },
+  "breadth": {
+    "universe":              "twse_listed_stocks",   # C1: 母體宣告 — 純上市股票，不含 ETF/DR/權證
+    "advancers":              411,
+    "advancers_limit_up":     22,
+    "decliners":               552,
+    "decliners_limit_down":   2,
+    "unchanged":              74,
+    "unmatched":              0,
+    "no_comparison":          41,
+    "total":                  1078,
+    "source":                 "twse-MI_INDEX-ALLBUT0999"
+  },
   "errors": []
 }
+
+Market breadth (全市場漲跌家數) is fetched from the same TWSE MI_INDEX
+after-hours endpoint used for TAIEX, with `type=ALLBUT0999` — see
+docs/architecture_research/spikes/SPIKE-breadth-source.md for the source
+survey. The `股票` column (pure TWSE-listed stocks) is used, NOT `整體市場`
+(which mixes ETF/DR/warrants and is not a valid "market" universe — C1
+命名即語意: the field must declare which population it counts). Adding TPEX
+(上櫃) later is an *additive* new scope key, not a redefinition of this one.
+
+Archiving: every successful run also writes a WORM per-date snapshot to
+    <project_root>/data/market_pulse/YYYY-MM-DD.json
+An existing archive file for a date is never overwritten (write-once) — this
+is what makes historical backfill (`--date YYYYMMDD`) safe to re-run.
+`data/market_pulse.json` continues to hold the latest fetch unconditionally
+(the viewer reads this path and must not break).
 
 CLI:
     python tools/fetch_market_pulse.py
@@ -237,6 +264,124 @@ def _fetch_taiex(date_str: str | None = None) -> dict[str, Any]:
         return cached
 
     return {"error": "all TAIEX sources failed", "source": "twse"}
+
+
+# ── TWSE — 全市場漲跌家數 (market breadth) ───────────────────────────────────
+#
+# C1 命名即語意: this scope is explicitly the TWSE-*listed-stocks* universe.
+# It must NOT be silently redefined to include TPEX (上櫃) or any other venue
+# — that is an additive new scope key (e.g. a future `breadth_tpex`), never a
+# change to what `twse_listed_stocks` means (C4 一資料一語意).
+_BREADTH_UNIVERSE = "twse_listed_stocks"
+
+# TWSE cells look like "411(22)" (count + parenthesised limit-up/limit-down
+# subset) or a bare "74" (no parenthetical). Thousands separators allowed.
+_BREADTH_CELL_RE = re.compile(r"^([\d,]+)(?:\(([\d,]+)\))?$")
+
+# 漲跌證券數合計 row label (col 0) → output key.
+_BREADTH_LABEL_KEY = {
+    "上漲(漲停)": "advancers",
+    "下跌(跌停)": "decliners",
+    "持平":       "unchanged",
+    "未成交":     "unmatched",
+    "無比價":     "no_comparison",
+}
+
+
+def _parse_breadth_cell(s: str) -> tuple[int, int | None]:
+    """Parse a TWSE 漲跌證券數合計 cell, e.g. '411(22)' or '74'.
+
+    Returns (count, sub_count) where sub_count is the parenthesised
+    limit-up/limit-down subset, or None when the cell has no parenthesis.
+
+    Strict + loud: raises ValueError on anything that doesn't match the
+    expected shape. Callers MUST NOT catch this and coerce to 0 — a failed
+    parse belongs in `errors`, never silently fabricated as a zero value
+    (as-was 原則, C10: an unreadable observation is not the same as "no
+    advancers today").
+    """
+    m = _BREADTH_CELL_RE.match(s.strip())
+    if not m:
+        raise ValueError(f"cannot parse breadth cell: {s!r}")
+    count = int(m.group(1).replace(",", ""))
+    sub = int(m.group(2).replace(",", "")) if m.group(2) else None
+    return count, sub
+
+
+def _fetch_market_breadth(date_str: str) -> dict[str, Any]:
+    """Fetch 全市場漲跌家數 (market breadth) for the TWSE-listed-stock universe.
+
+    Source: TWSE MI_INDEX?type=ALLBUT0999 → table titled 漲跌證券數合計 →
+    the `股票` column (NOT `整體市場`, which mixes ETF/DR/warrants — see
+    SPIKE-breadth-source.md §2 候選A). Shares the same base endpoint,
+    `_get_json` helper, and `date=YYYYMMDD` parameter format as `_fetch_taiex`
+    fallback #2, so historical backfill via `--date` works the same way.
+
+    On any failure this returns a dict containing "error" — it never
+    fabricates zeros for missing/unparseable fields.
+    """
+    base = {"universe": _BREADTH_UNIVERSE, "source": "twse-MI_INDEX-ALLBUT0999"}
+
+    try:
+        mi = _get_json(
+            f"https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX"
+            f"?response=json&date={date_str}&type=ALLBUT0999",
+            referer="https://www.twse.com.tw/",
+        )
+    except Exception as e:
+        return {**base, "error": f"request failed: {e}"}
+
+    if mi.get("stat") != "OK":
+        return {**base, "error": f"stat != OK: {mi.get('stat')!r}"}
+
+    table = None
+    for t in mi.get("tables", []):
+        if "漲跌證券數合計" in (t.get("title") or ""):
+            table = t
+            break
+    if table is None:
+        return {**base, "error": "漲跌證券數合計 table not found in response"}
+
+    fields = table.get("fields", []) or []
+    try:
+        stock_idx = fields.index("股票")
+    except ValueError:
+        return {**base, "error": f"'股票' column not found in fields={fields}"}
+
+    row_map: dict[str, str] = {}
+    for row in table.get("data", []) or []:
+        if len(row) <= stock_idx:
+            continue
+        row_map[row[0]] = row[stock_idx]
+
+    out: dict[str, Any] = dict(base)
+    parse_errors: list[str] = []
+    for label, key in _BREADTH_LABEL_KEY.items():
+        cell = row_map.get(label)
+        if cell is None:
+            parse_errors.append(f"missing row for {label!r}")
+            continue
+        try:
+            count, sub = _parse_breadth_cell(cell)
+        except ValueError as e:
+            parse_errors.append(str(e))
+            continue
+        out[key] = count
+        if key == "advancers":
+            out["advancers_limit_up"] = sub          # None if TWSE omits the paren group
+        elif key == "decliners":
+            out["decliners_limit_down"] = sub
+
+    if parse_errors:
+        # Loud failure: report exactly what didn't parse, don't guess at 0.
+        out["error"] = "; ".join(parse_errors)
+        return out
+
+    out["total"] = (
+        out["advancers"] + out["decliners"] + out["unchanged"]
+        + out["unmatched"] + out["no_comparison"]
+    )
+    return out
 
 
 # ── TAIFEX — TX Futures ───────────────────────────────────────────────────────
@@ -613,6 +758,7 @@ def fetch_and_write(
     dry_run: bool = False,
     date_str: str | None = None,
     out_path: pathlib.Path | None = None,
+    archive_dir: pathlib.Path | None = None,
 ) -> dict[str, Any]:
     now_tw = datetime.now(TW_TZ)
     if date_str is None:
@@ -653,12 +799,26 @@ def fetch_and_write(
         fii = inst.get("foreign", {})
         print(f"  ✓  外資台指期淨部位: {fii.get('net_oi')}", flush=True)
 
+    print("[market-pulse] fetching 全市場漲跌家數 (market breadth)…", flush=True)
+    breadth = _fetch_market_breadth(twse_date)
+    if "error" in breadth:
+        errors.append(f"breadth: {breadth['error']}")
+        print(f"  ⚠  Breadth error: {breadth['error']}", flush=True)
+    else:
+        print(
+            f"  ✓  Breadth[{breadth.get('universe')}] "
+            f"advancers={breadth.get('advancers')} decliners={breadth.get('decliners')} "
+            f"unchanged={breadth.get('unchanged')} total={breadth.get('total')}",
+            flush=True,
+        )
+
     pulse: dict[str, Any] = {
         "fetched_at":              now_tw.isoformat(timespec="seconds"),
         "date":                    date_str,
         "taiex":                   taiex,
         "tx_futures":              tx,
         "institutional_futures":   inst,
+        "breadth":                 breadth,
         "errors":                  errors,
     }
 
@@ -673,6 +833,21 @@ def fetch_and_write(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(pulse, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\n[market-pulse] ✓ written → {out_path}", flush=True)
+
+    # WORM per-date archive — data/market_pulse/YYYY-MM-DD.json.
+    # Write-once: an existing archive for this date is never overwritten, so
+    # re-running (or backfilling with --date) a date that's already archived
+    # is always safe.
+    if archive_dir is None:
+        archive_dir = _project_root() / "data" / "market_pulse"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    archive_path = archive_dir / f"{date_str}.json"
+    if archive_path.exists():
+        print(f"[market-pulse] per-date archive already exists (WORM, not overwritten) → {archive_path}", flush=True)
+    else:
+        archive_path.write_text(json.dumps(pulse, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"[market-pulse] ✓ archived → {archive_path}", flush=True)
+
     return pulse
 
 
