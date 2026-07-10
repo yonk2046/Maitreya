@@ -25,6 +25,7 @@ import yaml
 from core.archive import archive_raw_inputs
 from core.hashing import canonical_sha256, write_sidecar
 from core.ingest import ingest
+from core.replay_contract import normalize_for_replay_compare
 from core.worm_check import snapshot_manifest, verify_manifest
 from data.adapters.legacy import adapt_legacy, legacy_paths
 from data.adapters.rollup import adapt_rollup, available_dates
@@ -231,8 +232,11 @@ def run(date: str | None, *, check_replay: bool = False, source: str = "auto") -
         snap2 = ingest(adapter_out2, cfg, repo_root=str(repo_root),
                        prior_snapshots=lookback, prior_snap_objects=prior_snap_objects)
         archive_raw_inputs(snap2, repo_root, RAW_ARCHIVE_DIR)
-        # generated_at is wall-clock — intentionally NOT part of replay match.
-        snap2["generated_at"] = snapshot["generated_at"]
+        # Normalize the replay-excluded fields (generated_at + all excluded-M)
+        # against run-1. The strip set is DERIVED from schema/field_registry.yaml
+        # (replay level = excluded-M), NOT hardcoded here — single SoT shared with
+        # verify_all_replay.py. See core/replay_contract.py (RC-5).
+        normalize_for_replay_compare(snap2, snapshot)
         h1 = canonical_sha256(snapshot)
         h2 = canonical_sha256(snap2)
         if h1 == h2:

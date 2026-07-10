@@ -49,6 +49,7 @@ import yaml  # noqa: E402
 from core.archive import archive_raw_inputs  # noqa: E402
 from core.hashing import canonical_sha256  # noqa: E402
 from core.ingest import SCHEMA_VERSION, ingest  # noqa: E402
+from core.replay_contract import normalize_for_replay_compare  # noqa: E402
 from data.adapters.legacy import adapt_legacy, legacy_paths  # noqa: E402
 from data.adapters.rollup import adapt_rollup  # noqa: E402
 
@@ -209,37 +210,18 @@ def main() -> int:
         # stamp the same provenance/audit metadata as the original ingest.
         archive_raw_inputs(snap, repo_root, RAW_ARCHIVE_DIR, verify_only=True)
 
-        # Normalize wall-clock fields
-        snap["generated_at"] = on_disk_snap["generated_at"]
-        # Normalize build-environment fingerprint + audit log. The `environment`
-        # block records the BUILD machine (os, python, numpy, pandas, pyyaml,
-        # jsonschema, etc.) and `audit_log` records build-time events. The primary
-        # builder is the local macOS launchd job while this verifier runs on the
-        # linux CI runner, so HEAD code on a different platform cannot reproduce
-        # these — they are provenance metadata, not data integrity (stocks /
-        # rankings / scoring / raw_sha256 are still compared). Copy on-disk in,
-        # exactly like generated_at, so replay is platform-independent.
-        for _meta in ("environment", "audit_log"):
-            if _meta in on_disk_snap:
-                snap[_meta] = on_disk_snap[_meta]
-        # Normalize mtime-derived provenance metadata. fetched_at / report_date /
-        # data_lag_days are computed from input-file mtimes (see legacy adapter).
-        # shutil.copy2 preserves mtime within a run, so same-run replay matches —
-        # but git checkout in a later CI job resets mtimes, so these fields cannot
-        # be reproduced cross-run. They are environment timestamps, NOT input
-        # integrity (that is covered by raw_sha256, which is still compared), so we
-        # copy the on-disk values in before hashing, exactly like generated_at.
-        _VOLATILE_PROV = ("fetched_at", "report_date", "data_lag_days")
-        _disk_sources = on_disk_snap.get("provenance", {}).get("sources", {})
-        for _sid, _src in snap.get("provenance", {}).get("sources", {}).items():
-            if not isinstance(_src, dict):
-                continue
-            _disk_src = _disk_sources.get(_sid, {})
-            if not isinstance(_disk_src, dict):
-                continue
-            for _f in _VOLATILE_PROV:
-                if _f in _src and _f in _disk_src:
-                    _src[_f] = _disk_src[_f]
+        # Normalize the replay-excluded fields before comparing. The set of
+        # fields that do NOT participate in replay — wall-clock (generated_at),
+        # build-environment fingerprint (environment), build-time events
+        # (audit_log), version stamps (schema_version, core_version), and the
+        # mtime-derived volatile provenance sub-fields (fetched_at / report_date /
+        # data_lag_days) — is DERIVED from schema/field_registry.yaml (replay
+        # level = excluded-M), NOT hardcoded here. This is the single SoT shared
+        # with run_pipeline.py, replacing the two drifting strip lists (RC-5).
+        # provenance's lineage integrity fields (raw_sha256 / archived_sha256 /
+        # archived_copy_path) deliberately stay in the compared hash so archive
+        # drift is still caught. See core/replay_contract.py.
+        normalize_for_replay_compare(snap, on_disk_snap)
         h_replay = canonical_sha256(snap)
         h_current = entry["current_hash"]
 

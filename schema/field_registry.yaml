@@ -111,6 +111,12 @@ snapshot_fields:
     replay: excluded-M   # lineage：內容作完整性背書，Phase 1 archive 加版本維度（NOTES #18）
     owner: WORM-Archive
     status: active
+    # LINEAGE 例外（S06 RC-5 / core/replay_contract.py）：provenance 雖是 M 態，
+    # 其完整性子欄（raw_sha256/archived_sha256/archived_copy_path）必須留在比對
+    # hash 內——它們是偵測 archive 漂移的唯一手段。故 provenance **不**整欄抹除，
+    # 只抹以下 mtime 衍生的 volatile 子欄（存於 provenance.sources[*] 內）。
+    replay_role: lineage
+    replay_volatile_subfields: [fetched_at, report_date, data_lag_days]
 
   - name: config_snapshot
     semantic: "凍結的 config（判斷參數正本，參與 hash）"
