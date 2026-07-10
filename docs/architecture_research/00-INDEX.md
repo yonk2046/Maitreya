@@ -18,7 +18,7 @@ S08 前端要等「哪些 observation 會落地」明朗；S09 消費一切故�
 | 4 | S04 | State Machine | **✅ 完成** | ✅ opus 2026-07-10 | ✅ fable 2026-07-10（C10 as-was＋六欄核准＋殭屍裁定） | `sessions/S04-state-machine.md` |
 | 5 | S02 | Chip Momentum | **✅ 完成** | ✅ opus 2026-07-10 | ✅ fable 2026-07-10（C11＋chip落地/resonance解散） | `sessions/S02-chip-momentum.md` |
 | 6 | S03 | Distribution & Risk（distribution+confidence） | **✅ 完成** | ✅ opus 2026-07-10 | ✅ fable 2026-07-10（存廢級：confidence 降級/distribution 拆解重生，零新法） | `sessions/S03-distribution-risk.md` |
-| 7 | S07 | Market Context | 未開始 | — | — | — |
+| 7 | S07 | Market Context | **✅ 完成** | ✅ opus 2026-07-10 | ✅ fable 2026-07-10（market_state 判死/三欄核准/grain 維度新立，零新法） | `sessions/S07-market-context.md` |
 | 8 | S08 | Frontend Presentation | 未開始 | — | — | — |
 | 9 | S09 | Backtest Logic | 未開始 | — | — | — |
 

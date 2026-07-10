@@ -83,6 +83,15 @@
 | 38 | **distribution 拆解重生**：「活 code 死輸出」（generate 僅 CLI 觸發、pipeline 零引用、磁碟 0 檔、viewer 只 disk-load→部署中不顯示）。搶救：賣方 raw（sellList/mainForceSell）入 canonical schema（前置，S05/C7）→ obs_dist_consistency 落地（唯一賣方證據源）→ safety band config 化。處決：_ACTION_MATRIX/flagged_for_removal 不以 distribution 輸出存活，併入唯一行動層（RC-8）。**sidecar 判斷=SoR 違憲**定調；**intelligence.json 同罪嫌疑→S08/S09 稽核**。⚠ refine NOTES #2：distribution 非 render-time，是 disk-load-only＋生產線斷線 | 遷移案/S08/S09 | 📌 已裁 |
 | 39 | **轉弱出口五個坐實、裁定後收斂回三層**（weakening→distributing→transition_risk；confidence/distribution 兩出口廢）。雙實作漂移第 5/6 例：成本容忍雙閾值（1.12 vs 1.05，語意不同不合併、都 config 化+registry 記載）、第二個同名 4 級 risk（已廢）。**引擎 session 完結統計：4 法（C8-C11）、14 欄核准落地、2 引擎解散/降級、6 例漂移** | S08/遷移 checklist | 📌 已裁 |
 
+## S07 裁定產出 — 2026-07-10（fable；詳見 sessions/S07-market-context.md §5。零新法、零新 RC，一個缺失概念）
+
+| # | 事項 | 歸屬 | 狀態 |
+|---|---|---|---|
+| 40 | **市場級 SoR 收斂裁定**：market_state.py（888 行、自稱「市場唯一 SoT」、全 repo 0 import、語意從未經使用者驗證）**判死**，隨 cockpit_v2 同批處決（#7 判例）；**regime_shift＝唯一收斂點**，遷移後市場級 O 搬出 market_context.py 成家。obs_market_regime/breadth/temperature 三欄核准落地（**累計 17 欄**）；obs_market_avg_chg **不落**（C9 純平均無判斷參數，且現母體是榜非市場）；snapshot `market_regime` stub → deprecated-pending（同 #31 temporal_state 判例，真值走 obs_market_* 新欄）。三重引擎分歧＋死碼＝漂移第 7/8 例登記 | 遷移案/S08 | 📌 已裁 |
+| 41 | **母體修正＝一切市場級落地的 P0 前置（#4 市場層爆發）**：breadth 恆 ≈1.0（買超 top-N 榜當母體，依構造恆真）→ regime 廣度維度死、temperature 30% 權重常數、transition 假訊號；avg_chg 同分母病（榜內平均僭稱市場平均）。**修母體＝需要新 I 態輸入（全市場漲跌家數），解在 market_pulse**：收編為 per-date I 態（WORM 歸檔，C7）並擴充為市場母體資料的家，breadth 改以它為分母。落地退化分＝把假訊號焊進 as-was（C10），故母體修正先於一切 obs_market_* 落地 | 遷移案/S05/S06 | 📌 已裁 |
+| 42 | **缺失概念「grain 是契約的一級維度」**：I/O/M（#11）答「什麼態」、Replay Guarantee Strength（#21）答「保證多強」，grain 答「一筆的粒度」——三軸正交。**S05 registry 必須帶 grain 欄（ticker/date/sector）**；market-grain O 落 snapshot 頂層一天一筆。sector grain（leadership/sector_intelligence）暫無主管 session，registry 建欄時登記歸屬 | S05 registry/全 session | 📌 已立 |
+| 43 | **temperature 移交收尾（承 #37）**：obs_market_temperature 核准，雙前置＝elev_ratio/dist_ratio 改讀 obs_sm_transition_risk（不得續建在已廢 confidence risk_level 上）＋breadth 成分等 #41 母體修正。另：intelligence_delta 錯 key 讀 null stub（breadth_milestone 永不觸發）＝ sidecar 稽核（#38）加重證據，不單修，記入 S08/S09 卷宗 | 遷移案/S08/S09 | 📌 已裁 |
+
 ## 操作軌（與研究平行，不動 schema，不記入 session 範圍）
 - ~~合併 claude/sleepy-nobel-3d007c → main~~ ✅ 已完成（2026-07-10 前）。**1.8.1 production 驗收延後：7/10 颱風假無交易資料，下一個交易日 2026-07-13 收盤後才有快照**——屆時看 reports/2026-07-13.json（Mac 開機→直接全量；Mac 關機→晚間 partial + 隔晨 supersede 補完，後者才是 NOTES #19 缺的真實樣本）。颱風假當晚各排程照常醒來、trading_day_gate 乾淨跳過（exit 0）＝正常。
 - Handoff 待辦 #2：重建 7/02、7/03 滯後快照（資料修正）。

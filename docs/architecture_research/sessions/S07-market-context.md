@@ -158,13 +158,82 @@ snapshot['market_regime']         → {label:null, classifier:"stub_v0", confide
 
 ## §5 裁定（fable 填）
 
-（留空,待裁定者依 SESSION-TEMPLATE §5 rubric 完成。）
+> fable 2026-07-10。依 SESSION-TEMPLATE §5 rubric。**零新法、零新 RC**（S03 之後第二次）——市場層的病全部是已立法律在市場 grain 的發作；本裁定新立一個**缺失概念**（grain 維度）並做三項處置級裁定。
+
+### ① Root-cause 聚類：10 條發現壓成 2 個根因
+
+**根因 A（P0）：市場 grain 是無主孤兒——RC-1 在市場層的完整發作 ＋ 漂移第 7/8 例。**
+§3-1（market_state 死碼）、§3-2（三重引擎分歧）、§3-4（null stub）、§3-5（錯 key 消費）、§3-9（grain 混用寄居）是**一個病的五個症狀**，不是五條發現：市場級判斷沒有生產者之家（寄居 per-ticker 檔）、沒有 SoT（三處各算各的）、沒有落地真值（唯一落地欄永久 null）、連消費鏈都斷（錯 key 讀 null stub 的雙重死）。個股層各引擎至少各自是自己輸出的 SoT；市場層連這個都沒有——**它是全系統唯一「連 render-time 都無單一答案」的層**。
+
+**根因 B（P0，correctness）：母體錯誤——NOTES #4 在市場層的爆發。**
+§3-3（breadth 恆 1.0）、§3-6（temperature 30% 權重常數）、§3-2 的一半（transition 假訊號）同根：拿主力買超 top-N 榜當「市場」母體，任何廣度類指標依構造恆真。**且證據包漏了一鍋**（見⑤）：`avg_chg` 是同一個榜的平均漲幅，語意是「榜內平均」不是「市場平均」——regime 現在唯一活著的判斷變數，分母病一樣。
+
+§3-8（market_pulse 孤島）不是第三個根因，是**根因 B 的解的一部分**（見④）。
+
+### ② 雜訊分離
+- market_pulse 來源 error（TX not found）＝操作軌，非架構。
+- narrative_engine 明文「ONLY interprets」＝健康的 Presentation，不裁不動。
+- 門檻寫死（§3-10）＝NOTES #33 已升格系統性，本層登記不重裁；i18n 住引擎＝S08 病灶登記（第 8 例）。
+
+### ③ 責任洩漏檢查
+- intelligence_delta 錯 key（§3-5）：屬 sidecar 稽核範疇（NOTES #38 已定 S08/S09），本裁定只把它記為**加重證據**，不在此修——sidecar 本身可能整個廢，修一個死欄的 key 是浪費。
+- market_pulse 入不入 canonical、replay 等級：介面歸 S05 registry／S06 框架，本裁定只定「方向＝收編」。
+- 市場 banner 三處語意並置的呈現統一：S08。
+
+### ④ 裁定本體（三項處置＋落地清單）
+
+**處置一：market_state.py 廢棄，不二選一。**
+§4 給了「成為真 SoT 或刪除」兩選項；裁定選死刑，理由三條：(i) 它從未被接線（不是退化，是**從未上線**）——0 import 不是 regression 而是 888 行從未經過使用者驗證的判斷語意（第 6 態 TRANSITIONING、三套 Condition 分類法）；(ii) 復活它＝把從未驗證的分類法焊進 as-was 紀錄（C10 風險）；(iii) 活路徑 regime_shift 承載了全部經 viewer 驗證的產品語意。**收斂點＝regime_shift**，遷移後市場級 O 搬出 market_context.py 成家（模組名遷移期定），market_state.py 隨 cockpit_v2 同批處決（NOTES #7 判例）。
+
+**處置二：breadth/avg_chg 母體修正＝一切市場級落地的前置，且解在 market_pulse。**
+修母體不是改公式——「全市場漲跌家數/成交廣度」**不在 snapshot 的 top-N records 裡，是一個缺失的 I 態輸入**。而系統裡唯一的真·大盤 raw 通道就是 market_pulse。所以 §3-8 和 §3-3 是同一個裁定：**market_pulse 收編為 per-date I 態（WORM 歸檔），並擴充為市場母體資料的家**（漲跌家數/大盤量能），breadth 改以它為分母。在此之前 obs_market_breadth/temperature 一欄都不准落——落地退化分＝把假訊號焊進 as-was（C10）。
+
+**處置三：temperature 收尾（S03 #37 移交完成）。**
+obs_market_temperature 核准落地，**雙前置**：elev_ratio/dist_ratio 改讀 obs_sm_transition_risk（風險唯一 SoT，不得續建在已廢 confidence risk_level 上）＋ breadth 成分等母體修正。TEMP_W_*/TEMP_LEVELS 隨 #33 config 化。
+
+**落地清單（NOTES #12 義務，市場 grain=date，一天一筆）：**
+| 欄 | 裁定 | 依據 |
+|---|---|---|
+| `obs_market_regime`（label＋transition） | **落** | C11-positive（切點是判斷）；前置＝處置一收斂＋處置二母體＋#33 config |
+| `obs_market_breadth` | **落** | C11-positive；前置＝處置二（含新 I 態輸入） |
+| `obs_market_temperature`（含 level） | **落** | C11-positive；前置＝處置三雙前置 |
+| `obs_market_avg_chg` | **不落** | **C9**：純平均、無判斷參數，可由已落地 records 派生；且現值母體是榜不是市場，落了就是僭稱 |
+| market_state 四分類 | **不落** | 引擎廢棄；從未有消費者、從未經使用者驗證 |
+| `market_regime` stub | **deprecated-pending**（同 #31 temporal_state 判例） | 真值走 obs_market_* 新欄（扁平前綴一致性）；stub 不填不擴，major 移除 |
+| market_pulse taiex/futures | **收編 I 態**，per-date 歸檔 | C7；入 canonical 與 replay 等級由 S05/S06 定 |
+| leadership_rotation / flow layer | **不落** | 唯一存活消費者是 narrative（Presentation）→ C9 呈現映射；flow layer 隨 market_state 廢 |
+| narrative | **不落** | Presentation 純翻譯 |
+
+### ⑤ 挑戰證據包
+- **漏鍋 avg_chg**：證據包正確抓到 breadth 退化，卻把 `obs_market_avg_chg` 列為落地候選——同一個 top-N 分母病，且 C11 測試不過（平均數無判斷參數）。已改判 C9 不落。
+- **「二選一」不夠決斷**：§4 對 market_state.py 留活口；0 消費者＋未驗證語意＋C10 風險足以直接判死。
+- **10 條發現實為 2 根因**：切分過細（五個症狀各立一條），已併回。
+- 證據品質本身無虛：42 快照實跑、三引擎分歧數字可復現，採信。
+
+### ⑥ 缺失概念（本 session 唯一新立）
+**grain 是契約的一級維度。** I/O/M（#11）答「是什麼態」、Replay Guarantee Strength（#21）答「保證多強」，都沒答「**一筆的粒度是什麼**」。全系統至今默認 grain=ticker，市場層無家可歸正是因為契約語言裡沒有 grain 這個槽位（snapshot 頂層的 market_regime stub 證明 schema 曾預留位置，但生產線從未接上）。**S05 registry 必須帶 grain 欄（ticker/date/sector）**；market-grain O 落 snapshot 頂層、一天一筆。sector grain（leadership/sector_intelligence）暫無 session 主管，registry 建欄時一併登記歸屬。
+
+### ⑦ Architecture Verdict
+- **P0**（架構阻斷，凍結期＝立約順序）：①市場級 SoR 收斂（處置一：regime_shift 收斂、market_state 廢棄、stub deprecated）——S08 統一市場 banner、S09 消費市場層都依賴單一答案存在；②母體修正（處置二）——所有市場級落地的 correctness 前置。
+- **P1**：market_pulse 收編 per-date I 態（處置二的載體）；temperature 雙前置遷移（處置三）。
+- **P2**：intelligence_delta 錯 key（記入 sidecar 稽核卷宗，不單修）；門檻 config（#33）；i18n 出引擎（S08）；market_pulse 來源 error（操作軌）。
+
+**Executive Summary（≤5 條）**
+1. 市場層是無主 grain：三個引擎平行答「今天市場如何」且答案分歧（溫和偏多/體制轉換中/warm），全不落地，唯一落地欄是永久 null stub 還被錯 key 消費——RC-1＋漂移病在市場 grain 的完整發作，零新病。
+2. breadth 依構造恆 1.0（買超榜當母體＝NOTES #4 市場層爆發），regime 廣度維度、temperature 30% 權重、transition 偵測全死或假；avg_chg 同分母病（證據包漏抓）。修法＝market_pulse 收編為 per-date I 態並擴充為市場母體資料的家。
+3. 處置：market_state.py（888 行、自稱 SoT、0 import）判死；regime_shift 為唯一收斂點；obs_market_regime/breadth/temperature 三欄核准（累計 17 欄），avg_chg 改判 C9 不落。
+4. temperature 移交收尾：落地雙前置＝改讀 obs_sm_transition_risk＋等母體修正。
+5. 新立缺失概念：**grain 是契約一級維度**，S05 registry 加 grain 欄（ticker/date/sector）。
+
+- **系統身份判準下的角色**：市場環境層＝唯一 date-grain 的 O 生產者，是個股判斷被閱讀時的背景座標；現況它連自己的一個答案都沒有。
+- **不需要改的**：narrative（健康 Presentation）；regime_shift 的判斷本體（切點語意經使用者驗證，等 config 化即可）；per-ticker 函式本體（S01/S02/S04 已裁，本層不重裁）。
+- **已鎖決策相容性**：扁平前綴（obs_market_* 新欄）✓；additive（stub 標 deprecated 不刪、market_pulse 收編是加檔不改契約）✓；C7（收編＝非破壞歸檔）✓；三態＋grain 正交 ✓。
 
 ---
 
 ## §6 收尾 checklist
 - [x] 本 session 新發現於 §3/§4 就地標歸屬（三重市場引擎漂移→本 session/S08;breadth 退化→correctness/NOTES #4 同根;market_state 死碼→NOTES #7 同族;market_regime stub→S04 #31 同族;market_pulse 持久化→S05/S06;temperature→S03 移交收尾）。蒐證階段不預先 append CROSS-SESSION-NOTES,待 fable 裁定後由裁定者決定入 NOTES 條目。
-- [ ] 00-INDEX 狀態列更新（S07:證據包完成,待 fable 裁定）— 待裁定後一併。
+- [x] 00-INDEX 狀態列已更新（✅ 完成）；CROSS-SESSION-NOTES 已 append #40–#43。
 - [x] 未執行任何 code/schema 改動。
 
 ---
