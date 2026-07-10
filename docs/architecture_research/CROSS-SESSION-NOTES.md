@@ -67,7 +67,15 @@
 | 32 | **「轉弱」是證據→分類→風險的健康分層，不合併**：weakening(mc,已落地)→sm distributing→transition_risk 各答不同問題。統一對外「轉弱」標籤若產品需要＝跨引擎組裝＝依 C8 必須 core 派生欄位，viewer 不得組裝 | S08 議程 | 📌 已裁 |
 | 33 | **門檻 config 化升格系統性**（golden+sm 兩引擎同病確認 pattern）：不再逐 session 裁，registry 遷移(S05 RC-2)統一前置一次掃全引擎寫死門檻。**confidence 引擎正式歸入 S03 範圍**，「類別 risk(sm) vs 數值 risk(confidence) 雙軌」屆時裁 | S02/S03/S07 引用；S03 | 📌 已立 |
 
+## S02 裁定產出 — 2026-07-10（fable；詳見 sessions/S02-chip-momentum.md §5）
+
+| # | 事項 | 歸屬 | 狀態 |
+|---|---|---|---|
+| 34 | **新契約原則 C11（判斷參數測試）**：可由落地欄位派生的輸出，函數內含「別處未落地的判斷參數」（門檻/權重/分母規則）→ 新判斷必落（判例：chip grade 落）；只是重標籤已落地判斷 → 呈現不落（判例：display_tier/共振星號不落）。測試法：改參數，歷史意見會不會無痕改變。至此「落不落」判定樹完整：C2/C8→C9→C11→C10 | 全 session（S03/S07/S08 直接引用） | 📌 已立 |
+| 35 | **S02 落地裁定**：obs_chip_grade＋total 落（前置：CHIP_SCORE_CONFIG config 化，引 #33）；resonance_level **不落**（≡已落地 fii_sync_count，35/35 實證，SoT=落地欄）；sync_streak 落（owner=temporal_enrich 系，命名候選 derived_participant_sync_streak，終審 registry）；**resonance 引擎遷移後解散**為一欄時序＋呈現映射 | 遷移案 | 待遷移期 |
+| 36 | **雙實作漂移＝第四次確認的系統病**（S06 strip 清單×2、S04 落地而不讀、S02 level 複本＋主力方向取值欄位不一致 total_buy_vol vs main_force_buy）。遷移 checklist 必含「主力方向單一取值來源」；RC-3 消費端必改名單坐實 +resonance.py:34（讀誤名 dealer_net_buy）。元大金呈現區隔（顯示性徽章 vs 資格判斷的視覺語言）列 S08 議程 | 遷移案/S08 | 登記 |
+
 ## 操作軌（與研究平行，不動 schema，不記入 session 範圍）
-- 合併 claude/sleepy-nobel-3d007c → main（1.8.1 生效前提）＋隔日驗收 partial→supersede。
+- ~~合併 claude/sleepy-nobel-3d007c → main~~ ✅ 已完成（2026-07-10 前）。**1.8.1 production 驗收延後：7/10 颱風假無交易資料，下一個交易日 2026-07-13 收盤後才有快照**——屆時看 reports/2026-07-13.json（Mac 開機→直接全量；Mac 關機→晚間 partial + 隔晨 supersede 補完，後者才是 NOTES #19 缺的真實樣本）。颱風假當晚各排程照常醒來、trading_day_gate 乾淨跳過（exit 0）＝正常。
 - Handoff 待辦 #2：重建 7/02、7/03 滯後快照（資料修正）。
 - cronjob PAT 2026-09-04 到期。
