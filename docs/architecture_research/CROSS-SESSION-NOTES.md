@@ -57,6 +57,16 @@
 | 27 | **資格 vs 行動 = 兩種 O 態**（S01 RC-8）：gates/conviction/tier=資格;action_group(5%鐵則+weakening)=進場行動,是判斷非顯示。S09 回測消費名單時需分清用哪一種;S04/S03 提供 weakening 材料時知道下游是行動層 | S03/S04/S08/S09 | 📌 已立 |
 | 28 | **ownership 缺口**：外資賣超 streak 無 owner，golden 自建快照迭代撿走（golden.py:371-388）。遷移期由 temporal_enrich 一系補一欄（additive），golden 改讀 | 遷移案 | 登記 |
 
+## S04 裁定產出 — 2026-07-10（fable；詳見 sessions/S04-state-machine.md §5）
+
+| # | 事項 | 歸屬 | 狀態 |
+|---|---|---|---|
+| 29 | **新契約原則 C10（as-was）**：路徑依賴的 O 態以「當日認定」逐日落地為正本——落地後路徑依賴從負債變成紀錄本身，history/transitions 由落地序列派生（不落）、days_in_state 落（C9 邊界釐清：同 record 純函數不落，跨快照時序派生視 bootstrap/backtest 人體工學可落）；落地起點前的歷史誠實放棄不偽稱可回溯。適用一切有狀態/時序引擎（S02/S03/S07 引用） | 全 session | 📌 已立 |
+| 30 | **sm 落地清單核准（六欄）**：obs_sm_state/transition_risk/days_in_state/state_entered/structure_unstable/risk_factors。前置：①門檻 config 化②**exited/absent 詞彙先拆**（「跌出當日榜」≠「生命週期退場」，不拆則缺陷燒進 as-was 紀錄且 flips 失真）。消費面紀律：**已落地者必改讀**（sm 現重算已落地的 velocity/weakening=雙真相病） | 遷移案/S07(universe面) | 待遷移期 |
+| 31 | **temporal_state 標 deprecated-pending-P3b**：零引擎消費的殭屍 stub（非 S05 保護的 scoring stubs——那些有 P3b 未來）；不填不擴不消費，P3b 啟用時改從落地 obs_* 派生並正式移除（major）。**sm_state=「生命週期狀態」概念家族唯一 SoT** | S05 registry | 📌 已裁 |
+| 32 | **「轉弱」是證據→分類→風險的健康分層，不合併**：weakening(mc,已落地)→sm distributing→transition_risk 各答不同問題。統一對外「轉弱」標籤若產品需要＝跨引擎組裝＝依 C8 必須 core 派生欄位，viewer 不得組裝 | S08 議程 | 📌 已裁 |
+| 33 | **門檻 config 化升格系統性**（golden+sm 兩引擎同病確認 pattern）：不再逐 session 裁，registry 遷移(S05 RC-2)統一前置一次掃全引擎寫死門檻。**confidence 引擎正式歸入 S03 範圍**，「類別 risk(sm) vs 數值 risk(confidence) 雙軌」屆時裁 | S02/S03/S07 引用；S03 | 📌 已立 |
+
 ## 操作軌（與研究平行，不動 schema，不記入 session 範圍）
 - 合併 claude/sleepy-nobel-3d007c → main（1.8.1 生效前提）＋隔日驗收 partial→supersede。
 - Handoff 待辦 #2：重建 7/02、7/03 滯後快照（資料修正）。
