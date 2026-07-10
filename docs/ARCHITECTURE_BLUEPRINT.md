@@ -97,7 +97,11 @@
 
 ## 4. Observation 生命週期
 
-**核准落地的 obs 欄位（17 欄，Registry 為正本，判例 #54 定稿）**：
+**核准落地的 obs 欄位（18 欄，Registry 為正本，判例 #54 定稿）**：
+
+> 計數修正（2026-07-10，Phase 0 登記時發現）：判例 #54 沿用的「17 欄」是歷史計數的 off-by-one
+> （chip grade 與 total 曾併計一行）。Registry 逐名登記為 **18 個 distinct 欄名**，不為湊數丟欄；
+> 清單內容無任何變更，僅計數正名。自此欄位數以 `schema/field_registry.yaml` status=planned 為準。
 
 | 家族 | 欄位 | 生產者 | 主要消費者 |
 |---|---|---|---|
