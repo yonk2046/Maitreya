@@ -486,3 +486,21 @@ obs_*（fii 依賴部分誠實 abstain/降級），早晨 supersede 補完時重
 
 **建議拆 6–7 個 agent 工作包**（W1–W7），W1 先行（其餘皆依賴 schema/registry 名分），W2 為骨幹，
 W3/W4 可在 W2 後半並行（W4 依賴 W3 的 sm 先落），W5/W6 相對獨立，W7 收尾整合驗收。
+
+---
+
+## fable 裁定（2026-07-11）
+
+五個疑義點全數裁定，本節為 P2 實作的最終依據：
+
+| # | 裁定 | 附帶條件 |
+|---|---|---|
+| **D-7** | **A（I-only backfill 模式）** | ①`obs_landing` 旗標入 registry（O/date/epoch-scoped）且 **replay contract 必須認得它**——verifier 對 obs_landing=false 的快照重算時同樣走 backfill 模式，否則這批快照永遠 full-replay fail；②回填腳本冪等（重跑不產生第二條 supersede）。修歷史 correctness＋對 backtest 顯式可見，值得一個分支 |
+| **D-3** | **B（volume 家族 rename 延後 2.0）** | 採納其核心論證：C5 的 alias 雙寫是服務真實消費者遷移窗口，無窗口需求就雙寫＝為制度而制度。**附帶升格為遷移紀律：1.9.0 之後不再 minor bump，下一次 bump 即 2.0**（單一 bump 原則的直接延伸，寫入本文件即生效）。dealer/trust/prop 是修錯值、必上車，兩者嚴重度不同不綁死——維持 |
+| **D-4** | **B（strategies 不入 config_snapshot）** | 關注點分離正確：改回測策略不得污染每日快照 hash；strategies 凍結歸 Phase 4 per-run pin（#52） |
+| **D-5** | **B（attestation ledger，L2.5）** | 附帶合憲性釐清（防未來稽核誤殺）：ledger 與已判死的 intelligence.json sidecar **本質不同**——sidecar 承載市場判斷且掛 SoR 招牌（違憲）；ledger 是 **M 態驗證證明**（關於紀錄的紀錄），不承載任何市場判斷、不是第二 SoR、**且 replay 通過與否永不依賴 ledger**（它記錄結果，不定義真值）。候選 A 與 archive 版本維度維持延後 |
+| **D-1** | **維持 abstain 不動** | 改既有欄語意＝major；1.9.0 只 additive。P3a scoring stubs 的 P3b 未來保持開放 |
+
+**執行時序裁定**：W1–W7 拆包核可。**bump 執行閘門＝7/13 收盤後 1.8.1 production 驗收通過**
+（partial→supersede 機制先見真實樣本，再疊 1.9.0；驗收失敗則先修 1.8.1）。
+W1（schema/registry 宣告）本身即 SCHEMA_VERSION 變更，**同受閘門管制**——7/13 前不動工。
