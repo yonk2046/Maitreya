@@ -75,6 +75,14 @@
 | 35 | **S02 落地裁定**：obs_chip_grade＋total 落（前置：CHIP_SCORE_CONFIG config 化，引 #33）；resonance_level **不落**（≡已落地 fii_sync_count，35/35 實證，SoT=落地欄）；sync_streak 落（owner=temporal_enrich 系，命名候選 derived_participant_sync_streak，終審 registry）；**resonance 引擎遷移後解散**為一欄時序＋呈現映射 | 遷移案 | 待遷移期 |
 | 36 | **雙實作漂移＝第四次確認的系統病**（S06 strip 清單×2、S04 落地而不讀、S02 level 複本＋主力方向取值欄位不一致 total_buy_vol vs main_force_buy）。遷移 checklist 必含「主力方向單一取值來源」；RC-3 消費端必改名單坐實 +resonance.py:34（讀誤名 dealer_net_buy）。元大金呈現區隔（顯示性徽章 vs 資格判斷的視覺語言）列 S08 議程 | 遷移案/S08 | 登記 |
 
+## S03 裁定產出 — 2026-07-10（fable；詳見 sessions/S03-distribution-risk.md §5。第一個存廢級裁定，零新法）
+
+| # | 事項 | 歸屬 | 狀態 |
+|---|---|---|---|
+| 37 | **confidence 降級為派生視圖**：獨立 risk_score/confidence 分數廢除（double-count sm、與之分歧、61%塌零；信心軸=第三次聚合）。**sm transition_risk=「風險」唯一 SoT**（#33 雙軌問題的答案）；「多頭分/警訊分」改為 obs_golden_conviction/obs_sm_transition_risk 的呈現映射；2D profile 概念存活為 C9 純派生視圖；deteriorating 廢（weakening+sm 已覆蓋）；**market_temperature 移交 S07**（market_state 家族，grain=市場級） | 遷移案/S07/S08 | 📌 已裁 |
+| 38 | **distribution 拆解重生**：「活 code 死輸出」（generate 僅 CLI 觸發、pipeline 零引用、磁碟 0 檔、viewer 只 disk-load→部署中不顯示）。搶救：賣方 raw（sellList/mainForceSell）入 canonical schema（前置，S05/C7）→ obs_dist_consistency 落地（唯一賣方證據源）→ safety band config 化。處決：_ACTION_MATRIX/flagged_for_removal 不以 distribution 輸出存活，併入唯一行動層（RC-8）。**sidecar 判斷=SoR 違憲**定調；**intelligence.json 同罪嫌疑→S08/S09 稽核**。⚠ refine NOTES #2：distribution 非 render-time，是 disk-load-only＋生產線斷線 | 遷移案/S08/S09 | 📌 已裁 |
+| 39 | **轉弱出口五個坐實、裁定後收斂回三層**（weakening→distributing→transition_risk；confidence/distribution 兩出口廢）。雙實作漂移第 5/6 例：成本容忍雙閾值（1.12 vs 1.05，語意不同不合併、都 config 化+registry 記載）、第二個同名 4 級 risk（已廢）。**引擎 session 完結統計：4 法（C8-C11）、14 欄核准落地、2 引擎解散/降級、6 例漂移** | S08/遷移 checklist | 📌 已裁 |
+
 ## 操作軌（與研究平行，不動 schema，不記入 session 範圍）
 - ~~合併 claude/sleepy-nobel-3d007c → main~~ ✅ 已完成（2026-07-10 前）。**1.8.1 production 驗收延後：7/10 颱風假無交易資料，下一個交易日 2026-07-13 收盤後才有快照**——屆時看 reports/2026-07-13.json（Mac 開機→直接全量；Mac 關機→晚間 partial + 隔晨 supersede 補完，後者才是 NOTES #19 缺的真實樣本）。颱風假當晚各排程照常醒來、trading_day_gate 乾淨跳過（exit 0）＝正常。
 - Handoff 待辦 #2：重建 7/02、7/03 滯後快照（資料修正）。

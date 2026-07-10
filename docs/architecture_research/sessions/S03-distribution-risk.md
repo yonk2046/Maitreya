@@ -178,7 +178,61 @@ from core import confidence as C; r = C.run(snaps)
 
 ---
 
-## §5 裁定（待 fable 裁定）
+## §5 裁定（fable，2026-07-10）
+
+> 裁定框架：SESSION-TEMPLATE §5 rubric。凍結期，只立契約方向。
+> **本 session 特殊性：第一個存廢級裁定**——問題不是「落哪些欄」，是「這兩個引擎該不該以現形存在」。
+> 也是**第一個不需要立新法的 session**：C2/C8/C9/C11/RC-8 足以裁完所有爭點——判定樹經受住了最難的案子。
+
+### 系統身份判準
+S03 的兩個引擎測試 SoR 命題的兩個極端：distribution 是「刻意設計在 SoR 之外的判斷」（sidecar 明文自豪於不進 replay），confidence 是「把別人的判斷重新加權成自己的判斷」。Observation-First 對兩者的回答都是否定的。
+
+### 裁定一：distribution ＝ 拆解重生（P0）
+「活 code 死輸出」（§3a 雙重死區）不是 bug 是**天意留下的決策空間**——整層在部署中不顯示、無人依賴它做過決策，拆解零使用者衝擊。但它握有全系統**唯一的賣方證據源**（raw 賣超榜，weakening/sm/golden 都看不到的另一半籌碼圖景），這是資產。裁定：
+- **搶救**：(i) 賣方 raw（sellList/mainForceSell）**經 adapter 併入 canonical snapshot**（S05 registry＋C7 範圍，是一切的前置——一致性分的 source 必須先進 SoR）；(ii) `consistency_score/grade` 是真新 O（C11-positive、證據源獨有）→ **落地 obs_dist_consistency**，計算移 pipeline；(iii) `safety_margin` band 判斷保留但 config 化。
+- **處決**：(iv) `_ACTION_MATRIX`（優先佈局/減碼）與 `flagged_for_removal`（建議移出黃金名單）**不以 distribution 輸出的形式存活**——依 RC-8/#27，進出出場行動判斷屬**唯一的行動層**（golden action_group 一系）；「弱籌碼＋價格遠離成本→警示」的正確形態是**行動層消費落地的 obs_dist_consistency 當輸入因子**（C8 core 組裝、落地、replay 覆蓋），不是平行輸出一個 display-only 建議。12 格矩陣的意圖被行動層吸收，矩陣本身死。
+- **模式定罪**：**sidecar 判斷＝SoR 違憲**。distribution.json 的「刻意在 canonical hash 之外」設計（docstring 自豪處）正是它死掉的原因——判斷必須活在 canonical snapshot；sidecar 只准存放「每個判斷值都可溯源到落地欄位」的派生報表。**intelligence.json 同罪嫌疑**（載著 confidence 差分事件的 sidecar）→ 移交 S08/S09 稽核。
+- 兩套成本容忍閾值（1.12 vs 1.05）：語意不同（持有風險 vs 進場容忍）**不合併**，但都 config 化＋registry 記載兩者關係——雙實作漂移第 5 例登記。
+
+### 裁定二：confidence ＝ 降級為派生視圖（P0）
+證據坐實它是**重複軌而非互補軌**：風險軸把 sm 已消化的因子 double-count（transition_risk 當 base、velocity/accel/streak 再加一次）、產出同名 4 級卻與 sm 分歧（5880：elevated vs critical）、61% 標的塌零無鑑別力；信心軸是同批訊號**第三次聚合**還把 golden conviction 成品吃進來再包一層。裁定：
+- **risk 雙軌解決（NOTES #33 的答案）**：**sm transition_risk 是「風險」唯一 SoT**。confidence 的獨立 risk_score/權重疊加**廢除**；「警訊分」顯示改為 obs_sm_transition_risk 的呈現映射。
+- **confidence 分數廢除**：「多頭分」改為 obs_golden_conviction 的呈現映射。同一批訊號的聚合次數從三次（chip/golden/confidence）收斂到兩次（chip=顯示徽章已裁落地、golden=資格判斷已裁落地）。
+- **2D profile 概念存活、引擎死**：profile 格（強勢低風險/強勢有警示/…）是好的 UX，重生為 **f(obs_golden_conviction, obs_sm_transition_risk) 的 C9 純派生視圖**——無獨立權重、不落地、viewer 從兩個落地欄位映射。`deteriorating` 時序判斷廢（weakening W 旗標＋sm 已覆蓋同一語意）。
+- **market_temperature 移交 S07**：市場級 grain 與 per-ticker 混在同一 dataclass 本就錯位；它可能是真的 market-level O（elev_ratio/dist_ratio/breadth 聚合），歸 market_state 家族由 S07 裁落地。
+
+### 轉弱出口全清點（#32 收口）
+五個出口坐實：weakening severity（落地）→ sm distributing → transition_risk → confidence risk（本裁定廢）→ distribution 減碼/移出（本裁定廢）。**裁定後只剩三層健康鏈**（證據→分類→風險），S08 的統一詞彙議程從「協調五個」簡化為「呈現三層」——本裁定順手幫 S08 減掉 40% 的問題面。
+
+### 雜訊分離
+61% 塌零（隨引擎廢除自然消失）；i18n/color 住 dataclass 第 4/5 例（S08）；`_load_raw_sell_data` 直讀 archive 的紀律本身無 C8 違例（它讀 raw 不搬判斷——病在 raw 沒進契約，不在讀法）。
+
+### 挑戰證據包
+- 品質卓越：推翻 NOTES #2 對 distribution 的概括（correction 成立，已記入 #39）；61% 塌零與 double-count 是決定性證據。
+- **推翻其 §4 的「suggested_action 若引擎保留＝必落」框架**：不存在「保留」選項——行動語意依 RC-8 只有一個家，distribution 的行動輸出不是落不落的問題，是不該由它產的問題。
+- 修正其 obs_conf_* 候選表：四項全數不落（兩項廢、一項 C9 派生、一項移交 S07）——證據包按 #12 義務列舉是對的，但本案的正確答案是空集合。
+
+### 不需要改的（防未來誤重構）
+賣方證據源的價值（拆解是為了搶救它，不是否定它）；2D profile 的 UX 概念；intelligence_delta 的差分事件概念（源值改讀落地欄位後健康，S08/S09 稽核 sidecar 面即可）；distribution 直讀 raw 的讀取紀律（未搬運判斷）。
+
+### 與已鎖決策相容性
+扁平前綴 ✓；additive+alias ✓（賣方 raw 入 schema=additive、引擎拆解=遷移終局非即刻刪除、廢除的分數在 deprecated 期照舊可算）；C1-C11 ✓ 零新法（本案全由既有法裁畢——判定樹完備性的首次實戰確認）。fii cap 未觸碰 ✓。
+
+### Architecture Verdict
+| 級 | 項 | 理由 |
+|---|---|---|
+| P0 | confidence 降級為派生視圖；sm transition_risk=風險唯一 SoT | 解 #33 指定的雙軌問題；S08 詞彙統一與 S09 指標選擇的前提 |
+| P0 | distribution 拆解重生：賣方 raw 入 schema（前置）→ obs_dist_consistency 落地 → 行動矩陣/移出旗標併入行動層 | 搶救唯一賣方證據源；終結 sidecar 判斷模式 |
+| P1 | sidecar 判斷違憲定調＋intelligence.json 稽核移交 S08/S09 | SoR 命題的邊界執法 |
+| P1 | 成本容忍雙閾值 config 化＋registry 記載（漂移第5例）；temperature 移交 S07 | 遷移 checklist |
+| P2 | i18n 出 dataclass（第4/5例） | S08 一併 |
+
+### Executive Summary（兩分鐘版）
+1. 第一個存廢級裁定，零新法——C2/C8/C9/C11/RC-8 裁畢一切，判定樹經受住最難的案子。
+2. distribution「活 code 死輸出」（生產線從未接通、部署中不顯示）→ 拆解重生：唯一的賣方證據源（賣超榜）經 schema 進 SoR、一致性分落地；行動矩陣與「移出黃金名單」旗標併入唯一行動層；「sidecar 判斷」模式定罪。（P0）
+3. confidence 是重複軌：風險軸 double-count sm、與之分歧、61% 塌零；信心軸是第三次聚合。降級為 2D 派生視圖（不落地、無權重），sm transition_risk 成為風險唯一 SoT，market_temperature 移交 S07。（P0）
+4. 轉弱出口從五個收斂回三層健康鏈——S08 的統一詞彙問題面縮小 40%。
+5. 引擎 session 至此全部完成（S01/S02/S03/S04）：四場裁定共立 4 法（C8-C11）、核准落地 14 欄、解散/降級 2 引擎、確認 6 例雙實作漂移。剩 S07/S08/S09。
 
 ---
 
