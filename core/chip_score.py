@@ -20,56 +20,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 # ── Single source of truth for all scoring thresholds ────────────────────────
-CHIP_SCORE_CONFIG: dict = {
-    "vol_ratio": {
-        "max": 8,
-        "label": "投量比",
-        "desc":  "主力買超 ÷ 市場成交量",
-        # mfb / market_volume > 12% → 8, 6-12% → 4, <6% → 0
-        "thresholds": [0.12, 0.06],
-        "scores":     [8,    4,    0],
-    },
-    "streak": {
-        "max": 10,
-        "label": "連續買超",
-        "desc":  "連續主力淨買超天數",
-        # ≥7→10, 5-6→8, 3-4→6, 1-2→3, 0→0
-        "thresholds": [7,  5,  3,  1],
-        "scores":     [10, 8,  6,  3, 0],
-    },
-    "concentration": {
-        "max": 8,
-        "label": "籌碼集中度",
-        "desc":  "大戶持股變化（TDCC）",
-        # data pending — returns 0 when unavailable
-        "thresholds": [],
-        "scores":     [0],
-    },
-    "institutional": {
-        "max": 8,
-        "label": "法人同向",
-        "desc":  "主力/外資/投信同向淨買家數",
-        # 3→8, 2→5, 1→2, 0→0
-        "thresholds": [3,  2,  1],
-        "scores":     [8,  5,  2, 0],
-    },
-    "cost_support": {
-        "max": 6,
-        "label": "成本支撐",
-        "desc":  "現價距主力成本距離（越近越好）",
-        # price/cost ≤ 1.02 → 6, ≤ 1.05 → 3, > 1.05 → 0
-        "thresholds": [1.02, 1.05],
-        "scores":     [6,    3,    0],
-    },
-}
-
-# Grade by percentage of available max (handles missing data gracefully)
-# ≥80% → 強, ≥60% → 中, <60% → 弱
-GRADE_PCT_MAP = [
-    (0.80, "強", "#D4A84B"),
-    (0.60, "中", "#7EB8D4"),
-    (0.0,  "弱", "#8B949E"),
-]
+# Externalised to core/engine_params.py (Phase 1 第 1 線 — 判斷參數外置, C11).
+# Re-exported here so existing consumers (`from core.chip_score import
+# CHIP_SCORE_CONFIG`) and internal references are unchanged → bit-identical.
+from core.engine_params import CHIP_SCORE_CONFIG, GRADE_PCT_MAP
 
 
 # ── Output dataclass ─────────────────────────────────────────────────────────

@@ -59,6 +59,13 @@ meta:
       表）——本檔 planned_fields 區塊實際條目數＝18+4=22。data/adapters/legacy.py
       已輸出 trust_net_buy/prop_net_buy/sell_raw，core/ingest.py 尚未消費（零快照
       內容變更，見 docs/migration/P1-worm-backfill-report.md）。
+    - >
+      Phase 1 第 1 線（判斷參數 config 化，NOTES #33/#47）：存活引擎 golden /
+      state_machine / chip_score / market_context 的判斷門檻、conviction 權重與
+      TIER_A 名單已外置至 core/engine_params.py（零環境依賴的純 Python config，
+      值不變輸出 bit-identical，見 tests/test_config_extraction.py）。
+      config_snapshot 入 canonical hash 隨 1.9.0（Phase 2），本輪僅參數外置、
+      未做 hash 綁定。
 
 # =============================================================================
 # A. 頂層 snapshot 欄位（grain=date，一快照一筆）

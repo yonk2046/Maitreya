@@ -63,19 +63,23 @@ from core.funnel       import run as funnel_run, LAYER_CONFIRMATION, FunnelResul
 from core.market_context import dual_cost_anchor
 from core.state_machine import run_all as sm_run_all, S_CONFIRMED, S_STRENGTHENING
 from core.watchlists   import TIER_A
+from core import engine_params as _cfg
 
 # ── Tunable thresholds ────────────────────────────────────────────────────────
-GOLD_SPON_MIN       = 0.45   # Gate G3: minimum sponsorship to enter
+# Sourced from core/engine_params.py (Phase 1 第 1 線 — 判斷參數外置, C11).
+# Values are unchanged; only the authoring location moved. Downstream logic
+# references these module names exactly as before → output bit-identical.
+GOLD_SPON_MIN       = _cfg.GOLDEN_GOLD_SPON_MIN       # Gate G3: minimum sponsorship to enter
 
-SCORE_STREAK_HIGH   = 5      # +0.25 if streak ≥ this
-SCORE_STREAK_MID    = 3      # +0.15 if streak ≥ this
-SCORE_SPON_HIGH     = 0.70   # +0.20 if sponsorship ≥ this
-SCORE_SPON_MID      = 0.55   # +0.10 if sponsorship ≥ this
+SCORE_STREAK_HIGH   = _cfg.GOLDEN_SCORE_STREAK_HIGH   # +0.25 if streak ≥ this
+SCORE_STREAK_MID    = _cfg.GOLDEN_SCORE_STREAK_MID    # +0.15 if streak ≥ this
+SCORE_SPON_HIGH     = _cfg.GOLDEN_SCORE_SPON_HIGH     # +0.20 if sponsorship ≥ this
+SCORE_SPON_MID      = _cfg.GOLDEN_SCORE_SPON_MID      # +0.10 if sponsorship ≥ this
 
-TIER_PRIME          = 0.65   # conviction ≥ this → PRIME
-TIER_STRONG         = 0.40   # conviction ≥ this → STRONG
+TIER_PRIME          = _cfg.GOLDEN_TIER_PRIME          # conviction ≥ this → PRIME
+TIER_STRONG         = _cfg.GOLDEN_TIER_STRONG         # conviction ≥ this → STRONG
 
-SECTOR_TOP_N_TIGHT  = 3      # for +0.05 bonus (tighter than gate's top-5)
+SECTOR_TOP_N_TIGHT  = _cfg.GOLDEN_SECTOR_TOP_N_TIGHT  # for +0.05 bonus (tighter than gate's top-5)
 
 # ── Tier keys ─────────────────────────────────────────────────────────────────
 TIER_PRIME_KEY      = "prime"
@@ -259,39 +263,39 @@ def _score_conviction(
 
     # Streak component
     if streak >= SCORE_STREAK_HIGH:
-        breakdown["streak_high"] = 0.25
-        breakdown["streak_mid"]  = 0.15   # both tiers stack
+        breakdown["streak_high"] = _cfg.GOLDEN_W_STREAK_HIGH
+        breakdown["streak_mid"]  = _cfg.GOLDEN_W_STREAK_MID   # both tiers stack
     elif streak >= SCORE_STREAK_MID:
-        breakdown["streak_mid"]  = 0.15
+        breakdown["streak_mid"]  = _cfg.GOLDEN_W_STREAK_MID
 
     # Sponsorship component
     if sponsorship >= SCORE_SPON_HIGH:
-        breakdown["spon_high"] = 0.20
-        breakdown["spon_mid"]  = 0.10    # both tiers stack
+        breakdown["spon_high"] = _cfg.GOLDEN_W_SPON_HIGH
+        breakdown["spon_mid"]  = _cfg.GOLDEN_W_SPON_MID    # both tiers stack
     elif sponsorship >= SCORE_SPON_MID:
-        breakdown["spon_mid"] = 0.10
+        breakdown["spon_mid"] = _cfg.GOLDEN_W_SPON_MID
 
     # State bonus
     if sm_state == S_CONFIRMED:
-        breakdown["state_confirmed"] = 0.15
+        breakdown["state_confirmed"] = _cfg.GOLDEN_W_STATE_CONFIRMED
 
     # Tier A bonus
     if is_tier_a:
-        breakdown["tier_a"] = 0.10
+        breakdown["tier_a"] = _cfg.GOLDEN_W_TIER_A
 
     # Velocity
     if velocity_3d is not None and velocity_3d > 0:
-        breakdown["velocity_positive"] = 0.10
+        breakdown["velocity_positive"] = _cfg.GOLDEN_W_VELOCITY_POSITIVE
 
     # Acceleration
     if acceleration is not None and acceleration > 0:
-        breakdown["acceleration_positive"] = 0.05
+        breakdown["acceleration_positive"] = _cfg.GOLDEN_W_ACCELERATION_POSITIVE
 
     # Tight sector rank bonus
     if sector and sector in sector_rank_latest[:SECTOR_TOP_N_TIGHT]:
-        breakdown["sector_top3"] = 0.05
+        breakdown["sector_top3"] = _cfg.GOLDEN_W_SECTOR_TOP3
 
-    score = min(1.0, sum(breakdown.values()))
+    score = min(_cfg.GOLDEN_CONVICTION_CAP, sum(breakdown.values()))
     return score, breakdown
 
 

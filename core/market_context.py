@@ -24,6 +24,10 @@ if str(_AI_STOCK) not in sys.path:
     sys.path.insert(0, str(_AI_STOCK))
 
 from core.watchlists import SECTOR_GROUPS, stock_group
+from core import engine_params as _cfg
+
+# Judgment thresholds sourced from core/engine_params.py (Phase 1 第 1 線 —
+# 判斷參數外置, C11). Values unchanged; only the authoring location moved.
 
 
 # ===========================================================================
@@ -386,25 +390,25 @@ def regime_shift(
         delta = breadth_s[-1] - breadth_s[-2]
         if len(breadth_s) >= 3:
             delta2 = breadth_s[-2] - breadth_s[-3]
-            if delta > 0.1 and delta2 >= 0:
+            if delta > _cfg.MC_BREADTH_TREND_FAST and delta2 >= 0:
                 breadth_trend = "rising_fast"
-            elif delta > 0.02:
+            elif delta > _cfg.MC_BREADTH_TREND_SLOW:
                 breadth_trend = "rising"
-            elif delta < -0.1:
+            elif delta < -_cfg.MC_BREADTH_TREND_FAST:
                 breadth_trend = "falling_fast"
-            elif delta < -0.02:
+            elif delta < -_cfg.MC_BREADTH_TREND_SLOW:
                 breadth_trend = "falling"
         else:
-            breadth_trend = "rising" if delta > 0.02 else ("falling" if delta < -0.02 else "flat")
+            breadth_trend = "rising" if delta > _cfg.MC_BREADTH_TREND_SLOW else ("falling" if delta < -_cfg.MC_BREADTH_TREND_SLOW else "flat")
 
     # Regime classification
-    if latest_b >= 0.75 and latest_chg > 3.0:
+    if latest_b >= _cfg.MC_REGIME_OFFENSIVE_BREADTH and latest_chg > _cfg.MC_REGIME_OFFENSIVE_CHG:
         regime_zh, regime_en, regime_color = "強勢進攻", "Risk-On / Offensive",  "#52B788"
-    elif latest_b >= 0.6 and latest_chg > 1.0:
+    elif latest_b >= _cfg.MC_REGIME_MILD_RISKON_BREADTH and latest_chg > _cfg.MC_REGIME_MILD_RISKON_CHG:
         regime_zh, regime_en, regime_color = "溫和偏多", "Mild Risk-On",          "#7EB8D4"
-    elif latest_b < 0.25 and latest_chg < -2.0:
+    elif latest_b < _cfg.MC_REGIME_RETREAT_BREADTH and latest_chg < _cfg.MC_REGIME_RETREAT_CHG:
         regime_zh, regime_en, regime_color = "全面撤退", "Risk-Off / Retreat",    "#E05C7A"
-    elif latest_b < 0.35:
+    elif latest_b < _cfg.MC_REGIME_WAITING_BREADTH:
         regime_zh, regime_en, regime_color = "資金觀望", "Capital Waiting",        "#D4A84B"
     elif latest_chg < 0:
         regime_zh, regime_en, regime_color = "偏弱整理", "Mild Risk-Off",          "#C47A5A"
@@ -416,7 +420,7 @@ def regime_shift(
     if len(breadth_s) >= 2:
         b_delta = breadth_s[-1] - breadth_s[-2]
         c_delta = avg_chg_s[-1] - avg_chg_s[-2]
-        if abs(b_delta) >= 0.25 or abs(c_delta) >= 3.0:
+        if abs(b_delta) >= _cfg.MC_TRANSITION_BREADTH_DELTA or abs(c_delta) >= _cfg.MC_TRANSITION_CHG_DELTA:
             transition_detected = True
             if b_delta > 0:
                 transition_note = "市場突然轉強 — 可能 Risk-Off→Risk-On 切換"
@@ -458,7 +462,7 @@ def _empty_regime() -> dict[str, Any]:
 def failed_breakout_memory(
     ticker: str,
     records: list[dict[str, Any]],
-    lookback: int = 10,
+    lookback: int = _cfg.MC_BREAKOUT_LOOKBACK,
 ) -> dict[str, Any]:
     """
     Detect if a stock had an apparent breakout (volume spike + price up)
@@ -482,13 +486,13 @@ def failed_breakout_memory(
         vol = day.get("volume") or 0
         chg = day.get("change_pct") or 0
 
-        if vol > avg_vol * 1.8 and chg > 2.0:
+        if vol > avg_vol * _cfg.MC_BREAKOUT_VOL_MULT and chg > _cfg.MC_BREAKOUT_CHG_MIN:
             retreat = 0
             for j in range(i + 1, min(i + 4, len(recent))):
                 nx = recent[j]
                 if (nx.get("change_pct") or 0) < 0 or (nx.get("main_force_buy") or 0) < 0:
                     retreat += 1
-            if retreat >= 2:
+            if retreat >= _cfg.MC_BREAKOUT_RETREAT_MIN:
                 found = {
                     "date":         day.get("date"),
                     "breakout_chg": chg,
@@ -498,8 +502,8 @@ def failed_breakout_memory(
                 # keep the most recent match (last wins)
 
     if found:
-        risk = "⚠ 高風險假突破" if found["retreat_days"] >= 3 else "⚡ 疑似假突破"
-        risk_en = "High-Risk Failed Breakout" if found["retreat_days"] >= 3 else "Possible Failed Breakout"
+        risk = "⚠ 高風險假突破" if found["retreat_days"] >= _cfg.MC_BREAKOUT_HIGHRISK_RETREAT else "⚡ 疑似假突破"
+        risk_en = "High-Risk Failed Breakout" if found["retreat_days"] >= _cfg.MC_BREAKOUT_HIGHRISK_RETREAT else "Possible Failed Breakout"
         return {
             "ticker":                    ticker,
             "failed_breakout_detected":  True,
@@ -648,9 +652,9 @@ def full_ticker_context(
 # Deterministic observation-layer detector (same pattern as failed_breakout).
 # Does NOT touch composite_score / tier / gates — AI_GOVERNANCE compliant.
 
-_W2_FII_RATIO      = 0.30   # FII sell must be ≥30% of main-force buy to flag
-_W5_SELL_RATIO     = 1.00   # branch totalSellVol > totalBuyVol
-_W5_CHURN_RATIO    = 0.60   # top-3 buy branches selling ≥60% of what they buy
+_W2_FII_RATIO      = _cfg.MC_W2_FII_RATIO    # FII sell must be ≥30% of main-force buy to flag
+_W5_SELL_RATIO     = _cfg.MC_W5_SELL_RATIO   # branch totalSellVol > totalBuyVol
+_W5_CHURN_RATIO    = _cfg.MC_W5_CHURN_RATIO  # top-3 buy branches selling ≥60% of what they buy
 
 
 def weakening_profile(
@@ -691,7 +695,7 @@ def weakening_profile(
         if r["present"]:
             break
         snaps_since_seen += 1
-    if snaps_since_seen > 3:
+    if snaps_since_seen > _cfg.MC_WEAKENING_RECENCY_MAX:
         # vanished long ago — stale, not an active weakening signal
         return _empty_weakening(ticker)
 
@@ -769,7 +773,7 @@ def weakening_profile(
     # universe is often mere rotation (the universe is a top-N list, not the
     # whole market). Only a SOLID W3 (absent ≥2 snapshots) may combine into
     # red; a fresh 1-day W3 caps at orange even with corroborating flags.
-    w3_solid = has_w3 and snaps_since_seen >= 2
+    w3_solid = has_w3 and snaps_since_seen >= _cfg.MC_W3_SOLID_MIN_ABSENCE
     if (w3_solid and n >= 2) or n >= 3:
         severity, label_zh, label_en = "red", "出貨確認", "Distribution Confirmed"
     elif n == 2 or has_w3:
@@ -819,7 +823,7 @@ def _empty_weakening(ticker: str) -> dict[str, Any]:
 # signal. Entry-gate consumers should use cost_conservative = min(両錨).
 # Display/intelligence layer only in P3a — schema entry deferred to P3b.
 
-_COST_DIVERGENCE_PCT_DEFAULT = 5.0   # config: gates.cost_safety.divergence_alert_pct
+_COST_DIVERGENCE_PCT_DEFAULT = _cfg.MC_COST_DIVERGENCE_PCT   # config: gates.cost_safety.divergence_alert_pct
 
 
 def dual_cost_anchor(

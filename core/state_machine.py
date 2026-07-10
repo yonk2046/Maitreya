@@ -76,24 +76,27 @@ from core.sector_intelligence import (
     _collect_per_snap,
 )
 from core.watchlists import TIER_A, build_name_map
+from core import engine_params as _cfg
 
 # ── Thresholds ────────────────────────────────────────────────────────────────
-STREAK_ACCUMULATING   = 1
-STREAK_STRENGTHENING  = 3
-STREAK_CONFIRMED      = 3
-SPON_STRENGTHENING    = 0.40
-SPON_CONFIRMED        = 0.50
-SECTOR_TOP_N_CONFIRM  = 5      # sector must be in top-N for CONFIRMED
-BREADTH_CONFIRMED     = 0.50   # market breadth required for CONFIRMED
-ABSENT_EXITED         = 3      # consecutive absent snapshots → EXITED
-COLLAPSE_WINDOW       = 2      # streak 3→0 within this many days → FAILED
-DAYS_SINCE_FAIL_RISK  = 10     # failed breakout within this many days → elevated risk
+# Sourced from core/engine_params.py (Phase 1 第 1 線 — 判斷參數外置, C11).
+# Values unchanged; only the authoring location moved.
+STREAK_ACCUMULATING   = _cfg.SM_STREAK_ACCUMULATING
+STREAK_STRENGTHENING  = _cfg.SM_STREAK_STRENGTHENING
+STREAK_CONFIRMED      = _cfg.SM_STREAK_CONFIRMED
+SPON_STRENGTHENING    = _cfg.SM_SPON_STRENGTHENING
+SPON_CONFIRMED        = _cfg.SM_SPON_CONFIRMED
+SECTOR_TOP_N_CONFIRM  = _cfg.SM_SECTOR_TOP_N_CONFIRM  # sector must be in top-N for CONFIRMED
+BREADTH_CONFIRMED     = _cfg.SM_BREADTH_CONFIRMED     # market breadth required for CONFIRMED
+ABSENT_EXITED         = _cfg.SM_ABSENT_EXITED         # consecutive absent snapshots → EXITED
+COLLAPSE_WINDOW       = _cfg.SM_COLLAPSE_WINDOW       # streak 3→0 within this many days → FAILED
+DAYS_SINCE_FAIL_RISK  = _cfg.SM_DAYS_SINCE_FAIL_RISK  # failed breakout within this many days → elevated risk
 
 # P0.5 reform constants (candidates for SCORING_RUBRIC config at P3b)
-ACCEL_DISTRIBUTING     = -500  # acceleration below this counts as momentum break
-DEBOUNCE_SNAPSHOTS     = 2     # consecutive snapshots required to commit a transition
-DIST_LOCKOUT_SNAPSHOTS = 5     # no CONFIRMED within this many snaps after DISTRIBUTING
-FLIPS_UNSTABLE_30D     = 2     # committed direction reversals → structure unstable
+ACCEL_DISTRIBUTING     = _cfg.SM_ACCEL_DISTRIBUTING      # acceleration below this counts as momentum break
+DEBOUNCE_SNAPSHOTS     = _cfg.SM_DEBOUNCE_SNAPSHOTS      # consecutive snapshots required to commit a transition
+DIST_LOCKOUT_SNAPSHOTS = _cfg.SM_DIST_LOCKOUT_SNAPSHOTS  # no CONFIRMED within this many snaps after DISTRIBUTING
+FLIPS_UNSTABLE_30D     = _cfg.SM_FLIPS_UNSTABLE_30D      # committed direction reversals → structure unstable
 
 # ── State keys ────────────────────────────────────────────────────────────────
 S_UNDISCOVERED  = "undiscovered"

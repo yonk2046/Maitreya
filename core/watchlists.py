@@ -13,20 +13,10 @@ from typing import Any
 # ---------------------------------------------------------------------------
 # Tier A — Regime Anchors  永久追蹤
 # ---------------------------------------------------------------------------
-
-TIER_A: dict[str, dict[str, Any]] = {
-    # ── Semiconductors 半導體 ──────────────────────────────────────────────
-    "2330": {"name": "台積電",  "name_en": "TSMC",       "group": "semiconductor", "group_zh": "半導體"},
-    "2454": {"name": "聯發科",  "name_en": "MediaTek",   "group": "semiconductor", "group_zh": "半導體"},
-    # ── Electronics / EMS 電子代工 ────────────────────────────────────────
-    "2317": {"name": "鴻海",    "name_en": "Hon Hai",    "group": "electronics",   "group_zh": "電子代工"},
-    "2382": {"name": "廣達",    "name_en": "Quanta",     "group": "electronics",   "group_zh": "電子代工"},
-    "2308": {"name": "台達電",  "name_en": "Delta",      "group": "electronics",   "group_zh": "電子代工"},
-    # ── Financials 金融權值 ───────────────────────────────────────────────
-    "2881": {"name": "富邦金",  "name_en": "Fubon FHC",  "group": "financials",    "group_zh": "金融"},
-    "2882": {"name": "國泰金",  "name_en": "Cathay FHC", "group": "financials",    "group_zh": "金融"},
-    "2891": {"name": "中信金",  "name_en": "CTBC FHC",   "group": "financials",    "group_zh": "金融"},
-}
+# 判斷參數已外置至 core/engine_params.py(憲法 §7 Phase 1 第 1 線 / NOTES #47:
+# TIER_A 名單是 I 態判斷參數,C11 陽性)。此處由 config 匯入並再匯出,維持既有
+# `from core.watchlists import TIER_A` 之公開 API 不變。
+from core.engine_params import TIER_A
 
 TIER_A_CODES: frozenset[str] = frozenset(TIER_A.keys())
 
