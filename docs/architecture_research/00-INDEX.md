@@ -33,6 +33,10 @@ market_state 判死）、3 個 artifact 判死（sidecar/checklist_history/cockp
 （registry 建立＋#33 門檻 config 化＋#41 母體修正＋17 欄落地排程＋S06 version-pinned replay 設計），
 **開工與否由 Yonki 裁定**。凍結期間裁定＝立約順序，非修復排程（各 session §5 語意不變）。
 
+**🏛️ 憲法已編纂（2026-07-10）**：全部裁定壓縮為 `docs/ARCHITECTURE_BLUEPRINT.md`——
+系統身份/分層/所有權/C1-C12/決策框架/遷移路線圖 Phase 0-5（單一 bump 原則）。
+本目錄自此降為**判例 archive**：憲法引用判例，修憲須寫明推翻哪條判例。
+
 ## S05 pre-work（2026-07-08 已完成，直接作為證據包輸入）
 - `docs/DATA_CONTRACT_ASSESSMENT_2026-07-08.md` — 三種病的證據、domain 結構取捨、遷移 SOP
 - `docs/DATA_CONTRACT_FIELD_MAP_2026-07-08.md` — 60 欄位三態分類 + 扁平前綴命名對照 + C1–C6

@@ -4,6 +4,7 @@
 >
 > Repo：`yonk2046/Maitreya` · Viewer：Streamlit Cloud（`viewer/cockpit.py`）
 > 最後更新：2026-07-10（黃金名單/每日流程改指向 ARCHITECTURE 正本，去重複；補雲端 dispatch 18:05 與 T+1 補班）
+> 🏛️ 架構規範正本：`docs/ARCHITECTURE_BLUEPRINT.md`（憲法）；研究判例：`docs/architecture_research/`
 
 ---
 

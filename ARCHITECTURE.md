@@ -5,6 +5,7 @@
 >
 > 最後更新：2026-07-10（§5 改四觸發器表：補 08:35 T+1 補班、1.8.1 兩段式快照、cron-job dispatch 移 18:05；launchd 維持 19:00。原合併自舊 ARCHITECTURE.md 2026-05-30 + PROJECT_STATUS.md 2026-06-04）
 > ⚠️ **Phase / 進度狀態一律以最新的 `MAITREYA_HANDOFF_*.md` 為準**——本文件只寫「不常變的結構性知識」，避免再次過期。
+> 🏛️ **架構規範正本＝`docs/ARCHITECTURE_BLUEPRINT.md`（憲法，2026-07-10 立）**——本文件描述現狀怎麼跑；目標架構、遷移路線、契約法以憲法為準。
 
 ---
 
