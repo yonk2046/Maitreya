@@ -1,0 +1,329 @@
+# SCD Engine — Canonical Field Registry（憲法 Phase 0 交付）
+# =============================================================================
+# 地位：全系統唯一欄位字典（ARCHITECTURE_BLUEPRINT.md §3 所有權表第一列）。
+#        任何欄位問「你是誰」，唯一答案在此。CI 對拍（tests/test_field_registry.py）
+#        擋住未登記欄位進入快照。
+#
+# Phase 0 鐵律 = ADDITIVE ONLY：本檔只「記載」現況，不改 schema、不改引擎、
+#   不 rename、不動 replay contract。replay 等級只記載，不去改 verify_all_replay.py
+#   的 strip 清單（那是 Phase 1/S06）。已知病灶如實記錄，不在 Phase 0 修（如
+#   dealer_net_buy 實裝投信 → 記錄事實，正名待 Phase 1）。
+#
+# 三軸契約（BLUEPRINT §5，每欄在三軸各有一位置）：
+#   state (三態)  : I=Input(原始事實) | O=Observation(判斷) | M=Metadata(環境/出處)
+#   replay (等級) : MUST-I(可重算,參與canonical hash)
+#                 | epoch-scoped-O(同schema版本內同輸入必重算相同,參與hash)
+#                 | excluded-M(記錄但排除於replay比對)
+#                 * lineage 註記：provenance/audit_log 是 M 但作 lineage 背書入 hash；
+#                   現況 environment 污染 hash（BLUEPRINT 不變量 #6 的修正目標，Phase 4）
+#   grain (粒度)  : ticker | date(市場/快照級) | sector
+#
+# owner 詞彙（照 BLUEPRINT §3）：
+#   fetch/Adapter · Pipeline(ingest) · Golden · StateMachine · Chip ·
+#   temporal_enrich · Market · market_pulse · Distribution · Config ·
+#   Hashing · WORM-Archive · Schema-versioning
+#
+# status：
+#   active            = 現行快照真的有此欄（含 P3a abstain 佔位）
+#   deprecated-pending = 殭屍欄，replay 生命週期內續存、不擴不消費，major(2.0)移除
+#   planned           = 17 欄核准清單（NOTES #54），尚未落地，1.9.0 才落
+# =============================================================================
+
+meta:
+  registry_version: "0.1.0"
+  phase: "Phase 0 — Canonical Field Registry"
+  authored: "2026-07-10"
+  snapshot_schema_version_at_authoring: "1.8.1"
+  ground_truth_snapshot: "reports/2026-07-09.json"
+  counts:
+    snapshot_fields: 18
+    record_fields: 70
+    planned_fields: 18
+  notes:
+    - "現有快照全欄位登記完畢（頂層 18 + per-stock record 70 = 88 active/deprecated 欄）。"
+    - >
+      planned 清單 = 憲法 §4 表逐名登記，得 18 個 distinct 欄名。憲法 §4 標題稱
+      「17 欄」= 來源 off-by-one（obs_chip_grade 含 total 子值歷史上曾與 total 併計為
+      一行）。Phase 0 忠實登記全部 18 名，不為湊數丟欄；此差異回報 Yonki。
+    - "CI 對拍以 ground_truth_snapshot 同型的最新 reports/YYYY-MM-DD.json 為準。"
+    - >
+      對拍發現「快照有但 FIELD_MAP 未列」的欄位（Phase 0 補登記，非新增）：
+      open、fii_buy_ratio、fii_holding_trend_5d、weakening、market_volume(FIELD_MAP有)、
+      signal_age_days。其中 weakening 是 nested observation 物件（mc weakening_profile，
+      NOTES #32「weakening(mc,已落地)」），schema $defs 未宣告但實際落地。
+
+# =============================================================================
+# A. 頂層 snapshot 欄位（grain=date，一快照一筆）
+# =============================================================================
+snapshot_fields:
+  - name: schema_version
+    semantic: "canonical schema 版本識別"
+    state: M
+    grain: date
+    replay: excluded-M
+    owner: Schema-versioning
+    status: active
+
+  - name: date
+    semantic: "交易日（快照 identity）"
+    state: I
+    grain: date
+    replay: MUST-I
+    owner: Pipeline(ingest)
+    status: active
+
+  - name: generated_at
+    semantic: "快照產生牆鐘（ISO8601 UTC）"
+    state: M
+    grain: date
+    replay: excluded-M
+    owner: Pipeline(ingest)
+    status: active
+
+  - name: config_hash
+    semantic: "config 衍生完整性值（sha256）"
+    state: O
+    grain: date
+    replay: epoch-scoped-O
+    owner: Hashing
+    status: active
+
+  - name: core_version
+    semantic: "產生此快照的 core 版本字串"
+    state: M
+    grain: date
+    replay: excluded-M
+    owner: Schema-versioning
+    status: active
+
+  - name: environment
+    semantic: "replay 重現性環境元資料（python/os/numpy/decimal/locale/tz + lookback 鏈）"
+    state: M
+    grain: date
+    replay: excluded-M   # 病灶：現況含 os/python 進 canonical hash（NOTES #3），Phase 4 白名單修
+    owner: Pipeline(ingest)
+    status: active
+
+  - name: provenance
+    semantic: "逐來源出處（raw_sha256/archive 路徑/field_to_source），lineage 背書"
+    state: M
+    grain: date
+    replay: excluded-M   # lineage：內容作完整性背書，Phase 1 archive 加版本維度（NOTES #18）
+    owner: WORM-Archive
+    status: active
+
+  - name: config_snapshot
+    semantic: "凍結的 config（判斷參數正本，參與 hash）"
+    state: I
+    grain: date
+    replay: MUST-I
+    owner: Config
+    status: active
+
+  - name: universe_size
+    semantic: "當日母體股票數（衍生計數）"
+    state: O
+    grain: date
+    replay: epoch-scoped-O
+    owner: Pipeline(ingest)
+    status: active
+
+  - name: eligible_count
+    semantic: "通過資格股票數（P3a 恆 0，全 abstain）"
+    state: O
+    grain: date
+    replay: epoch-scoped-O
+    owner: Golden
+    status: active
+
+  - name: fii_pending
+    semantic: "1.8.1 兩段式快照旗標：true=當日 T86 未到手、fii 欄待補"
+    state: O
+    grain: date
+    replay: epoch-scoped-O
+    owner: Pipeline(ingest)
+    status: active
+
+  - name: market_regime
+    semantic: "頂層市場體制 stub（label/classifier/confidence/features 恆 stub_v0）"
+    state: O
+    grain: date
+    replay: epoch-scoped-O
+    owner: Market
+    status: deprecated-pending   # NOTES #40：真值走 planned obs_market_*；major 移除
+    alias: obs_market_regime      # 真值繼任欄（planned）
+
+  - name: episodes_active_at_start
+    semantic: "快照產生時已活躍的 episode 清單"
+    state: O
+    grain: date
+    replay: epoch-scoped-O
+    owner: Pipeline(ingest)
+    status: active
+
+  - name: episodes_changed_today
+    semantic: "當日狀態變更的 episode 清單"
+    state: O
+    grain: date
+    replay: epoch-scoped-O
+    owner: Pipeline(ingest)
+    status: active
+
+  - name: tier_transitions
+    semantic: "當日 per-stock tier 轉移清單"
+    state: O
+    grain: date
+    replay: epoch-scoped-O
+    owner: Golden
+    status: active
+
+  - name: stocks
+    semantic: "per-stock record 陣列（I+O 混態容器，逐欄定義見 record_fields）"
+    state: I   # 容器；成員三態各自定義
+    grain: ticker
+    replay: MUST-I   # 容器；成員 replay 等級各自定義
+    owner: Pipeline(ingest)
+    status: active
+
+  - name: rankings
+    semantic: "分層名單（golden/watch/neutral/ignored + sort_keys_used）"
+    state: O
+    grain: date
+    replay: epoch-scoped-O
+    owner: Golden
+    status: active
+
+  - name: audit_log
+    semantic: "事件流水（ELIMINATED/LOOKBACK_VERIFIED/... lineage）"
+    state: M
+    grain: date
+    replay: excluded-M   # lineage 背書
+    owner: Pipeline(ingest)
+    status: active
+
+# =============================================================================
+# B. Per-stock record 欄位（stocks[] 內，grain=ticker）
+#    alias = FIELD_MAP 2026-07-08 提議的 domain 前綴正名（rename 待 Phase 1/3，additive）
+# =============================================================================
+record_fields:
+  # ── identity / 市場價格 (I) ──────────────────────────────────────────────
+  - {name: ticker,        semantic: "股票代號（identity）",        state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active}
+  - {name: name,          semantic: "股票名稱",                    state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active}
+  - {name: market,        semantic: "市場別（TWSE/TPEx/Emerging）", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active}
+  - {name: industry,      semantic: "產業別分類",                  state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active}
+  - {name: current_price, semantic: "收盤價",                      state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: market_price}
+  - {name: open,          semantic: "開盤價（backtest 次日開盤結算；FIELD_MAP 未列，Phase 0 補登記）", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: market_open}
+  - {name: prev_close,    semantic: "前一交易日收盤價",            state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: market_prev_close}
+  - {name: change_pct,    semantic: "當日漲跌幅%（來自 marketQuotes）", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: market_change_pct}
+  - {name: volume,        semantic: "🔴🟡 名叫『量』實為主力買超張數（ingest:155←buy_vol_lots）；正名待 Phase 1", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: mf_net_buy}
+  - {name: market_volume, semantic: "市場總成交量（張，from volRows）＝唯一正確的『量』", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active}
+
+  # ── 主力買超衍生家族 (O, temporal_enrich) — 名帶 volume 實為主力買超 ──────
+  - {name: volume_5d_avg,  semantic: "主力買超 5 日均（非成交量）", state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: mf_buy_5d_avg}
+  - {name: volume_ratio,   semantic: "🔴🟡 主力買超動能比；0 消費者死欄位（market_context:208）；rename 待 Phase 1", state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: mf_buy_momentum_ratio}
+  - {name: velocity_3d,    semantic: "3 日速度（分數時序派生）",   state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: derived_velocity_3d}
+  - {name: acceleration,   semantic: "加速度（分數時序派生）",     state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: derived_acceleration}
+
+  # ── 外資 / 三大法人 (I + O) ───────────────────────────────────────────────
+  - {name: fii_net_buy,           semantic: "外資淨買（張）from T86",       state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: foreign_net_buy}
+  - {name: fii_buy_ratio,         semantic: "外資買超比（衍生 stub，恆 None；FIELD_MAP 未列，Phase 0 補登記）", state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active}
+  - {name: fii_holding_pct,       semantic: "外資持股%（pending，恆 None）", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: foreign_holding_pct}
+  - {name: fii_holding_trend_5d,  semantic: "外資持股 5 日趨勢（衍生 stub；FIELD_MAP 未列，Phase 0 補登記）", state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active}
+  - {name: fii_sync_count,        semantic: "0–3：幾個參與者同向淨買",     state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: derived_participant_sync_count}
+  - {name: fii_brokers_buying,    semantic: "買超券商清單",                state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: foreign_brokers_buying}
+  - {name: fii_consecutive_buy_days, semantic: "外資連續買超天數",         state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: foreign_consecutive_buy_days}
+
+  # ── 主力（富邦 branches）(I + O) ─────────────────────────────────────────
+  - {name: main_force_buy,   semantic: "主力買超張數（branches total_buy_vol 或 rollup）", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: mf_buy}
+  - {name: top5_branches,    semantic: "前 5 大分點買賣淨（branch/buy/sell/net）", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: mf_top5_branches}
+  - {name: main_force_cost,  semantic: "主力平均成本",                     state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: mf_cost}
+  - {name: main_force_consecutive_days, semantic: "主力連買天數（1.8.0 起=strict 語意的相容別名）", state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: mf_consecutive_days}
+  - {name: main_force_strict_streak_days, semantic: "主力嚴格連續買超天數（缺日視為中斷）", state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: mf_strict_streak_days}
+  - {name: main_force_positive_days_in_window, semantic: "窗口(20d)內主力買超天數", state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: mf_positive_days_20d}
+  - {name: net_accumulation_in_window, semantic: "窗口(20d)內主力買超累計", state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: mf_net_accum_20d}
+  - {name: main_force_volume_trend, semantic: "主力買超序列（趨勢）",      state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: mf_buy_trend_5d}
+  - {name: volume_increasing_streak, semantic: "主力買超遞增連續數",       state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: mf_buy_increasing_streak}
+  - {name: top5_concentration, semantic: "前 5 大分點集中度",             state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: mf_top5_concentration}
+  - {name: dealer_net_buy,   semantic: "🔴 名叫自營商實裝投信淨買（張）from T86（ingest:182←investment_trust_net_buy）；正名待 Phase 1", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: trust_net_buy}
+  - {name: is_day_trader_branch, semantic: "是否當沖分點",                state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: mf_is_day_trader}
+
+  # ── TDCC 集保週資料 (I + O) ──────────────────────────────────────────────
+  - {name: shareholder_count,             semantic: "股東人數（TDCC 週資料）",   state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: tdcc_shareholder_count}
+  - {name: shareholder_count_delta_pct,   semantic: "股東人數週變化%",           state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: tdcc_shareholder_delta_pct}
+  - {name: broker_count_diff,             semantic: "券商家數差",               state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: tdcc_broker_diff}
+  - {name: broker_count_diff_negative_streak, semantic: "券商家數連負天數",     state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: tdcc_broker_neg_streak}
+  - {name: large_holder_400_pct,          semantic: "400 張大戶持股%",          state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: tdcc_large_holder_400_pct}
+  - {name: large_holder_400_delta_pct,    semantic: "400 張大戶持股週變化%",    state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: tdcc_large_holder_400_delta}
+  - {name: large_holder_1000_pct,         semantic: "1000 張大戶持股%",         state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: tdcc_large_holder_1000_pct}
+  - {name: large_holder_1000_delta_pct,   semantic: "1000 張大戶持股週變化%",   state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: tdcc_large_holder_1000_delta}
+
+  # ── 融資 margin (I + O, 多為 stub) ───────────────────────────────────────
+  - {name: margin_balance,                 semantic: "融資餘額（pending，恆 None）", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active}
+  - {name: margin_change,                  semantic: "融資變化",               state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active}
+  - {name: margin_maintenance_ratio,       semantic: "融資維持率（pending，恆 None）", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active}
+  - {name: price_down_margin_down_days_10d, semantic: "10 日內價跌融資減天數",  state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active}
+  - {name: price_down_margin_up_days_10d,  semantic: "10 日內價跌融資增天數",   state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active}
+  - {name: margin_panic_signal,            semantic: "融資恐慌訊號（stub）",     state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active}
+
+  # ── 盤中 price-action (I, 多為 stub) ─────────────────────────────────────
+  - {name: pa_signals_30m,   semantic: "30 分 K 型態訊號（pin_bar/engulfing/...，stub）", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active}
+  - {name: trend_2h,         semantic: "2 小時趨勢（up/flat/down，stub）",  state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active}
+  - {name: above_20ema_2h,   semantic: "2 小時是否站上 20EMA（stub）",      state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active}
+  - {name: ema_slope_2h,     semantic: "2 小時 EMA 斜率（stub）",           state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active}
+
+  # ── 評分 / 資格 (O, Golden；P3a 全 abstain：tier=IGNORE, score=0) ─────────
+  - {name: gates,            semantic: "資格閘門 G1/G2/G3 + eliminated_by（P3a 全 false）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active}
+  - {name: stage_1,          semantic: "第 1 階段分數（P3a=0）",           state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active}
+  - {name: stage_1_breakdown, semantic: "第 1 階段分數拆解",              state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active}
+  - {name: stage_2,          semantic: "第 2 階段分數（P3a=0）",           state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active}
+  - {name: stage_2_breakdown, semantic: "第 2 階段分數拆解",              state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active}
+  - {name: stage_3,          semantic: "第 3 階段分數（P3a=0）",           state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active}
+  - {name: stage_3_breakdown, semantic: "第 3 階段分數拆解",              state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active}
+  - {name: composite_score,  semantic: "綜合分數（P3a=0）",               state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active}
+  - {name: tier,             semantic: "分層 GOLDEN/WATCH/NEUTRAL/IGNORE（P3a 全 IGNORE）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active}
+  - {name: trade_type,       semantic: "交易類型 T1/T2（stub）",          state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active}
+  - {name: safety_margin_pct, semantic: "安全邊際%（stub）",             state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active}
+  - {name: checklist,        semantic: "6 項進場檢核（dual_engine/cost/shareholders/margin/pa）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active}
+
+  # ── 賣方證據 (O, Distribution/market_context) ────────────────────────────
+  - {name: weakening,        semantic: "轉弱側寫物件（severity/flags/label_zh...）；mc weakening_profile 已落地（NOTES #32）；FIELD_MAP/schema$defs 未宣告，Phase 0 補登記", state: O, grain: ticker, replay: epoch-scoped-O, owner: Distribution, status: active}
+
+  # ── 時序記憶（殭屍欄）(O, StateMachine) ───────────────────────────────────
+  - {name: temporal_state,   semantic: "per-stock 時序記憶 stub（prior_tier/velocity/trend...）；零引擎消費殭屍欄", state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: deprecated-pending, alias: obs_sm_state}
+
+  # ── 資料品質 / 呈現 stub (O) ──────────────────────────────────────────────
+  - {name: data_completeness, semantic: "資料完整度分數（schema v1.5）",   state: O, grain: ticker, replay: epoch-scoped-O, owner: Pipeline(ingest), status: active, alias: obs_completeness}
+  - {name: confidence_tier,   semantic: "資料完整度分層 FULL/PARTIAL/SKELETON", state: O, grain: ticker, replay: epoch-scoped-O, owner: Pipeline(ingest), status: active, alias: obs_confidence_tier}
+  - {name: momentum_direction, semantic: "動能方向（stub，恆 'unknown'）", state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active}
+  - {name: signal_age_days,   semantic: "訊號天數（=tier_in_current_state_days；FIELD_MAP 未列，Phase 0 補登記）", state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active}
+  - {name: delta_vs_yesterday, semantic: "與昨日差異（stub，恆 '—'）",    state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active}
+
+# =============================================================================
+# C. 核准落地清單（17 欄，NOTES #54 定稿；status=planned，1.9.0 才落，尚未進快照）
+#    憲法 §4：obs_chip_grade 含 total 子值計 1 欄 → 全表 17 欄。
+# =============================================================================
+planned_fields:
+  # golden 六欄（NOTES #26）
+  - {name: obs_golden_tier,         semantic: "黃金層資格 tier",           state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: planned, landing_version: "1.9.0"}
+  - {name: obs_golden_conviction,   semantic: "黃金層 conviction 強度",     state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: planned, landing_version: "1.9.0"}
+  - {name: obs_golden_action_group, semantic: "進場行動群組（5%鐵則+weakening）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: planned, landing_version: "1.9.0"}
+  - {name: obs_golden_gates_passed, semantic: "通過的資格閘門",            state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: planned, landing_version: "1.9.0"}
+  - {name: obs_golden_tier_caps,    semantic: "tier 上限（fii_alignment cap 等）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: planned, landing_version: "1.9.0"}
+  - {name: obs_golden_near_miss,    semantic: "差一步清單（含 missed_gate，不落 tier）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: planned, landing_version: "1.9.0"}
+  # state machine 六欄（NOTES #30）
+  - {name: obs_sm_state,            semantic: "生命週期狀態（唯一 SoT）",   state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: planned, landing_version: "1.9.0"}
+  - {name: obs_sm_transition_risk,  semantic: "轉移風險（『風險』唯一 SoT）", state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: planned, landing_version: "1.9.0"}
+  - {name: obs_sm_days_in_state,    semantic: "在此狀態天數",              state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: planned, landing_version: "1.9.0"}
+  - {name: obs_sm_state_entered,    semantic: "進入當前狀態日",            state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: planned, landing_version: "1.9.0"}
+  - {name: obs_sm_structure_unstable, semantic: "結構不穩旗標",            state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: planned, landing_version: "1.9.0"}
+  - {name: obs_sm_risk_factors,     semantic: "風險因子清單",              state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: planned, landing_version: "1.9.0"}
+  # chip（NOTES #35）— obs_chip_grade 含 total 子值
+  - {name: obs_chip_grade,          semantic: "籌碼評級（含 total 子值）",   state: O, grain: ticker, replay: epoch-scoped-O, owner: Chip, status: planned, landing_version: "1.9.0"}
+  # temporal（NOTES #35）
+  - {name: sync_streak,             semantic: "參與者同向連續數（候選終名 derived_participant_sync_streak）", state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: planned, landing_version: "1.9.0", alias: derived_participant_sync_streak}
+  # distribution（NOTES #38）
+  - {name: obs_dist_consistency,    semantic: "賣方一致性（唯一賣方證據源）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Distribution, status: planned, landing_version: "1.9.0"}
+  # market 三欄（NOTES #40；grain=date）
+  - {name: obs_market_regime,       semantic: "市場體制（regime_shift 收斂）", state: O, grain: date, replay: epoch-scoped-O, owner: Market, status: planned, landing_version: "1.9.0"}
+  - {name: obs_market_breadth,      semantic: "市場廣度（母體修正後，NOTES #41）", state: O, grain: date, replay: epoch-scoped-O, owner: Market, status: planned, landing_version: "1.9.0"}
+  - {name: obs_market_temperature,  semantic: "市場溫度",                  state: O, grain: date, replay: epoch-scoped-O, owner: Market, status: planned, landing_version: "1.9.0"}

@@ -16,7 +16,7 @@
 #     make verify-index         # run integrity checks against reports/index.json
 #     make clean-pycache
 
-.PHONY: help test test-fast backfill backfill-all verify-replay verify-all-replay fix-index verify-index viewer cockpit cockpit-v2 restart-cockpit restart-cockpit-v2 streak-analyze transitions persistence-rank regime-monitor temporal-report market-flow narrative confidence golden golden-near-miss funnel state-machine intelligence intelligence-backfill daily daily-skip-fetch daily-install daily-uninstall daily-status daily-tail fetch fetch-dry-run fetch-pulse fetch-pulse-dry-run clean-pycache
+.PHONY: help test test-fast verify-registry backfill backfill-all verify-replay verify-all-replay fix-index verify-index viewer cockpit cockpit-v2 restart-cockpit restart-cockpit-v2 streak-analyze transitions persistence-rank regime-monitor temporal-report market-flow narrative confidence golden golden-near-miss funnel state-machine intelligence intelligence-backfill daily daily-skip-fetch daily-install daily-uninstall daily-status daily-tail fetch fetch-dry-run fetch-pulse fetch-pulse-dry-run clean-pycache
 
 PY ?= python3
 
@@ -24,8 +24,11 @@ help:
 	@grep -E '^[a-zA-Z_-]+:.*?# ' $(MAKEFILE_LIST) \
 	  | awk -F':.*# ' '{printf "  %-20s %s\n", $$1, $$2}'
 
-test:  # run full pytest suite (replay + contracts + adapter + worm)
+test: verify-registry  # run full pytest suite (registry + replay + contracts + adapter + worm)
 	$(PY) -m pytest tests/ -v
+
+verify-registry:  # 憲法 Phase 0: canonical field registry CI 對拍（登記 vs 最新快照欄位集）
+	$(PY) -m pytest tests/test_field_registry.py -v
 
 test-fast:  # quick run, no -v
 	$(PY) -m pytest tests/ -q
