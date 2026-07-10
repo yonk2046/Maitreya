@@ -285,11 +285,11 @@ record_fields:
   - {name: safety_margin_pct, semantic: "安全邊際%（stub）",             state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active}
   - {name: checklist,        semantic: "6 項進場檢核（dual_engine/cost/shareholders/margin/pa）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active}
 
-  # ── 賣方證據 (O, Distribution/market_context) ────────────────────────────
-  - {name: weakening,        semantic: "轉弱側寫物件（severity/flags/label_zh...）；mc weakening_profile 已落地（NOTES #32）；FIELD_MAP/schema$defs 未宣告，Phase 0 補登記", state: O, grain: ticker, replay: epoch-scoped-O, owner: Distribution, status: active}
+  # ── 賣方證據 (O, market_context) ─────────────────────────────────────────
+  - {name: weakening,        semantic: "轉弱側寫物件（severity/flags/label_zh...）；mc weakening_profile 已落地（NOTES #32）；FIELD_MAP/schema$defs 未宣告，Phase 0 補登記", state: O, grain: ticker, replay: epoch-scoped-O, owner: market_context, status: active}
 
   # ── 時序記憶（殭屍欄）(O, StateMachine) ───────────────────────────────────
-  - {name: temporal_state,   semantic: "per-stock 時序記憶 stub（prior_tier/velocity/trend...）；零引擎消費殭屍欄", state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: deprecated-pending, alias: obs_sm_state}
+  - {name: temporal_state,   semantic: "per-stock 時序記憶 stub（prior_tier/velocity/trend...）；零引擎消費殭屍欄，不填不擴（NOTES #31）；概念後繼=obs_sm_state（非 alias，不雙寫）", state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: deprecated-pending}
 
   # ── 資料品質 / 呈現 stub (O) ──────────────────────────────────────────────
   - {name: data_completeness, semantic: "資料完整度分數（schema v1.5）",   state: O, grain: ticker, replay: epoch-scoped-O, owner: Pipeline(ingest), status: active, alias: obs_completeness}
