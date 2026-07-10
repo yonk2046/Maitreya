@@ -92,6 +92,15 @@
 | 42 | **缺失概念「grain 是契約的一級維度」**：I/O/M（#11）答「什麼態」、Replay Guarantee Strength（#21）答「保證多強」，grain 答「一筆的粒度」——三軸正交。**S05 registry 必須帶 grain 欄（ticker/date/sector）**；market-grain O 落 snapshot 頂層一天一筆。sector grain（leadership/sector_intelligence）暫無主管 session，registry 建欄時登記歸屬 | S05 registry/全 session | 📌 已立 |
 | 43 | **temperature 移交收尾（承 #37）**：obs_market_temperature 核准，雙前置＝elev_ratio/dist_ratio 改讀 obs_sm_transition_risk（不得續建在已廢 confidence risk_level 上）＋breadth 成分等 #41 母體修正。另：intelligence_delta 錯 key 讀 null stub（breadth_milestone 永不觸發）＝ sidecar 稽核（#38）加重證據，不單修，記入 S08/S09 卷宗 | 遷移案/S08/S09 | 📌 已裁 |
 
+## S08 裁定產出 — 2026-07-10（fable；詳見 sessions/S08-frontend-presentation.md §5。一條新法 C12、零新 RC）
+
+| # | 事項 | 歸屬 | 狀態 |
+|---|---|---|---|
+| 44 | **新契約原則 C12（呈現單一擁有者，C8 的鏡像）**：引擎輸出語意 enum，不輸出呈現（hex/雙語 label/emoji/HTML）；映射表（enum→zh/en/color/icon）由 presentation 層單一擁有。C8 禁 presentation 做判斷、C12 禁 judgment 做呈現，合封 Observation↔Presentation 雙向滲漏。違例 13/18 core 檔（清單見 S08 §3-f），最重＝chip_score.py:105-107 引擎直接吐 HTML；cockpit bg_map（:644-652）反向硬編碼引擎色盤＝雙向耦合，C12 遷移後自然消解。入遷移 checklist | 全 session/遷移案 | 📌 已立 |
+| 45 | **cockpit 路線定案：薄化，不重寫**（開案第一天懸置結案）：7-tab 版面＝驗證過的產品資產、病灶全可定位行號、重寫有 cockpit_v2 死亡前例、app.py/metrics.py＝目標形態活樣本（保留為薄化參照）。時序必然晚於 17 欄落地遷移。**四條紅線＝薄化驗收標準：不算（render-time 零引擎呼叫）、不裝（零跨引擎組裝/搬運）、不寫（零持久化）、引擎不吐呈現（C12）**。cockpit_v2.py 處決，含 Makefile:54,58 啟動目標一併移除（與 market_state #40 同批） | 遷移案 | 📌 已裁 |
+| 46 | **sidecar intelligence.json 判死（廢除，不收編）**——#38 定讞：自稱 immutable archive 卻不入 hash/replay、re-run S03 已判死 confidence、含永不觸發死事件（#43）；內容窮舉後全部＝落地序列 C9 純派生（golden_entry/exit/transition=兩份 snapshot diff、temperature_change=obs 序列派生、market_story=Presentation）→ 收編無正當理由。廢除後「今日新進」由兩份落地 snapshot 純 diff；停產留檔不刪（as-was 誠實）。**S09 開工前提：sidecar 非可消費真值源，需稽核 backtest 有無斷炊** | 遷移案/S09 | 📌 已裁 |
+| 47 | **viewer 持久化越界處決＋Tier-A 分離**：checklist_history.json 廢除——still_active＝落地 obs_golden_tier 序列的無參數 diff＝**C9 非 C10**（修正證據包提案），留存率 render-time 派生；sidecar generate button 移除。Tier-A：★ 徽章＝viewer 映射，`is_tier_a→+0.10 conviction`（golden.py:279-280）＝人工名單洩漏進資格計分，TIER_A 名單＝人工維護的 I 態判斷參數（C11 陽性）隨 #33 入 config/registry，兩者分離。漂移第 9 例（畫面 vs sidecar 同引擎各跑）隨 sidecar 判死消失 | 遷移案/S05 registry | 📌 已裁 |
+
 ## 操作軌（與研究平行，不動 schema，不記入 session 範圍）
 - ~~合併 claude/sleepy-nobel-3d007c → main~~ ✅ 已完成（2026-07-10 前）。**1.8.1 production 驗收延後：7/10 颱風假無交易資料，下一個交易日 2026-07-13 收盤後才有快照**——屆時看 reports/2026-07-13.json（Mac 開機→直接全量；Mac 關機→晚間 partial + 隔晨 supersede 補完，後者才是 NOTES #19 缺的真實樣本）。颱風假當晚各排程照常醒來、trading_day_gate 乾淨跳過（exit 0）＝正常。
 - Handoff 待辦 #2：重建 7/02、7/03 滯後快照（資料修正）。

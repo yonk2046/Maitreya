@@ -215,13 +215,71 @@ Makefile viewer 目標                          → make viewer=app.py:8501 / ma
 
 ## §5 裁定（fable 填）
 
-（留空）
+> fable 2026-07-10。依 SESSION-TEMPLATE §5 rubric。**一條新法（C12）、零新 RC**，三項處決級裁定＋一項路線定案（薄化 vs 重寫＝開案第一天的懸置，在此結案）。
+
+### ① Root-cause 聚類：17 條發現壓成 2 個根因＋1 個定讞
+
+**根因 A（P0）：cockpit 是平行判斷生產者——RC-1＋RC-9 在呈現 grain 的完整發作。**
+§3-a（C8 配線）、§3-b（render-time 九引擎）、§3-c（兩個磁碟寫入）、§3-h（渲染已判死引擎）、量能比現算是**一個病的五個症狀**：viewer 越界做了「算、裝、寫」三件非呈現的事。因果鏈要說清楚：**snapshot 是半成品（P3a 只有 raw/stub）→ viewer 被迫現算 → 現算久了自然開始組裝（C8）→ 組裝出的判斷沒地方放就自己寫檔（第 4 持久化點）**。病灶不是 cockpit 寫壞了，是它被迫替 SoR 補位七次迭代之後長出了生產者器官。17 欄落地是唯一解藥，viewer 端只是切除手術。
+
+**根因 B（P0）：sidecar＝平行 SoR，#38 在此定讞。**
+§3-d 四項證據（自稱 immutable archive／不入 hash/replay／re-run 已判死 confidence／含永不觸發死事件）坐實 S03 的「sidecar 判斷=SoR 違憲」嫌疑。它與根因 A 同源（判斷沒有落地之家，於是自建一個），但危害更深：它不只算，還**掛 SoR 招牌**——「新進名單」這個畫面判斷的唯一真值源是一個零保證 artifact。
+
+**定讞 C（新法）：呈現詞彙無主——13/18 core 檔吐色/雙語/emoji，chip_score 直接吐 HTML。**
+§3-f 不是零散 lint 問題，是缺一條法：C8 說了「presentation 不得做判斷」，但沒有鏡像條款說「引擎不得做呈現」。本裁定補上（見④ C12）。
+
+### ② 雜訊分離
+- app.py＋metrics.py：健康，且是**理想態的既有樣本**——薄化不需要發明任何新東西，repo 裡已有正確答案。保留，列為薄化參照。
+- 「轉弱」三層分層本體：S04 #32 已裁健康不合併，本層只確認「viewer 正在組裝統一標籤」＝C8 違例的一個面向，機制已裁，不重裁。
+- 漂移第 9 例（畫面 vs sidecar 各跑 golden.run）：登記入遷移 checklist，不另立條目——sidecar 判死後此漂移自然消失。
+
+### ③ 責任洩漏檢查
+- sidecar 若殘留任何 backtest 消費 → S09 稽核（本裁定判死 sidecar，S09 需確認無下游斷炊）。
+- TIER_A 人工名單的治理（誰維護、如何記錄）→ S05 registry；本層只裁分離原則。
+- obs_* 欄位的語意 enum 值域定義 → S05 registry 隨 C12 建欄。
+
+### ④ 新法 C12（呈現單一擁有者）＋裁定本體
+
+**C12：引擎輸出語意 enum，不輸出呈現（hex/雙語 label/emoji/HTML）；呈現映射表（enum → zh/en/color/icon）由 presentation 層單一擁有。** C8 的鏡像條款：C8 禁 presentation 做判斷，C12 禁 judgment 做呈現，兩條合起來才封死 Observation↔Presentation 的雙向滲漏。判例：chip_score.py:105-107 引擎吐 `<span style=...>` HTML＝最重違例；cockpit.py:644-652 bg_map 反向硬編碼引擎色盤＝雙向耦合的必然結果，C12 遷移後自然消解。違例清單 13 檔已列 §3-f，入遷移 checklist。
+
+**處置一：薄化，不重寫（開案第一天懸置的結案）。**
+四組證據全指向薄化：(i) 7-tab 結構與版面是使用者驗證過的產品資產；(ii) 病灶全部可定位到行號（九個引擎呼叫、兩個寫入、一處配線）——薄化＝逐點置換為讀 obs_* 欄，不動版面；(iii) 重寫路線在本 repo 有 cockpit_v2 一次死亡紀錄，且 S07 剛對 market_state 重申「平行重建必死」判例；(iv) app.py/metrics.py 已示範目標形態。**時序**：薄化必然晚於 17 欄落地遷移（落地前任何前端都被迫現算）；凍結期內 cockpit 現況不動。四條紅線自遷移日起生效：**不算（render-time 零引擎呼叫）、不裝（零跨引擎組裝/搬運）、不寫（零持久化）、引擎不吐呈現（C12）**。
+
+**處置二：sidecar intelligence.json 判死（廢除，不收編）。**
+稽核其內容：golden_entry/exit/state_transition/risk 事件＝兩份落地 snapshot 的 diff（17 欄落地後全部 C9 純派生）；temperature_change＝obs_market_temperature 序列派生；market_story＝Presentation；breadth_milestone＝已死。**找不到任何一項落地序列派生不出來的內容**，故不存在「收編 canonical」的正當理由——收編一個全 C9 的 artifact 違反 C9 本身。廢除後：「今日新進」由 viewer 對兩份落地 snapshot 做純 diff；sidecar 檔案停產，既有 33 份留檔不刪（as-was 誠實：它們是歷史上真實存在過的產出，但不再是任何判斷的真值源）。
+
+**處置三：checklist_history.json 廢除＋Tier-A 分離。**
+- 證據包提議「still_active 若有價值＝C10 → core 落地」，**改判**：still_active（昨日在榜今日還在否）＝落地 obs_golden_tier 序列的純 diff＝**C9 不落**，連 core 落地都不需要。留存率顯示改為 render-time 從落地序列派生；viewer 寫檔停止，既有檔案留檔不刪。
+- Tier-A：★ 徽章（顯示「在人工觀察名單」）＝viewer 映射；`+0.10 conviction`（golden.py:279-280）＝資格判斷輸入，TIER_A 名單本身是**人工維護的 I 態判斷參數**，隨 #33 門檻 config 化一併入 config/registry（改名單＝改歷史意見，C11 測試陽性，必須留痕）。兩者分離後徽章與計分各自有主。
+- cockpit_v2.py 處決，**含 Makefile:54,58 啟動目標一併移除**（「棄置但可啟動」比死碼危險）；與 market_state.py 同批（#40 判例）。
+
+### ⑤ 挑戰證據包
+- **checklist_history 的 C10 提案錯了**：跨快照不等於 C10——C10 是「路徑依賴判斷逐日落地為當日認定」，still_active 是已落地序列的無參數 diff，C11 測試陰性 → C9。已改判（見處置三）。
+- **sidecar「廢除 or 收編」不該留活口**：稽核已窮舉其內容，全 C9，收編無正當理由。已定讞廢除。
+- **「第 9/10 個死平行實作」計數浮動**：死碼登記統一為——cockpit_v2、market_state、distribution 死輸出（拆解中）、sidecar（本裁定）；不再逐例編號，遷移 checklist 以清單為準。
+- 證據品質無虛：行號可核、磁碟計數實測（45 snapshot/33 sidecar）、Makefile 目標查證。採信。
+
+### ⑥ Architecture Verdict
+- **P0**（凍結期＝立約順序）：①四條紅線＋C12 立法（薄化與所有引擎遷移的驗收標準）；②sidecar 判死（S09 開工前必須知道它不是可消費的真值源）；③薄化路線定案（終結「另建前端」路線的制度性誘惑——本 repo 已三次證明平行重建必死）。
+- **P1**：confidence 顯微鏡 tab 改映射（薄化最大單一工作量，S03 #37 的執行面）；checklist_history/sidecar 停產；Tier-A 名單入 config/registry；cockpit_v2＋Makefile 目標處決。
+- **P2**：bg_map 雙向色彩耦合（C12 遷移自然消解）；「持續在列」第 4 種「連續」語意（隨 checklist_history 廢除消失）；統一「轉弱」對外標籤（產品需求出現時依 #32 core 派生）。
+
+**Executive Summary（≤5 條）**
+1. cockpit 不是壞掉的前端，是被半成品 snapshot 逼成的平行判斷生產者：render-time 重跑九引擎、替 golden 配線 weakening（C8 現行犯）、自己寫兩種持久化狀態、還在渲染 S03 已判死的 confidence——一個根因五個症狀，解藥是 17 欄落地＋逐點切除，不是重寫。
+2. **薄化，不重寫**（開案第一天的問題在此結案）：版面與 7-tab 是驗證過的產品資產、病灶全可定位到行號、重寫路線已有 cockpit_v2 死亡前例、app.py/metrics.py 就是目標形態的活樣本。
+3. **sidecar intelligence.json 判死**：掛著 immutable archive 招牌的零保證平行 SoR，內容窮舉後全部是落地序列的 C9 純派生——廢除，「今日新進」改由兩份落地 snapshot 純 diff。
+4. **新法 C12（C8 的鏡像）**：引擎吐語意 enum、presentation 單一擁有映射表；13/18 core 檔違例、chip_score 直接吐 HTML 是最重一例。
+5. 四條紅線＝薄化驗收標準：不算、不裝、不寫、引擎不吐呈現。checklist_history 廢（still_active 是 C9 不是 C10）、Tier-A 徽章與 +0.10 計分分離（名單入 config/registry）。
+
+- **系統身份判準下的角色**：Presentation＝System of Record 的閱讀器；它的全部合法動作是映射與 C9 純派生視圖。
+- **不需要改的**：7-tab 結構與版面（產品資產）；app.py/metrics.py（保留，薄化參照）；「轉弱」三層分層本體（#32 已裁）；display_tier 概念本體（C9 合法，只需切斷 viewer 配線）。
+- **已鎖決策相容性**：扁平前綴（本層零新欄）✓；additive（sidecar/checklist_history 停產留檔不刪、Makefile 目標移除屬死碼處決非契約變更）✓；C1–C11 全相容，C12 為 C8 補鏡像✓；三態＋grain（Presentation＝非資料層，維持）✓。
 
 ---
 
 ## §6 收尾 checklist
-- [ ] CROSS-SESSION-NOTES 已 append 本 session 新發現（蒐證階段不預先 append，待 fable 裁定）
-- [ ] 00-INDEX 狀態列已更新（證據包連結）
+- [x] CROSS-SESSION-NOTES 已 append #44–#47（fable 裁定後）
+- [x] 00-INDEX 狀態列已更新（✅ 完成）
 - [x] 未執行任何 code/schema 改動
 
 ---
