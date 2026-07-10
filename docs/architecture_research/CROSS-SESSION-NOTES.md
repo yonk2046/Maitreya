@@ -101,6 +101,19 @@
 | 46 | **sidecar intelligence.json 判死（廢除，不收編）**——#38 定讞：自稱 immutable archive 卻不入 hash/replay、re-run S03 已判死 confidence、含永不觸發死事件（#43）；內容窮舉後全部＝落地序列 C9 純派生（golden_entry/exit/transition=兩份 snapshot diff、temperature_change=obs 序列派生、market_story=Presentation）→ 收編無正當理由。廢除後「今日新進」由兩份落地 snapshot 純 diff；停產留檔不刪（as-was 誠實）。**S09 開工前提：sidecar 非可消費真值源，需稽核 backtest 有無斷炊** | 遷移案/S09 | 📌 已裁 |
 | 47 | **viewer 持久化越界處決＋Tier-A 分離**：checklist_history.json 廢除——still_active＝落地 obs_golden_tier 序列的無參數 diff＝**C9 非 C10**（修正證據包提案），留存率 render-time 派生；sidecar generate button 移除。Tier-A：★ 徽章＝viewer 映射，`is_tier_a→+0.10 conviction`（golden.py:279-280）＝人工名單洩漏進資格計分，TIER_A 名單＝人工維護的 I 態判斷參數（C11 陽性）隨 #33 入 config/registry，兩者分離。漂移第 9 例（畫面 vs sidecar 同引擎各跑）隨 sidecar 判死消失 | 遷移案/S05 registry | 📌 已裁 |
 
+## S09 裁定產出 — 2026-07-10（fable；詳見 sessions/S09-backtest-logic.md §5。零新法、零新 RC＝法典閉合性通過。**9/9 session 完成，研究階段收官**）
+
+| # | 事項 | 歸屬 | 狀態 |
+|---|---|---|---|
+| 48 | **回測重算歷史判斷＝C11 陽性（參數 look-ahead）**：paper_trading.py:186,423 每決策日 `_golden.run(snaps[:i+1])`＋temporal_enrich 用今日 code+今日門檻回放歷史；實測改 entry_streak_min 3→5 歷史交易 8→3 無痕位移。「No look-ahead」宣稱半真（資料無、code/參數有）——半真比全假危險。混合出處（出場讀 as-was weakening、進場今日回算）同病同治。治法＝17 欄落地後改讀 as-was 落地序列（C10 回測面） | 遷移案（依賴 S01#26/S04#30/S02#35＋#33） | 📌 已裁 |
+| 49 | **正式宣告：現行回測數字不具決策效力**——C11 回放偏誤＋母體偏誤同向（偏樂觀），輸出是工程樣本非證據；夜跑無害不停。正確化依賴鏈＝17 欄落地→#33 config→#41 母體→回測薄化，**回測是遷移排程最後一站**。四紅線（不算/不裝/不寫＋#27 資格 vs 行動命名）為薄化驗收標準（S08 #45 同構） | 遷移案/Yonki 知悉 | 📌 已裁 |
+| 50 | **universe=榜→持股跌出即隱形凍結**（paper_trading.py:153-154,343-344）：不 MTM/不停損/不出場，最該停損時刻回測失明；同母體病使績效 tab 永卡 30 筆門檻（cockpit:3510，門檻本身正確不動）。**#41 的第三張帳單**（regime 廣度、temperature 權重之後），回測正確性依賴 #41 市場母體修正 | 遷移案/S07#41 | 📌 已裁 |
+| 51 | **出場判斷單一 SoT**：paper_trading v1(:164)/v2(:363)/holdings(:82-96 硬編碼連2、未讀 fii_reversal_days) 三實作合併為一評估函式＋一份 config。**漂移登記收案：10 例，全入遷移 checklist，不再增列** | 遷移 checklist | 📌 已裁 |
+| 52 | **回測產物 version-pinning**：不落 canonical（跨窗 Derived-O 非當日 observation）；廢除覆寫式 _latest 為唯一真本——產物帶 schema_version＋輸入 snapshot 指紋＋strategy config hash，per-run 留檔，_latest 降為指標。機制設計歸 S06 #21/#22 框架 | 遷移案/S06 | 📌 已裁 |
+| 53 | **sidecar 判死零斷炊（正面稽核）**：backtest 全鏈零 intelligence.json 消費，#46 開工前提已回覆，S08 裁定安全著陸。strategies.py 規則外置 config＝先天健康樣本（#33 遷移參照） | 已結案 | ✅ 證實 |
+| 54 | **17 欄核准清單經終端消費者反向檢視無缺項→落地清單凍結為最終版**（obs_golden_* 六＋obs_sm_* 六＋obs_chip_grade/total/sync_streak＋obs_dist_consistency＋obs_market_regime/breadth/temperature） | 遷移案總表 | 📌 定稿 |
+| 55 | 出貨 limitations 字串已成謊（paper_trading.py:120「snapshots carry no open」，實測 open=50.5 且 _fill_price 已優先用 open）——遷移期順手修 | 遷移期順手 | 登記 |
+
 ## 操作軌（與研究平行，不動 schema，不記入 session 範圍）
 - ~~合併 claude/sleepy-nobel-3d007c → main~~ ✅ 已完成（2026-07-10 前）。**1.8.1 production 驗收延後：7/10 颱風假無交易資料，下一個交易日 2026-07-13 收盤後才有快照**——屆時看 reports/2026-07-13.json（Mac 開機→直接全量；Mac 關機→晚間 partial + 隔晨 supersede 補完，後者才是 NOTES #19 缺的真實樣本）。颱風假當晚各排程照常醒來、trading_day_gate 乾淨跳過（exit 0）＝正常。
 - Handoff 待辦 #2：重建 7/02、7/03 滯後快照（資料修正）。
