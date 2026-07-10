@@ -332,6 +332,24 @@ def adapt_legacy(
         trust = ri["investment_trust_net_buy"]
         ri["fii_sync_count"] = sum(1 for v in [mfb, fii, trust] if v is not None and v > 0)
 
+        # --- Phase 1 正名 staging (NOTES #1 / CROSS-SESSION-NOTES.md#1) -------
+        # dealer_net_buy (schema field, see core/ingest.py:182) is misnamed —
+        # it actually carries investment_trust_net_buy (投信), while the real
+        # 自營商 value computed above (prop_dealer_net_buy) is silently
+        # dropped by ingest. These two keys stage the CORRECT names for the
+        # 1.9.0 landing (registry: schema/field_registry.yaml, status=planned)
+        # WITHOUT changing today's canonical snapshot:
+        #   - core/ingest.py does not read "trust_net_buy" / "prop_net_buy"
+        #     into any StockRecord field yet (staging only, zero consumption).
+        #   - deliberately NOT added to provenance_sources[...]["provides_fields"]
+        #     below — that list feeds provenance.field_to_source, which IS part
+        #     of the canonical snapshot content. Adding these names there would
+        #     change the hash even though no record field changes.
+        # Verified inert via `make verify-all-replay` (43/43 dates, 0 failures,
+        # identical to pre-change baseline) — see docs/migration/P1-worm-backfill-report.md.
+        ri["trust_net_buy"] = ri["investment_trust_net_buy"]  # 投信正名（現被誤裝進 dealer_net_buy）
+        ri["prop_net_buy"]  = ri["prop_dealer_net_buy"]        # 真自營商正名（現被 ingest 丟棄）
+
     # --- Merge TDCC weekly shareholder / large-holder data ---
     # data/tdcc/<YYYYMMDD>.json files are written by tools/fetch_tdcc.py (or
     # fetch_daily.py on Fridays).  This block is read-only — no writes here,
@@ -391,6 +409,31 @@ def adapt_legacy(
 
     universe = sorted(raw_inputs_per_ticker.keys())
 
+    # --- Phase 1 staging: sell-side raw passthrough (NOTES #38 / C7) --------
+    # today.json["sellList"]/["mainForceSell"] (Fubon 外資賣超/主力賣超 top-N
+    # rankings) are the only sell-side evidence source but have never entered
+    # canonical — distribution.py reads them disk-load-only, never through
+    # the pipeline (S03 裁定 #38: "活 code 死輸出"). This stages a verbatim,
+    # unmodified passthrough (C7 非破壞 — same list-of-dict shape as source,
+    # no truncation/reshaping) as a NEW top-level adapter_output key so a
+    # future obs_dist_consistency (1.9.0, see field_registry.yaml planned_fields)
+    # can consume it. Deliberately:
+    #   - NOT merged into raw_inputs_per_ticker / universe (sell-side tickers
+    #     often aren't in the buy-side mainForceBuy universe; adding them
+    #     would create new StockRecords in the snapshot — a real content
+    #     change, not staging).
+    #   - NOT registered as a provenance source (provenance_sources becomes
+    #     snapshot.provenance.sources verbatim — any new source entry there
+    #     changes the canonical hash).
+    #   - NOT read by core/ingest.py (ingest only extracts named top-level
+    #     keys from adapter_output; unknown keys are inert).
+    # Net effect: zero canonical snapshot content change, verified via
+    # `make verify-all-replay` — see docs/migration/P1-worm-backfill-report.md.
+    sell_raw = {
+        "fii_sell_raw":        today.get("sellList", []) or [],       # 外資賣超原始榜（Fubon ZGK_D topSell）
+        "main_force_sell_raw": today.get("mainForceSell", []) or [],  # 主力賣超原始榜（Fubon ZGK_F topSell）
+    }
+
     # --- Provenance ---
     # raw_file is the LOGICAL identifier of the source under data/, not the
     # physical path of the bytes we read. When paths_override is set (replay
@@ -440,6 +483,7 @@ def adapt_legacy(
         "provenance_sources":    provenance_sources,
         "audit_events":          audit_events,
         "fii_pending":           fii_pending,
+        "sell_raw":              sell_raw,  # Phase 1 staging (NOTES #38) — inert, see comment above
         "_today_meta": {
             "fetchedAt": today.get("fetchedAt"),
             "sources":   today.get("sources", []),
