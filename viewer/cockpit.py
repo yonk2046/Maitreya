@@ -102,6 +102,9 @@ html, body, p, div, span, td, th { font-size: 15px !important; }
 h1, h2, h3, h4 { font-family: 'SF Pro Display','Helvetica Neue',sans-serif !important; letter-spacing: -0.01em; }
 [data-testid="stTabs"] button { font-size: 14px !important; font-weight: 600; color: #8B949E !important; }
 [data-testid="stTabs"] button[aria-selected="true"] { color: #7EB8D4 !important; border-bottom-color: #7EB8D4 !important; }
+/* ★ 進場機會 tab（第 3 個 tab）— 金黃色標籤 (Yonki 2026-07-11) */
+[data-testid="stTabs"] [data-baseweb="tab-list"] button:nth-of-type(3) { color: #FFD700 !important; }
+[data-testid="stTabs"] [data-baseweb="tab-list"] button:nth-of-type(3)[aria-selected="true"] { color: #FFD700 !important; border-bottom-color: #FFD700 !important; }
 
 /* ── Regime banner ── */
 .regime-banner {
@@ -3329,7 +3332,7 @@ def _delta_table(changes: list[BiggestChange], pct_format: bool = True) -> str:
 def _render_intelligence(active_date: str, snaps: list[dict], part: str = "story") -> None:
     """P3.2 拆件:深度數據 tab 解散(Yonki 2026-07-04),三個部分各自歸位 —
     part='story'   今日綜述(市場故事)      → 市場敘事 tab 頂部
-    part='changes' Δ排行 + 今日事件(質變)  → 潛力區
+    part='changes' Δ排行 + 今日事件(質變)  → 進場機會(潛力區併入)
     part='risk'    風險警報                → 出場警示 tab 頂部
     """
     report = _intel_load(active_date) if active_date else None
@@ -3360,7 +3363,7 @@ def _render_intelligence(active_date: str, snaps: list[dict], part: str = "story
         _section_header("📖", "今日綜述", "Market Story")
         st.markdown(_EXPLAIN_DIV.format(
             text=f"把今天所有變化濃縮成幾句事實陳述（生成 {report.generated_at} · {prev_str}）。"
-                 "量化明細在「🌱 潛力區→今日變化」與「🔻 出場警示→風險警報」。"),
+                 "量化明細在「★ 進場機會→今日變化」與「🔻 出場警示→風險警報」。"),
             unsafe_allow_html=True)
         if report.market_story:
             for s in report.market_story:
@@ -3814,13 +3817,12 @@ def main() -> None:
             unsafe_allow_html=True,
         )
 
-    # ── Tabs（P3.2 定稿 7 tabs,Yonki 2026-07-04:深度數據解散,內容各自歸位 —
-    #    故事→市場敘事頂 / Δ+質變事件→潛力區 / 風險警報→出場警示）─
-    tab_market, tab_holdings, tab_entry, tab_potential, tab_exit, tab_research, tab_backtest = st.tabs([
+    # ── Tabs（Yonki 2026-07-11:潛力區併入進場機會,6 tabs —
+    #    故事→市場敘事頂 / Δ+質變事件+轉強+多空計分→進場機會 / 風險警報→出場警示）─
+    tab_market, tab_holdings, tab_entry, tab_exit, tab_research, tab_backtest = st.tabs([
         "📰 市場敘事",
         "💼 我的持倉",
         "★ 進場機會",
-        "🌱 潛力區",
         "🔻 出場警示",
         "🔬 個股顯微鏡",
         "📈 模擬績效",
@@ -3836,22 +3838,22 @@ def main() -> None:
         _render_holdings(snaps_to_date)
 
     with tab_entry:
-        # 進場機會 = 黃金引擎全家:黃金名單(過五門) + 黃金候補(過四門)
-        # (P2.8:候補與名單同引擎,按模組歸位 — Yonki 2026-07-04 定案)
+        # 進場機會 = 黃金引擎全家 + 潛力區併入(Yonki 2026-07-11):
+        #   黃金名單(過五門) → 黃金候補(過四門)
+        #   → 轉強訊號(潛力區拉上,緊接黃金候補)
+        #   → 潛力區其餘訊號表(維持原相對順序:多空計分精選觀察 → 今日變化Δ+質變)
         _render_score_glossary()
         st.markdown(_SECTION_TITLE.format(label="★ 黃金名單"), unsafe_allow_html=True)
         _render_golden(snaps_to_date, show_near_miss=False)
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
         _render_near_miss_table(snaps_to_date)
-
-    with tab_potential:
-        # 潛力區 = 多空計分體系(精選觀察) + 今日變化(Δ+質變) + 原始行為數據(轉強全表)
-        _render_score_glossary()
+        # ── 潛力區併入 ──
+        st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        _render_strengthening(snaps_to_date)
+        st.markdown(_SECTION_HR, unsafe_allow_html=True)
         _render_watch_table(active_date)
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
         _render_intelligence(active_date, snaps_to_date, part="changes")
-        st.markdown(_SECTION_HR, unsafe_allow_html=True)
-        _render_strengthening(snaps_to_date)
 
     with tab_exit:
         # 出場警示 = 風險警報(P3.2 歸位) + 轉弱出貨 + 假突破
