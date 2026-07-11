@@ -35,6 +35,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import urllib.request
 from typing import Any
 
 _HERE = pathlib.Path(__file__).resolve().parent      # Ai stock/tools/
@@ -43,6 +44,10 @@ _PROJECT_ROOT = _AI_STOCK.parent                      # SCD engine/  (parent of 
 
 REPORTS_DIR = _AI_STOCK / "reports"
 DAILY_LOGS = REPORTS_DIR / "_daily_logs"
+# Per-date market-pulse archive written by tools/fetch_market_pulse.py (P1-2).
+# The trading-day oracle reads it first (free proof the market was open today)
+# before falling back to a live TWSE probe.
+MARKET_PULSE_DIR = _AI_STOCK / "data" / "market_pulse"
 # fetch_daily.py is now in the same tools/ dir (repo-local copy for CI).
 # Fall back to the legacy parent-dir location for local dev compatibility.
 UPSTREAM_FETCH = (
@@ -120,6 +125,106 @@ def _snapshot_is_partial(date: str) -> bool:
     except (json.JSONDecodeError, OSError):
         return False
     return bool(snap.get("fii_pending"))
+
+
+# ---------------------------------------------------------------------------
+# Trading-day oracle (MI_INDEX) — the authority behind --allow-partial
+# ---------------------------------------------------------------------------
+# 事故 (2026-07-10 颱風假): 放假日無交易, 但富邦網站照供「回收的」榜單 (35 檔與
+# 前一日完全相同、股價全等前收)。系統的「今天是否交易日」判斷隱性依賴「T86 是否
+# 存在」, 而 --allow-partial 正是繞過該訊號的開關 → 晚班把「放假日 T86 永不發布」
+# 誤讀成「T86 晚到」, 用陳舊榜單產出永不會被 supersede 的殭屍 partial 快照。
+#
+# 修法: 用 TWSE MI_INDEX (與 P1-2 breadth 同源) 當「今天有沒有開盤」的權威訊號,
+# 獨立於富邦、獨立於 T86。partial 只在 oracle 確認「今天有開盤」時才允許 (真晚到);
+# 確認不了 (放假 / oracle 網路失敗) 一律 fail-closed → 不產 partial, 跳過。
+
+_MI_INDEX_URL = (
+    "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX"
+    "?response=json&date={date}&type=ALLBUT0999"
+)
+
+
+def _market_pulse_archive_open(target_date: str) -> bool:
+    """True iff the P1-2 market-pulse archive for target_date proves a session.
+
+    tools/fetch_market_pulse.py runs earlier in the same GHA job and archives
+    data/market_pulse/<date>.json. A parsed `breadth` block (no 'error', a
+    numeric `total`) is free proof the TWSE after-hours endpoint returned real
+    data — i.e. the market WAS open — so we can skip the live probe entirely.
+
+    Conservative: any missing file / read error / errored-or-empty breadth
+    returns False (fall through to the live probe), never a false 'open'.
+    """
+    path = MARKET_PULSE_DIR / f"{target_date}.json"
+    if not path.is_file():
+        return False
+    try:
+        pulse = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return False
+    breadth = pulse.get("breadth")
+    if not isinstance(breadth, dict):
+        return False
+    if "error" in breadth:
+        return False
+    return isinstance(breadth.get("total"), int)
+
+
+def _mi_index_probe(target_date: str) -> bool | None:
+    """Live TWSE MI_INDEX probe. Tri-state, independent of 富邦 and T86.
+
+    Returns:
+      True  — stat == 'OK': TWSE published after-hours data → market was open.
+      False — stat != 'OK' (e.g. '很抱歉，沒有符合條件的資料！') → no session.
+      None  — the probe itself is indeterminate (network error / TWSE down /
+              unparseable body); caller treats this as fail-closed.
+    """
+    url = _MI_INDEX_URL.format(date=target_date.replace("-", ""))
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/124.0.0.0 Safari/537.36"
+                ),
+                "Accept": "application/json, text/plain, */*",
+                "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
+                "Referer": "https://www.twse.com.tw/",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            raw = resp.read()
+        data = json.loads(raw.decode("utf-8-sig"))
+    except Exception:
+        return None
+    if not isinstance(data, dict) or "stat" not in data:
+        return None
+    return data.get("stat") == "OK"
+
+
+def _trading_day_oracle(target_date: str) -> tuple[bool, str]:
+    """Authoritative 'was the market open on target_date?' — for --allow-partial.
+
+    Resolution order (cheap → expensive):
+      1. Local reuse: a parsed market-pulse archive for target_date proves open.
+      2. Live TWSE MI_INDEX probe (tri-state).
+
+    Returns (is_open, reason). is_open is True ONLY on positive proof of a
+    session; a holiday/weekend (probe False) AND an indeterminate probe (None)
+    both return False — fail-closed, so we never build a zombie partial off a
+    holiday's recycled 榜單. `reason` is logged.
+    """
+    if _market_pulse_archive_open(target_date):
+        return True, f"market_pulse archive {target_date}.json has parsed breadth (session confirmed)"
+    probe = _mi_index_probe(target_date)
+    if probe is True:
+        return True, "TWSE MI_INDEX stat=OK (session confirmed)"
+    if probe is False:
+        return False, "TWSE MI_INDEX stat!=OK — no trading session (holiday/weekend)"
+    return False, "TWSE MI_INDEX probe indeterminate (network/parse error) — fail-closed"
 
 
 _ISO_DATE = __import__("re").compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -333,14 +438,36 @@ def run(
                 # 兩段式快照晚班:CDN 擋雲端抓當日 T86 → 建部分快照
                 # (fii_pending=True,fii 欄位全 None — 滯後 T86 已在
                 # fetch/adapter 層丟棄,不會混入)。早晨班次補完。
+                #
+                # 但 T86 缺席有兩種成因:①有開盤、T86 晚到 (合法 partial) vs
+                # ②今天沒開盤、T86 永不發布 (2026-07-10 颱風假殭屍事故)。
+                # allow_partial 繞過了「T86 存在」這個隱性交易日訊號,所以先問
+                # 一個獨立於富邦、獨立於 T86 的權威 oracle (TWSE MI_INDEX):
+                # 確認有開盤才建 partial;確認不了 (放假 / oracle 失敗) fail-closed
+                # 跳過 (寧可少一份晚上快照,早晨 T+1 路徑會再跑;絕不再產殭屍)。
+                market_open, oracle_reason = _trading_day_oracle(target_date)
+                if not market_open:
+                    log_lines.append({
+                        "step": "trading_day_oracle", "status": "skip",
+                        "reason": "T86 absent and allow_partial=True, but the trading-day "
+                                  "oracle could not confirm a session — refusing to build a "
+                                  "partial snapshot off possibly-recycled 榜單 (2026-07-10 "
+                                  f"zombie-partial guard). oracle: {oracle_reason}",
+                    })
+                    _finalize(log_lines, "skip_no_trading_day_oracle", target_date)
+                    print(f"[daily] 交易日 oracle 未確認開盤 — 不建 partial,跳過 (exit 0)。"
+                          f"oracle: {oracle_reason}", file=sys.stderr)
+                    return 0
                 log_lines.append({
                     "step": "fii_gate", "status": "partial",
                     "reason": "T86 unavailable and allow_partial=True — building PARTIAL "
                               "snapshot (fii_pending=True); a later strict run with fresh "
-                              "T86 will supersede-complete it",
+                              "T86 will supersede-complete it. "
+                              f"trading-day oracle confirms open: {oracle_reason}",
                 })
-                print("[daily] 三大法人(T86) 不可得 — 建部分快照 (fii_pending),"
-                      "早晨班次自動補完", file=sys.stderr)
+                print("[daily] 三大法人(T86) 不可得但交易日 oracle 確認有開盤 — "
+                      f"建部分快照 (fii_pending),早晨班次自動補完。oracle: {oracle_reason}",
+                      file=sys.stderr)
             else:
                 log_lines.append({
                     "step": "fii_gate", "status": "skip",
