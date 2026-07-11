@@ -407,8 +407,9 @@ obs_*（fii 依賴部分誠實 abstain/降級），早晨 supersede 補完時重
 - [ ] Phase 1 五線全綠：門檻 config 化（engine_params.py 就位）、母體修正（market_pulse per-date 歸檔）、
       adapter staging（trust/prop/賣方 raw 已輸出）、replay 契約化（replay_contract.py）、version-pin 設計。
 - [ ] `data/market_pulse/<date>.json` 對目標交易日存在且 breadth 解析成功（errors 空）。
-- [ ] `make test` 全綠（現況 320 passed / 1 skipped 為基線）。
-- [ ] `make verify-all-replay` 0 fail（bump 前基線：2 full-replay-clean + 41 legacy-epoch-clean）。
+- [ ] `make test` 全綠（以執行當日 main 實際通過數為基線，不得少）。
+- [ ] `make verify-all-replay` 0 fail（**先記錄執行前 full/legacy 計數當基線**；絕對數字隨資料修正
+      演進——2026-07-11 handoff#2 重建 cascade 後約 6 full + 36 legacy / 42，以當日實跑為準）。
 
 ### 8b. bump 當日（實作 agent 執行順序）
 1. [ ] schema：canonical_schema.json 顯式宣告 22 欄型別（§1）；`SCHEMA_VERSION` 1.8.1→1.9.0；

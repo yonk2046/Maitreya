@@ -72,9 +72,9 @@ Reviewer 鐵律：
 > 鐵律：只做宣告，不動 ingest 計算邏輯（那是 W2）——此時跑 pipeline 會產出 1.9.0 版本號但
 > 尚無 obs 欄，屬預期中間態；schema 對新欄一律非 required（additive）。
 > 驗收：make test 全綠（版本 assert 已同步）；make verify-registry 綠；
-> make verify-all-replay 預期變化＝原本 2 份 1.8.1 full-replay 轉為 legacy-epoch
-> （3 full→0 full/43+1 legacy 之類的計數位移，0 failure）——這是 bump 的預期代價（#22），
-> 不是錯誤，回報時明確標注計數前後。
+> make verify-all-replay 預期變化＝全部既有 1.8.1 快照轉為 legacy-epoch（full 計數歸零、
+> legacy 計數等量增加，0 failure）——這是 bump 的預期代價（#22），不是錯誤；
+> 動手前先記錄計數基線，回報時明確標注前後。
 > commit「feat(P2-W1): schema 1.9.0 宣告 — 22 欄+obs_landing+config_snapshot 型別, registry
 > planned→active」→ pull --rebase --autostash → push。
 
