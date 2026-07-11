@@ -103,8 +103,8 @@ h1, h2, h3, h4 { font-family: 'SF Pro Display','Helvetica Neue',sans-serif !impo
 [data-testid="stTabs"] button { font-size: 14px !important; font-weight: 600; color: #8B949E !important; }
 [data-testid="stTabs"] button[aria-selected="true"] { color: #7EB8D4 !important; border-bottom-color: #7EB8D4 !important; }
 /* ★ 進場機會 tab（第 3 個 tab）— 金黃色標籤 (Yonki 2026-07-11) */
-[data-testid="stTabs"] [data-baseweb="tab-list"] button:nth-of-type(3) { color: #FFD700 !important; }
-[data-testid="stTabs"] [data-baseweb="tab-list"] button:nth-of-type(3)[aria-selected="true"] { color: #FFD700 !important; border-bottom-color: #FFD700 !important; }
+[data-testid="stTabs"] [data-baseweb="tab-list"] button:nth-of-type(3) { color: #EBC92F !important; }
+[data-testid="stTabs"] [data-baseweb="tab-list"] button:nth-of-type(3)[aria-selected="true"] { color: #EBC92F !important; border-bottom-color: #EBC92F !important; }
 
 /* ── Regime banner ── */
 .regime-banner {
