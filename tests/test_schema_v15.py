@@ -188,7 +188,9 @@ def test_schema_version_is_current():
     #         main_force_positive_days_in_window / net_accumulation_in_window)
     #         + lookback_window_days 5→20。
     # 1.8.1 = 兩段式快照:頂層 fii_pending(T86 未到手誠實標缺,早晨 supersede 補完)。
-    assert SCHEMA_VERSION == "1.8.1"
+    # 1.9.0 = P2 單一 bump:22 canonical 欄宣告(obs_* O 欄+trust/prop/賣方 raw I 欄
+    #         +obs_market_*+obs_landing 旗標+config_snapshot 雙來源結構)。W1 宣告階段。
+    assert SCHEMA_VERSION == "1.9.0"
 
 
 # ---------------------------------------------------------------------------

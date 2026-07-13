@@ -117,7 +117,14 @@
       }
     },
 
-    "config_snapshot": { "type": "object" },
+    "config_snapshot": {
+      "type": "object",
+      "description": "Frozen config (judgment-parameter source of record, participates in config_hash). 1.9.0 (P2 §4) upgrades value from a flat yaml dict to a two-source structure {yaml, engine_params}; W2 implements population. 1.8.1 and earlier snapshots carry the flat yaml dict — both shapes are objects, so this is additive/back-compatible. Sub-properties are non-required.",
+      "properties": {
+        "yaml":          { "type": "object", "description": "config/scd.example.yaml verbatim" },
+        "engine_params": { "type": "object", "description": "core/engine_params.py public UPPERCASE constants via as_config_dict(); enters canonical hash from 1.9.0" }
+      }
+    },
     "universe_size":   { "type": "integer", "minimum": 0 },
     "eligible_count":  { "type": "integer", "minimum": 0 },
 
@@ -127,7 +134,7 @@
     },
 
     "market_regime": {
-      "description": "Snapshot-level market regime. Optional in v1.4.0 (placeholder for future classifier). See TEMPORAL_ARCHITECTURE.md TP6.",
+      "description": "Snapshot-level market regime. Optional in v1.4.0 (placeholder for future classifier). See TEMPORAL_ARCHITECTURE.md TP6. DEPRECATED-PENDING from 1.9.0: real value moves to obs_market_regime (registry #40).",
       "type": "object",
       "properties": {
         "label":       { "type": ["string","null"] },
@@ -135,6 +142,33 @@
         "confidence":  { "type": ["number","null"] },
         "features":    { "type": "object" }
       }
+    },
+
+    "obs_market_regime": {
+      "description": "1.9.0 (P2 §1b, registry #40): market regime, regime_shift converged as the sole market-level producer. Supersedes the top-level market_regime stub. grain=date. Additive, non-required; sub-structure {label, features, ...} kept open (populated in W4).",
+      "type": "object"
+    },
+    "obs_market_breadth": {
+      "description": "1.9.0 (P2 §1b/§6a, registry #41): market breadth read from data/market_pulse/<date>.json using the full-market advancers/decliners universe (twse_listed) — no longer the top-N buy list as denominator. Structure {advancers, decliners, total, breadth, universe}. grain=date. Additive, non-required (populated in W4).",
+      "type": "object"
+    },
+    "obs_market_temperature": {
+      "description": "1.9.0 (P2 §1b/§6b, registry #43): market temperature aggregated from the day's landed obs_sm_transition_risk plus the corrected obs_market_breadth. Structure {temperature, level, ...}. grain=date. Additive, non-required (populated in W4).",
+      "type": "object"
+    },
+
+    "fii_sell_raw": {
+      "description": "1.9.0 (P2 §1c, C7): foreign-institutional top-sell raw list passthrough (today.json.sellList, Fubon ZGK_D topSell) — shape preserved verbatim. grain=date. Additive, non-required (populated in W2).",
+      "type": ["array","object"]
+    },
+    "main_force_sell_raw": {
+      "description": "1.9.0 (P2 §1c, C7): main-force top-sell raw list passthrough (today.json.mainForceSell, Fubon ZGK_F topSell) — shape preserved verbatim; input to obs_dist_consistency. grain=date. Additive, non-required (populated in W2).",
+      "type": ["array","object"]
+    },
+
+    "obs_landing": {
+      "description": "1.9.0 (P2 §7c, ruling D-7): O-state landing flag. true = normal pipeline (as-was O series landed for the day); false = I-only backfill mode (only I fields written, O engines skipped, no as-was O). The replay contract recognizes this flag and re-runs obs_landing=false snapshots in backfill mode (D-7 hard condition). grain=date. Additive, non-required (written in W2/W6).",
+      "type": "boolean"
     },
 
     "episodes_active_at_start": {
@@ -302,6 +336,10 @@
         "volume_increasing_streak":        { "type": ["integer", "null"] },
         "top5_concentration":              { "type": ["number", "null"] },
         "dealer_net_buy":                  { "type": ["integer", "null"] },
+        "trust_net_buy":                   { "type": ["integer", "null"],
+                                             "description": "1.9.0 (P2 §1c/§3a, registry #1): investment-trust net buy (lots), renamed. dealer_net_buy is misnamed and actually carries the trust value; from 1.9.0 trust_net_buy is dual-written to the same value. Additive, non-required (populated in W2)." },
+        "prop_net_buy":                    { "type": ["integer", "null"],
+                                             "description": "1.9.0 (P2 §1c/§3a): proprietary-dealer net buy (lots), newly landed. The adapter already computes prop_dealer_net_buy but ingest never read it (1.9.0 rescues it). Not an alias of an existing field. Additive, non-required (populated in W2)." },
         "is_day_trader_branch":            { "type": "boolean" },
 
         "shareholder_count":                  { "type": ["integer", "null"] },
@@ -376,6 +414,41 @@
             "root":      { "$ref": "#/$defs/ScoreNode" }
           }
         },
+
+        "obs_golden_tier":         { "type": ["string", "null"],
+                                     "description": "1.9.0 (P2 §1a, registry #26): golden-tier eligibility (_tier_from_score, enum PRIME/STRONG/WATCH/IGNORE). New Golden truth SoT; the legacy P3a tier stays an abstain stub unchanged (ruling D-1). Additive, non-required (populated in W3)." },
+        "obs_golden_conviction":   { "type": ["number", "null"],
+                                     "description": "1.9.0 (P2 §1a): golden-tier conviction 0.0–1.0 (4dp quantize). Additive, non-required (populated in W3)." },
+        "obs_golden_action_group": { "type": ["string", "null"],
+                                     "description": "1.9.0 (P2 §1a, registry #27): entry action group (5% rule + weakening; action, not eligibility). Additive, non-required (populated in W3)." },
+        "obs_golden_gates_passed": { "type": "object",
+                                     "description": "1.9.0 (P2 §1a): passed eligibility gates {G1,G2,G3: bool}. Additive, non-required; sub-structure kept open (populated in W3)." },
+        "obs_golden_tier_caps":    { "type": ["object", "null"],
+                                     "description": "1.9.0 (P2 §1a): tier cap {capped_to, reason} (e.g. fii_alignment cap). Additive, non-required (populated in W3)." },
+        "obs_golden_near_miss":    { "type": ["object", "null"],
+                                     "description": "1.9.0 (P2 §1a, registry #26): near-miss list {missed_gate, ...}; does NOT carry tier. Additive, non-required (populated in W3)." },
+
+        "obs_sm_state":            { "type": "string",
+                                     "description": "1.9.0 (P2 §1a, registry #31): lifecycle state enum (sole SoT). Additive, non-required (populated in W3)." },
+        "obs_sm_transition_risk":  { "type": "string",
+                                     "description": "1.9.0 (P2 §1a, registry #37): transition risk enum (sole SoT for 'risk'). Additive, non-required (populated in W3)." },
+        "obs_sm_days_in_state":    { "type": "integer", "minimum": 0,
+                                     "description": "1.9.0 (P2 §1a): days in current state (C10 bootstrap: first day = 1). Additive, non-required (populated in W3)." },
+        "obs_sm_state_entered":    { "type": ["string", "null"],
+                                     "description": "1.9.0 (P2 §1a): date the current state was entered (ISO date). Additive, non-required (populated in W3)." },
+        "obs_sm_structure_unstable": { "type": "boolean",
+                                     "description": "1.9.0 (P2 §1a): structural-instability flag. Additive, non-required (populated in W3)." },
+        "obs_sm_risk_factors":     { "type": "array", "items": { "type": "string" },
+                                     "description": "1.9.0 (P2 §1a): risk-factor list. Additive, non-required (populated in W3)." },
+
+        "obs_chip_grade":          { "type": "object",
+                                     "description": "1.9.0 (P2 §1a, registry #35): chip grade {grade: enum, total: int, items: {...}} (the total sub-value is the constitutional §4 off-by-one source). Additive, non-required; sub-structure kept open (populated in W3)." },
+
+        "sync_streak":             { "type": ["integer", "null"],
+                                     "description": "1.9.0 (P2 §1a, registry #35): participant same-direction streak (registry alias derived_participant_sync_streak). Additive, non-required (populated in W3)." },
+
+        "obs_dist_consistency":    { "type": ["object", "null"],
+                                     "description": "1.9.0 (P2 §1a, registry #38): sell-side consistency {consistency_grade, score, ...}; null when the ticker is not on the sell list. Additive, non-required (populated in W3)." },
 
         "temporal_state": {
           "description": "Per-stock temporal memory derived from prior snapshots. See TEMPORAL_ARCHITECTURE.md §8.3.",

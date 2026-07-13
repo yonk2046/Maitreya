@@ -29,7 +29,13 @@ from core.hashing import canonical_sha256
 from core.market_context import weakening_profile, temporal_enrich
 
 
-SCHEMA_VERSION = "1.8.1"
+SCHEMA_VERSION = "1.9.0"
+# 1.9.0 (2026-07-13): 單一 bump — 22 canonical 欄一次落地宣告(P2-single-bump-design)。
+#   W1 只做「宣告」:canonical_schema.json 顯式宣告 22 欄+obs_landing+config_snapshot 雙來源
+#   結構;registry planned→active;SCHEMA_VERSION 1.8.1→1.9.0。ingest 計算邏輯(obs 引擎
+#   接線/config_snapshot 雙來源/I 欄寫入)屬 W2+,W1 尚未寫值 → 此時跑 pipeline 產出 1.9.0
+#   版本號但 stocks 尚無 obs 欄,屬預期中間態。所有新欄 additive(schema 非 required)。
+#   舊 1.8.1 及更早快照全部轉 legacy-epoch-clean(hash 鎖定,單一 bump 歸零代價,判例 #22)。
 # 1.8.1 (2026-07-07): 兩段式快照 — 新增頂層布林 fii_pending。
 #   - True = 建快照時當日 T86(三大法人)不可得,fii 欄位全 None(誠實標缺,
 #     絕不塞滯後值);早晨 T86 到手後由 supersede 重建為 fii_pending=False。
