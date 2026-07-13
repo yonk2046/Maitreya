@@ -102,9 +102,38 @@ html, body, p, div, span, td, th { font-size: 15px !important; }
 h1, h2, h3, h4 { font-family: 'SF Pro Display','Helvetica Neue',sans-serif !important; letter-spacing: -0.01em; }
 [data-testid="stTabs"] button { font-size: 14px !important; font-weight: 600; color: #8B949E !important; }
 [data-testid="stTabs"] button[aria-selected="true"] { color: #7EB8D4 !important; border-bottom-color: #7EB8D4 !important; }
-/* ★ 進場機會 tab（第 3 個 tab）— 金黃色標籤 (Yonki 2026-07-11) */
-[data-testid="stTabs"] [data-baseweb="tab-list"] button:nth-of-type(3) { color: #EBC92F !important; }
-[data-testid="stTabs"] [data-baseweb="tab-list"] button:nth-of-type(3)[aria-selected="true"] { color: #EBC92F !important; border-bottom-color: #EBC92F !important; }
+/* 進場機會 tab 金色由標籤上的原生 ⭐ emoji 提供(取代脆弱的 nth-of-type CSS,Yonki 2026-07-13) */
+
+/* ══════════════════════════════════════════════════════════════════════
+   SCD_STATUS 呈現層 tokens — 進場機會 tab「一家人」視覺語言
+   單一「狀態→顏色」事實來源;C12 呈現映射表雛形 (Yonki 2026-07-13, fable 裁定)。
+   金 tier/黃金身分(呼應 tab ⭐) · 綠 可執行 · 琥珀 等回檔 · 藍 資料待補
+   · 紅 動能轉弱/風險 · 中性 差一步/次要。emoji 圓點 🟢🟡🔵🔻🟠 於本 tab 全數退場。
+   組件:.scd-dot(8px 色點)＋.scd-pill(色點+標籤+1px 同色細邊框膠囊)。
+   ════════════════════════════════════════════════════════════════════ */
+:root {
+    --scd-gold:    #EBC92F;
+    --scd-green:   #52B788;
+    --scd-amber:   #E8A93C;
+    --scd-blue:    #7EB8D4;
+    --scd-red:     #E4626F;
+    --scd-neutral: #8B949E;
+}
+.scd-dot { display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0;vertical-align:middle; }
+.scd-dot.scd-gold    { background:var(--scd-gold); }
+.scd-dot.scd-green   { background:var(--scd-green); }
+.scd-dot.scd-amber   { background:var(--scd-amber); }
+.scd-dot.scd-blue    { background:var(--scd-blue); }
+.scd-dot.scd-red     { background:var(--scd-red); }
+.scd-dot.scd-neutral { background:var(--scd-neutral); }
+.scd-pill { display:inline-flex;align-items:center;gap:6px;font-size:12px !important;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap;line-height:1.4;border:1px solid; }
+.scd-pill.scd-gold    { color:var(--scd-gold);    border-color:#EBC92F55; }
+.scd-pill.scd-green   { color:var(--scd-green);   border-color:#52B78855; }
+.scd-pill.scd-amber   { color:var(--scd-amber);   border-color:#E8A93C55; }
+.scd-pill.scd-blue    { color:var(--scd-blue);    border-color:#7EB8D455; }
+.scd-pill.scd-red     { color:var(--scd-red);     border-color:#E4626F55; }
+.scd-pill.scd-neutral { color:var(--scd-neutral); border-color:#8B949E55; }
+.scd-star { color:var(--scd-gold);font-weight:700; }
 
 /* ── Regime banner ── */
 .regime-banner {
@@ -2297,8 +2326,6 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
         card_style = ""
         weak_html = ""
         if _wk and _wk["severity"] in ("red", "orange"):
-            _wc = "#E05C7A" if _wk["severity"] == "red" else "#E8A33D"
-            _wdot = "🔴" if _wk["severity"] == "red" else "🟠"
             _wcodes = "·".join(f["code"] for f in _wk["flags"])
             # Hover ⓘ: this ticker's triggered flags (detail) + W1–W5 legend
             _w_lines = "".join(
@@ -2313,14 +2340,15 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
                 'W4 散戶接盤｜W5 分點賣壓'
                 '</span></div></div>'
             )
+            # 紅橙一律收斂為紅 token pill(取代 🔴/🟠 emoji;例:「轉弱 W3」)
             weak_html = (
-                f'<div class="gc-signal-pill" style="background:{_wc}20;color:{_wc};'
-                f'border:1px solid {_wc}60;font-weight:700;">'
-                f'{_wdot} {_wk["label_zh"]}警示 {_wcodes}{_w_tip}'
+                f'<div class="scd-pill scd-red" style="background:#E4626F18;font-weight:700;">'
+                f'<span class="scd-dot scd-red"></span>'
+                f'{_wk["label_zh"]} {_wcodes}{_w_tip}'
                 f'</div>'
             )
             if _wk["severity"] == "red":
-                card_style = ' style="border-color:#E05C7A;"'
+                card_style = ' style="border-color:#E4626F;"'
 
         state_col = _state_color(e.sm_state)
         days_txt  = f" Day{e.days_in_sm_state}" if e.days_in_sm_state else ""
@@ -2358,7 +2386,7 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
             res_html = (
                 f'<div class="gc-signal-pill" style="background:{res_col}15;'
                 f'color:{res_col};border:1px solid {res_col}40;">'
-                f'{res_stars} {res_label}'
+                f'<span class="scd-star">{res_stars}</span> {res_label}'
                 f'&nbsp;&nbsp;<span style="font-size:10px;font-weight:400;">{members_html}</span>'
                 + (f'&nbsp;<span style="font-size:10px;color:#6B8EAA;">連{res.resonance_streak}日</span>'
                    if res.resonance_streak >= 2 else "")
@@ -2659,7 +2687,7 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
                 f'<div style="font-size:13px;color:#CDD5E0;margin-bottom:8px;line-height:1.6;">'
                 f'<b style="color:#D4A84B;">黃金分 {conv_pct}%</b> — 過五道門後的加分賽總分（0–100%）。'
                 f' 分數越高代表證據越多元且一致：連買天數長、主力回頭率高、動能為正且加速、處於強勢狀態。'
-                f' ≥65% 為最高級（搭配價格條件才會顯示 🟢可買進），40–64% 增強，&lt;40% 中。'
+                f' ≥65% 為最高級（搭配價格條件才會顯示 <span class="scd-dot scd-green"></span>可買進），40–64% 增強，&lt;40% 中。'
                 f'</div>'
                 f'{gates_html}'
                 f'<div style="margin-top:8px;"><div class="g5-section-label">各項得分拆解</div>'
@@ -2711,10 +2739,10 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
     _metric_strip([
         ("黃金總覽 Total", str(prime_n + strong_n + qual_n),
          f"⭐⭐⭐可買進{_buy_n} ⭐⭐增強{_str_n} ⭐中{_mid_n}", "val-cyan"),
-        ("🟢 可執行",   str(_n_of[_golden_mod.ACTION_EXECUTABLE]),    "價格在保守錨容忍內", "val-green"),
-        ("🟡 等回檔",   str(_n_of[_golden_mod.ACTION_WAIT_PULLBACK]), "結構好、價格延伸",   "val-amber"),
-        ("🔵 資料待補", str(_n_of[_golden_mod.ACTION_DATA_PENDING]),  "SKELETON/缺錨點",   "val-cyan"),
-        ("🔻 動能轉弱", str(_n_of[_golden_mod.ACTION_WEAKENING]),
+        ('<span class="scd-dot scd-green"></span> 可執行',   str(_n_of[_golden_mod.ACTION_EXECUTABLE]),    "價格在保守錨容忍內", "val-green"),
+        ('<span class="scd-dot scd-amber"></span> 等回檔',   str(_n_of[_golden_mod.ACTION_WAIT_PULLBACK]), "結構好、價格延伸",   "val-amber"),
+        ('<span class="scd-dot scd-blue"></span> 資料待補', str(_n_of[_golden_mod.ACTION_DATA_PENDING]),  "SKELETON/缺錨點",   "val-cyan"),
+        ('<span class="scd-dot scd-red"></span> 動能轉弱', str(_n_of[_golden_mod.ACTION_WEAKENING]),
          "紅橙燈/疑似出貨", "val-red" if _n_of[_golden_mod.ACTION_WEAKENING] else "val-dim"),
         ("⊘ 差一步",    str(miss_n), "僅差1個門檻", "val-dim"),
     ])
@@ -2734,11 +2762,11 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
     _exec_list = action_groups[_golden_mod.ACTION_EXECUTABLE]
     if _exec_list:
         tickers_s = "、".join(f"{e.ticker} {e.name}" for e in _exec_list[:3])
-        bullets.append(f"🟢 可執行：{tickers_s}{'等' if len(_exec_list) > 3 else ''}。")
+        bullets.append(f'<span class="scd-dot scd-green"></span> 可執行：{tickers_s}{"等" if len(_exec_list) > 3 else ""}。')
     _weak_list = action_groups[_golden_mod.ACTION_WEAKENING]
     if _weak_list:
         tickers_s = "、".join(f"{e.ticker} {e.name}" for e in _weak_list[:2])
-        bullets.append(f"🔻 需注意動能轉弱：{tickers_s}。")
+        bullets.append(f'<span class="scd-dot scd-red"></span> 需注意動能轉弱：{tickers_s}。')
     if intel and intel.market_story:
         story_txt = intel.market_story[0] if isinstance(intel.market_story, list) else str(intel.market_story)
         bullets.append(story_txt[:80] + ("…" if len(story_txt) > 80 else ""))
@@ -2797,14 +2825,22 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
         '<span style="color:#D4A84B;">紅 = 實錘W3+佐證 或 ≥3旗標；只有紅燈會強制移入本組</span>'
         '</div></div>'
     )
+    # SCD_STATUS token 對映(呈現層,覆寫 core 的 emoji icon;分組語意/順序不動)
+    _ACTION_TOKEN = {
+        _golden_mod.ACTION_EXECUTABLE:    ("scd-green", "#52B788"),
+        _golden_mod.ACTION_WAIT_PULLBACK: ("scd-amber", "#E8A93C"),
+        _golden_mod.ACTION_DATA_PENDING:  ("scd-blue",  "#7EB8D4"),
+        _golden_mod.ACTION_WEAKENING:     ("scd-red",   "#E4626F"),
+    }
     for _ak in _golden_mod.ACTION_ORDER:
         _meta = _golden_mod.ACTION_META[_ak]
+        _dot_cls, _tok_col = _ACTION_TOKEN.get(_ak, ("scd-neutral", "#8B949E"))
         _legend = _W_LEGEND if _ak == _golden_mod.ACTION_WEAKENING else ""
         _render_section(
             action_groups[_ak],
-            f'<div class="g5-momentum-head">'
-            f'<span class="g5-momentum-icon">{_meta["icon"]}</span>'
-            f'<span class="g5-momentum-label" style="color:{_meta["color"]};">'
+            f'<div class="g5-momentum-head" style="border-left-color:{_tok_col};">'
+            f'<span class="scd-dot {_dot_cls}" style="margin-right:2px;"></span>'
+            f'<span class="g5-momentum-label" style="color:{_tok_col};">'
             f'{_meta["zh"]}  {_meta["en"]}</span>'
             f'<span class="g5-momentum-count">{len(action_groups[_ak])} 檔</span>'
             f'{_legend}'
@@ -2918,12 +2954,12 @@ def _render_score_glossary() -> None:
             '<div style="font-size:11px;color:#969696;line-height:1.9;">'
             '兩套獨立的計分系統，互相對照用:'
             '<br><br>'
-            '① 黃金引擎（★進場機會）— 五道門檻＋加分賽，用星級表示:'
+            '① 黃金引擎（⭐進場機會）— 五道門檻＋加分賽，用星級表示:'
             '<br>⭐ 進黃金名單 ＝ 過五道門（G1 有在持續吃貨／G2 行為已成型／G3 主力有回頭／G4 無出貨嫌疑／G5 整體淨買）'
             '<br>⭐⭐ 增強 ＝ 黃金分高（過門後的加分賽:連買越久、回頭率越高、動能越正，分越高）'
             '<br>⭐⭐⭐ 可買進 ＝ 再加價格條件（現價 ≤ 主力成本×1.05 且未轉弱 — 5% 鐵則）'
             '<br><br>'
-            '② 多空計分（★進場機會的精選觀察）— 獨立的證據天平:'
+            '② 多空計分（⭐進場機會的精選觀察）— 獨立的證據天平:'
             '<br>多頭分 ＝ 多頭證據總量:連買＋回頭率＋動能＋黃金身分加權（🟢高≥60%｜🟡中≥40%）'
             '<br>警訊分 ＝ 空頭證據總量:疑似出貨+25%、假突破+20%、速度轉負+15% 等（🔴高≥50%｜🟠中≥30%）'
             '<br>兩者獨立計算，可能同時高——代表多空證據並存，要特別小心'
@@ -3363,7 +3399,7 @@ def _render_intelligence(active_date: str, snaps: list[dict], part: str = "story
         _section_header("📖", "今日綜述", "Market Story")
         st.markdown(_EXPLAIN_DIV.format(
             text=f"把今天所有變化濃縮成幾句事實陳述（生成 {report.generated_at} · {prev_str}）。"
-                 "量化明細在「★ 進場機會→今日變化」與「🔻 出場警示→風險警報」。"),
+                 "量化明細在「⭐ 進場機會→今日變化」與「🔻 出場警示→風險警報」。"),
             unsafe_allow_html=True)
         if report.market_story:
             for s in report.market_story:
@@ -3822,7 +3858,7 @@ def main() -> None:
     tab_market, tab_holdings, tab_entry, tab_exit, tab_research, tab_backtest = st.tabs([
         "📰 市場敘事",
         "💼 我的持倉",
-        "★ 進場機會",
+        "⭐ 進場機會",
         "🔻 出場警示",
         "🔬 個股顯微鏡",
         "📈 模擬績效",
