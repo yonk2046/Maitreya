@@ -20,12 +20,58 @@ ROOT_DIR = os.path.dirname(TOOLS_DIR)
 DATA_DIR = os.path.join(ROOT_DIR, "data")
 sys.path.insert(0, TOOLS_DIR)
 
+from _common import is_etf as _is_etf_code  # noqa: E402 — R8 cross_verify ETF 濾除口徑統一
+
 # 記憶體相關保證群組 — always fetch branch data for these regardless of whether
 # they appear in the day's rankings (mirrors TIER_A_ANCHORS). 華邦電 / 南亞科 / 力成.
 # 2026-07-01: added 國巨 2327 / 中石化 1314 — both fell out of the top-40 分點
 # fetch and went stale (國巨 mf=8836 repeated 6/18→6/30, inflating streak/spon).
 # Anchoring keeps their branch data fresh so golden isn't fed duplicate days.
 MEMORY_ANCHORS = ["2344", "2408", "6239", "2327", "1314"]
+
+
+def compute_cross_verify_overlap(buy_list, main_force_buy, t86_result):
+    """多源交叉驗證的榜單重疊比對(R8 查證後的修正版,2026-07-14)。
+
+    純函數,方便獨立測試,不碰網路。回傳 dict 帶 status/foreignOverlap/
+    mainforceOverlap 及兩側 top-N 榜單(供除錯)。
+
+    兩個修正點(R8 查證結論見 docs/FORWARD-RISK-REGISTER.md)：
+    1. Tri-state：T86 當天完全無資料(抓取失敗/非交易日)時 status="disabled"，
+       不可用假 0/10、0/5 冒充「比對過、無重疊」——「檢查失效」與「檢查失敗」
+       是不同訊息。
+    2. ETF 口徑統一：Fubon ZGK_D/ZGK_F 抓取時已排除 ETF(fetch_fubon.py 用
+       is_etf() 濾掉)，T86 全市場榜單原本未濾，兩側口徑不一致會系統性壓低
+       重疊數(0050/00631L/00918 這類 ETF 常年高居 T86 三大法人金額榜前段，
+       擠掉個股)。比對前對 T86 側同樣濾掉 ETF。
+    """
+    cross_verify = {"foreignOverlap": 0, "mainforceOverlap": 0, "perStock": {}}
+
+    if not t86_result:
+        cross_verify["status"] = "disabled"
+        cross_verify["disabledReason"] = "T86 無資料(抓取失敗或非交易日)"
+        return cross_verify
+    cross_verify["status"] = "ok"
+
+    t86_result_ex_etf = {k: v for k, v in t86_result.items() if not _is_etf_code(k)}
+
+    if buy_list and t86_result_ex_etf:
+        fubon_top10 = [s["code"] for s in buy_list[:10]]
+        t86_foreign_sorted = sorted(t86_result_ex_etf.values(), key=lambda r: r.get("foreign", 0), reverse=True)
+        t86_top10_foreign = [r["code"] for r in t86_foreign_sorted[:10]]
+        cross_verify["foreignOverlap"] = len(set(fubon_top10) & set(t86_top10_foreign))
+        cross_verify["fubonForeignTop10"] = fubon_top10
+        cross_verify["t86ForeignTop10"] = t86_top10_foreign
+
+    if main_force_buy and t86_result_ex_etf:
+        fubon_main_top5 = [s["code"] for s in main_force_buy[:5]]
+        t86_total3_sorted = sorted(t86_result_ex_etf.values(), key=lambda r: r.get("total3", 0), reverse=True)
+        t86_top5_total3 = [r["code"] for r in t86_total3_sorted[:5]]
+        cross_verify["mainforceOverlap"] = len(set(fubon_main_top5) & set(t86_top5_total3))
+        cross_verify["fubonMainTop5"] = fubon_main_top5
+        cross_verify["t86Total3Top5"] = t86_top5_total3
+
+    return cross_verify
 
 
 def _prior_priority_from_snapshot(reports_dir, top_net=12):
@@ -347,25 +393,7 @@ def run(dry_run=False):
 
     # ── Step 9: 多源交叉驗證 (Fubon vs T86 vs WantGoo for top 5) ───────────────
     emit(9, TOTAL_STEPS, "多源交叉驗證 (top 5 三榜共現)...", status="running")
-    cross_verify = {"foreignOverlap": 0, "mainforceOverlap": 0, "perStock": {}}
-
-    # Overlap of Fubon ZGK_D top 10 外資 vs T86 top 10 外資
-    if buy_list and t86_result:
-        fubon_top10 = [s["code"] for s in buy_list[:10]]
-        t86_foreign_sorted = sorted(t86_result.values(), key=lambda r: r.get("foreign", 0), reverse=True)
-        t86_top10_foreign = [r["code"] for r in t86_foreign_sorted[:10]]
-        cross_verify["foreignOverlap"] = len(set(fubon_top10) & set(t86_top10_foreign))
-        cross_verify["fubonForeignTop10"] = fubon_top10
-        cross_verify["t86ForeignTop10"] = t86_top10_foreign
-
-    # Overlap of Fubon ZGK_F top 5 主力 vs T86 top 5 三大法人
-    if main_force_buy and t86_result:
-        fubon_main_top5 = [s["code"] for s in main_force_buy[:5]]
-        t86_total3_sorted = sorted(t86_result.values(), key=lambda r: r.get("total3", 0), reverse=True)
-        t86_top5_total3 = [r["code"] for r in t86_total3_sorted[:5]]
-        cross_verify["mainforceOverlap"] = len(set(fubon_main_top5) & set(t86_top5_total3))
-        cross_verify["fubonMainTop5"] = fubon_main_top5
-        cross_verify["t86Total3Top5"] = t86_top5_total3
+    cross_verify = compute_cross_verify_overlap(buy_list, main_force_buy, t86_result)
 
     # Per-stock cross-verify (top 5 三榜共現)
     # WantGoo is opt-in (set ENABLE_WANTGOO=1) — Chrome headless currently hangs on the site
@@ -408,9 +436,16 @@ def run(dry_run=False):
 
     matched_count = sum(1 for v in cross_verify["perStock"].values() if v.get("foreignMatch"))
     total_count = len(cross_verify["perStock"])
-    emit(9, TOTAL_STEPS,
-         f"多源驗證：外資榜重疊 {cross_verify['foreignOverlap']}/10、主力榜重疊 {cross_verify['mainforceOverlap']}/5、個股一致 {matched_count}/{total_count}",
-         status="done")
+    if cross_verify["status"] == "disabled":
+        # 誠實區分「檢查失效」(來源當天無資料,無法比對) 與「檢查失敗」(比對過但不合)——
+        # 兩者是不同訊息,絕不用假 0/10 冒充後者。
+        emit(9, TOTAL_STEPS,
+             f"多源驗證停用：{cross_verify['disabledReason']}",
+             status="warn")
+    else:
+        emit(9, TOTAL_STEPS,
+             f"多源驗證：外資榜重疊 {cross_verify['foreignOverlap']}/10、主力榜重疊 {cross_verify['mainforceOverlap']}/5、個股一致 {matched_count}/{total_count}",
+             status="done")
 
     # ── Step 10: Write data/today.json ────────────────────────────────────────
     emit(10, TOTAL_STEPS, "寫入 data/today.json...", status="running")
