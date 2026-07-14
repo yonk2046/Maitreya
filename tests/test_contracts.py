@@ -51,6 +51,11 @@ def _snapshot_files() -> list[pathlib.Path]:
     for f in sorted(REPORTS_DIR.glob("*.json")):
         if f.name == "index.json":
             continue
+        if f.name == "_replay_ledger.json":
+            # P2-W5 attestation ledger: a side-car verification record
+            # (M-state proof about the snapshots), NOT a canonical snapshot.
+            # Must not be validated against the canonical schema / hash / index.
+            continue
         if f.name.startswith("score_breakdown"):
             continue
         if f.name.endswith(".intelligence.json"):
