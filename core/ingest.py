@@ -307,6 +307,21 @@ def ingest(
     Returns: snapshot dict (NOT yet written to disk).
     """
     date = adapter_output["date"]
+
+    # ── R1 guard(2026-07-14 事故根修)───────────────────────────────────────
+    # raw 的 tradingDate 必須等於快照目標日期,不合即 raise 拒建。這是最深層防線:
+    # 7/10 颱風假殭屍 raw 事故與 7/14 re-ingest 誤讀 live today.json 事故,兩者都是
+    # 「陳舊 raw 被拿去建別的日期的快照」——adapter 層只發 DATA_WARNING(軟),
+    # 擋不住污染快照落盤。FORWARD-RISK-REGISTER R1。
+    _raw_trading_date = (adapter_output.get("_today_meta") or {}).get("tradingDate")
+    if _raw_trading_date and _raw_trading_date != date:
+        raise ValueError(
+            f"INGEST_DATE_MISMATCH: raw today.json tradingDate={_raw_trading_date} "
+            f"!= snapshot target date={date}; refusing to build from stale/zombie "
+            f"raw (R1 guard — 檢查 data/today.json 是否殘留舊交易日資料,或 "
+            f"replay 應改用 reports/_raw_archive/{date}/ 的封存 raw)"
+        )
+
     raw_per_ticker = adapter_output["raw_inputs_per_ticker"]
     universe = adapter_output["universe"]
     prov_sources = adapter_output["provenance_sources"]

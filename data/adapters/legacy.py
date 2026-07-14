@@ -493,8 +493,13 @@ def adapt_legacy(
         "fii_pending":           fii_pending,
         "sell_raw":              sell_raw,  # Phase 1 staging (NOTES #38) — inert, see comment above
         "_today_meta": {
-            "fetchedAt": today.get("fetchedAt"),
-            "sources":   today.get("sources", []),
+            "fetchedAt":   today.get("fetchedAt"),
+            "sources":     today.get("sources", []),
+            # R1 guard 供料(2026-07-14 事故根修):raw 的 tradingDate 原樣上傳,
+            # ingest 據此 hard-check「raw tradingDate == 快照目標日期」,不合即拒建
+            # (陳舊/殭屍 raw — FORWARD-RISK-REGISTER R1;上面的 DATA_WARNING 只是
+            # 軟警告,擋不住污染快照落盤)。
+            "tradingDate": today.get("tradingDate"),
         },
     }
     validate_adapter_output(out, adapter_name="legacy.adapt_legacy")

@@ -231,6 +231,40 @@ def test_obs_dist_consistency_null_when_not_on_sell_board():
     assert by["2454"]["obs_dist_consistency"] is None
 
 
+# ── 4. R1 guard: stale raw tradingDate must refuse to build ───────────────────
+
+def test_ingest_rejects_mismatched_raw_trading_date():
+    """R1 guard(2026-07-14 事故根修):raw tradingDate != 目標日期 → raise 拒建。
+    覆蓋 7/10 颱風假殭屍 raw 與 7/14 re-ingest 誤讀 live today.json 兩類事故。"""
+    adapter_out = {
+        "date":                  "2026-07-13",
+        "raw_inputs_per_ticker": {"2330": _raw("2330", "台積電", mfb=1000)},
+        "universe":              ["2330"],
+        "provenance_sources":    {},
+        "audit_events":          [],
+        "fii_pending":           False,
+        "sell_raw":              {},
+        "_today_meta":           {"tradingDate": "2026-07-10"},   # stale raw
+    }
+    with pytest.raises(ValueError, match="INGEST_DATE_MISMATCH"):
+        ingest(adapter_out, {"meta": {"schema_version": SCHEMA_VERSION}})
+
+
+def test_ingest_accepts_matching_raw_trading_date():
+    adapter_out = {
+        "date":                  "2026-07-13",
+        "raw_inputs_per_ticker": {"2330": _raw("2330", "台積電", mfb=1000)},
+        "universe":              ["2330"],
+        "provenance_sources":    {},
+        "audit_events":          [],
+        "fii_pending":           False,
+        "sell_raw":              {},
+        "_today_meta":           {"tradingDate": "2026-07-13"},
+    }
+    snap = ingest(adapter_out, {"meta": {"schema_version": SCHEMA_VERSION}})
+    assert snap["date"] == "2026-07-13"
+
+
 def test_backfill_mode_writes_no_obs_fields():
     """obs_landing=False → 只 I 欄、跳過全部 O(D-7)。"""
     snap = _ingest_day("2026-06-01", {"2330": _raw("2330", "台積電", mfb=5000,

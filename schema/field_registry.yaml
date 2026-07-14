@@ -37,8 +37,8 @@ meta:
   ground_truth_snapshot: "reports/2026-07-09.json"
   counts:
     snapshot_fields: 21   # 18 + P2-W2 落值移入 3 (obs_landing/fii_sell_raw/main_force_sell_raw)
-    record_fields: 72     # 70 + P2-W2 落值移入 2 (trust_net_buy/prop_net_buy)
-    planned_fields: 18    # 憲法 §4 表的 18 obs_* O 欄(W3/W4 落值後移入正式區塊)
+    record_fields: 87     # 70 + P2-W2 移入 2 (trust/prop) + P2-W3 移入 15 (golden6/sm6/chip1/sync1/dist1)
+    planned_fields: 3     # 剩 market 三欄 (obs_market_regime/breadth/temperature,W4 落值後移入)
   notes:
     - "現有快照全欄位登記完畢（頂層 18 + per-stock record 70 = 88 active/deprecated 欄）。"
     - >
@@ -338,6 +338,28 @@ record_fields:
   # ── 賣方證據 (O, market_context) ─────────────────────────────────────────
   - {name: weakening,        semantic: "轉弱側寫物件（severity/flags/label_zh...）；mc weakening_profile 已落地（NOTES #32）；FIELD_MAP/schema$defs 未宣告，Phase 0 補登記", state: O, grain: ticker, replay: epoch-scoped-O, owner: market_context, status: active}
 
+  # ── 1.9.0 per-ticker O 欄（P2-W3 落值移入；design §1a）──────────────────────
+  # golden 六欄（NOTES #26）
+  - {name: obs_golden_tier,         semantic: "黃金層資格 tier",           state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
+  - {name: obs_golden_conviction,   semantic: "黃金層 conviction 強度",     state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
+  - {name: obs_golden_action_group, semantic: "進場行動群組（5%鐵則+weakening）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
+  - {name: obs_golden_gates_passed, semantic: "通過的資格閘門",            state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
+  - {name: obs_golden_tier_caps,    semantic: "tier 上限（fii_alignment cap 等）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
+  - {name: obs_golden_near_miss,    semantic: "差一步清單（含 missed_gate，不落 tier）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
+  # state machine 六欄（NOTES #30；days_in_state/state_entered 依 as-was 落地序列，C10 bootstrap 首日=1）
+  - {name: obs_sm_state,            semantic: "生命週期狀態（唯一 SoT）",   state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: active, landed_version: "1.9.0"}
+  - {name: obs_sm_transition_risk,  semantic: "轉移風險（『風險』唯一 SoT）", state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: active, landed_version: "1.9.0"}
+  - {name: obs_sm_days_in_state,    semantic: "在此狀態天數",              state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: active, landed_version: "1.9.0"}
+  - {name: obs_sm_state_entered,    semantic: "進入當前狀態日",            state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: active, landed_version: "1.9.0"}
+  - {name: obs_sm_structure_unstable, semantic: "結構不穩旗標",            state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: active, landed_version: "1.9.0"}
+  - {name: obs_sm_risk_factors,     semantic: "風險因子清單",              state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: active, landed_version: "1.9.0"}
+  # chip（NOTES #35）— obs_chip_grade 含 total 子值
+  - {name: obs_chip_grade,          semantic: "籌碼評級（含 total 子值）",   state: O, grain: ticker, replay: epoch-scoped-O, owner: Chip, status: active, landed_version: "1.9.0"}
+  # temporal（NOTES #35）
+  - {name: sync_streak,             semantic: "參與者同向連續數（候選終名 derived_participant_sync_streak）", state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, landed_version: "1.9.0", alias: derived_participant_sync_streak}
+  # distribution（NOTES #38）
+  - {name: obs_dist_consistency,    semantic: "賣方一致性（唯一賣方證據源；不在賣方榜→null）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Distribution, status: active, landed_version: "1.9.0"}
+
   # ── 時序記憶（殭屍欄）(O, StateMachine) ───────────────────────────────────
   - {name: temporal_state,   semantic: "per-stock 時序記憶 stub（prior_tier/velocity/trend...）；零引擎消費殭屍欄，不填不擴（NOTES #31）；概念後繼=obs_sm_state（非 alias，不雙寫）", state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: deprecated-pending}
 
@@ -357,30 +379,11 @@ record_fields:
 #       將其移入 snapshot_fields/record_fields 正式區塊。
 #    ── P2-W2 已落值並移出本區塊：obs_landing/fii_sell_raw/main_force_sell_raw →
 #       snapshot_fields；trust_net_buy/prop_net_buy → record_fields。
-#    ── 本區塊剩 18 個 obs_* O 欄（golden6/sm6/chip1/sync1/dist1/market3），待
-#       W3(per-ticker)/W4(market) 落值後由該包移入正式區塊。
+#    ── P2-W3 已落值並移出本區塊：15 個 per-ticker O 欄（golden6/sm6/chip1/
+#       sync1/dist1）→ record_fields。
+#    ── 本區塊剩 3 個 market grain 欄，待 W4 落值後由該包移入正式區塊。
 # =============================================================================
 planned_fields:
-  # golden 六欄（NOTES #26）
-  - {name: obs_golden_tier,         semantic: "黃金層資格 tier",           state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
-  - {name: obs_golden_conviction,   semantic: "黃金層 conviction 強度",     state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
-  - {name: obs_golden_action_group, semantic: "進場行動群組（5%鐵則+weakening）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
-  - {name: obs_golden_gates_passed, semantic: "通過的資格閘門",            state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
-  - {name: obs_golden_tier_caps,    semantic: "tier 上限（fii_alignment cap 等）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
-  - {name: obs_golden_near_miss,    semantic: "差一步清單（含 missed_gate，不落 tier）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
-  # state machine 六欄（NOTES #30）
-  - {name: obs_sm_state,            semantic: "生命週期狀態（唯一 SoT）",   state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: active, landed_version: "1.9.0"}
-  - {name: obs_sm_transition_risk,  semantic: "轉移風險（『風險』唯一 SoT）", state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: active, landed_version: "1.9.0"}
-  - {name: obs_sm_days_in_state,    semantic: "在此狀態天數",              state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: active, landed_version: "1.9.0"}
-  - {name: obs_sm_state_entered,    semantic: "進入當前狀態日",            state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: active, landed_version: "1.9.0"}
-  - {name: obs_sm_structure_unstable, semantic: "結構不穩旗標",            state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: active, landed_version: "1.9.0"}
-  - {name: obs_sm_risk_factors,     semantic: "風險因子清單",              state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: active, landed_version: "1.9.0"}
-  # chip（NOTES #35）— obs_chip_grade 含 total 子值
-  - {name: obs_chip_grade,          semantic: "籌碼評級（含 total 子值）",   state: O, grain: ticker, replay: epoch-scoped-O, owner: Chip, status: active, landed_version: "1.9.0"}
-  # temporal（NOTES #35）
-  - {name: sync_streak,             semantic: "參與者同向連續數（候選終名 derived_participant_sync_streak）", state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, landed_version: "1.9.0", alias: derived_participant_sync_streak}
-  # distribution（NOTES #38）
-  - {name: obs_dist_consistency,    semantic: "賣方一致性（唯一賣方證據源）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Distribution, status: active, landed_version: "1.9.0"}
   # market 三欄（NOTES #40；grain=date）
   - {name: obs_market_regime,       semantic: "市場體制（regime_shift 收斂）", state: O, grain: date, replay: epoch-scoped-O, owner: Market, status: active, landed_version: "1.9.0"}
   - {name: obs_market_breadth,      semantic: "市場廣度（母體修正後，NOTES #41）", state: O, grain: date, replay: epoch-scoped-O, owner: Market, status: active, landed_version: "1.9.0"}
@@ -388,4 +391,7 @@ planned_fields:
   # 註:obs_landing、trust_net_buy、prop_net_buy、fii_sell_raw、main_force_sell_raw
   #    已於 P2-W2 落值 → 依「落值的欄才移」紀律移入正式區塊
   #    (obs_landing/fii_sell_raw/main_force_sell_raw → snapshot_fields;
-  #     trust_net_buy/prop_net_buy → record_fields)。其餘 18 個 obs_* O 欄待 W3/W4 落值後移。
+  #     trust_net_buy/prop_net_buy → record_fields)。
+  #    P2-W3 落值並移入 record_fields:obs_golden_* 六欄、obs_sm_* 六欄、
+  #    obs_chip_grade、sync_streak、obs_dist_consistency(15 per-ticker O 欄)。
+  #    本區塊剩 3 個 market grain 欄,待 W4 落值後移。
