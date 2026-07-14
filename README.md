@@ -2,7 +2,7 @@
 
 > *彌勒觀市，不測，只記。*
 >
-> Repo：`yonk2046/Maitreya` · Viewer：Streamlit Cloud（`viewer/cockpit.py`）
+> Repo：`yonk2046/Maitreya` · Viewer：Streamlit Cloud（`viewer/cockpit.py`）· 部署網址：https://maitreya-jcfdybhhdp3pfkgsst8vjv.streamlit.app/（私有，需登入；頁腳顯示部署的 commit hash）
 > 最後更新：2026-07-10（黃金名單/每日流程改指向 ARCHITECTURE 正本，去重複；補雲端 dispatch 18:05 與 T+1 補班）
 > 🏛️ 架構規範正本：`docs/ARCHITECTURE_BLUEPRINT.md`（憲法）；研究判例：`docs/architecture_research/`
 
