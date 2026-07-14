@@ -1,11 +1,11 @@
 {
-  "schema_version": "1.7.0",
+  "schema_version": "1.9.0",
   "date": "2026-06-25",
-  "generated_at": "2026-06-25T11:00:49Z",
-  "config_hash": "sha256:3e18ed0ddfb71f95678caab8d473c18db30f512fcea1e61d45f5753227a4adb1",
+  "generated_at": "2026-07-14T11:35:16Z",
+  "config_hash": "sha256:7495e7628db79b119e98b6db9f306348d4b47f6d0883d14a08337f0bcb45a7d8",
   "core_version": "core@0.1.0-p3a",
   "environment": {
-    "core_commit_sha": "372838499fe856f1abf4ea9aa3992646c5be1888",
+    "core_commit_sha": "60e067e7cc16d5b517653ca06a50fe1b415a2eb2",
     "core_version": "core@0.1.0-p3a",
     "python": "3.9.6",
     "numpy": "2.0.2",
@@ -23,11 +23,21 @@
     "timezone": "UTC",
     "os": "darwin-24.6.0-arm64",
     "lookback_snapshots": {
-      "2026-06-22": "sha256:4eb15f5df71eee604f0cedf9b6bbaa198f4a6e35c1474c746e847b5556ae1be8",
-      "2026-06-23": "sha256:d048a42794de851f9e96fb244a657fea475bc49613e974daec145b256d87f90d",
-      "2026-06-24": "sha256:d40b95c94239e08af272bc2f76db6f9b011f1fbd27916eee551d54769f0a403b"
+      "2026-06-05": "sha256:1584b05db010bcabb6aa4e55b14661fbd189406fb03e14288d8a093ff8696121",
+      "2026-06-08": "sha256:b125fca4d91056b7bf1084b86ab1bbe29571f20138ab5f6ad82f77e3f69577ff",
+      "2026-06-09": "sha256:75e1a72d04f2ce181fe3a93ce85679a83496ca633a0862dae1568d79b58a9551",
+      "2026-06-10": "sha256:7ca62edafc91743f4dc6f406c8c62b3ad0e258b606864ca72cfba9fc140cc3d8",
+      "2026-06-11": "sha256:b8546092242d4fbfa778067cdb11f226bc0343f9b7b78467f66b56e45723d5ac",
+      "2026-06-12": "sha256:e1e3cee2a2782847cab29353f2ff1825decca3f86b5acfb8e86731f6401e7aee",
+      "2026-06-15": "sha256:35496d0e4ff7a85de38a8a2aa447716de45dd26a5aa0bc6b13d3e4d498e3533a",
+      "2026-06-16": "sha256:1cd54277d287f36693e0d37736f037469f5795ab852419cdc5272a2c4ef11005",
+      "2026-06-17": "sha256:5bdc842881be90e1c7c7c71d9fca227630641f2c0765cd428e9bd8e1ff9a79e2",
+      "2026-06-18": "sha256:60f9bc186b88d3624346bd0380c36a5ab8c1f290f51d0030eb50f7a79025a8d8",
+      "2026-06-22": "sha256:38f964b87416a352c10181558c2d98a502388e724b8191f650087d3e3a5f0681",
+      "2026-06-23": "sha256:9a7a47fb000dfd1b95787b6db543fc65612fdf72ed6198ba79875fb90ea96241",
+      "2026-06-24": "sha256:851d5ec36c333df1143aeaf6872363b0609a9abe0176aa1bbe61d006301c56ee"
     },
-    "lookback_window_days": 3
+    "lookback_window_days": 13
   },
   "provenance": {
     "sources": {
@@ -128,359 +138,1397 @@
     "derived_fields": {}
   },
   "config_snapshot": {
-    "meta": {
-      "config_version": "1.3.0",
-      "scoring_rubric_version": "1.1.0",
-      "schema_version": "1.4.0",
-      "last_updated": "2026-05-22",
-      "supersedes": "1.2.0",
-      "patches_applied": [
-        "P0-1",
-        "P0-2",
-        "P0-3",
-        "P0-4",
-        "P0-5",
-        "P1-*",
-        "P2-*",
-        "T-1",
-        "T-2",
-        "T-3",
-        "T-4",
-        "T-5",
-        "T-6",
-        "T-7"
-      ]
-    },
-    "storage": {
-      "base_dir": ".",
-      "raw_dir": "data/raw",
-      "reports_dir": "reports",
-      "episodes_dir": "episodes",
-      "state_dir": "state",
-      "parquet_dir": "parquet",
-      "index_file": "reports/index.json",
-      "episodes_index": "episodes/index.json",
-      "state_index": "state/index.json"
-    },
-    "temporal": {
-      "lookback_window_days": 5,
-      "min_velocity_samples": 2,
-      "min_acceleration_samples": 3,
-      "ema_lookbacks": [
-        3,
-        5
-      ],
-      "score_tree_temporal_enabled_paths": [],
-      "track_tier_transitions": true,
-      "bootstrap": {
-        "abstain_temporal_until_window_full": true,
-        "emit_event": "BOOTSTRAP_SNAPSHOT"
-      }
-    },
-    "episodes": {
-      "enabled": false,
-      "index_file": "episodes/index.json",
-      "storage_dir": "episodes/",
-      "types": {
-        "accumulation": {
-          "enabled": false,
-          "rule_version": "v1",
-          "trigger_rule": "main_force_consecutive_days >= 3",
-          "ongoing_rule": "main_force_consecutive_days >= 1",
-          "resolve_rule": "main_force_consecutive_days == 0 for 2 days",
-          "fail_rule": null
-        },
-        "distribution": {
-          "enabled": false,
-          "rule_version": "v1",
-          "trigger_rule": "main_force_consecutive_days <= -3",
-          "ongoing_rule": "main_force_consecutive_days <= 0",
-          "resolve_rule": "main_force_consecutive_days >= 0 for 2 days",
-          "fail_rule": null
-        },
-        "breakout_attempt": {
-          "enabled": false,
-          "rule_version": "v1",
-          "trigger_rule": "current_price > rolling_high_20d",
-          "ongoing_rule": "current_price > breakout_level - 3%",
-          "resolve_rule": "current_price > rolling_high_20d for 3 days",
-          "fail_rule": "current_price < breakout_level - 3%"
-        },
-        "recovery_attempt": {
-          "enabled": false,
-          "rule_version": "v1"
-        },
-        "golden_persistence": {
-          "enabled": false,
-          "rule_version": "v1",
-          "trigger_rule": "tier == 'GOLDEN'",
-          "ongoing_rule": "tier == 'GOLDEN'",
-          "resolve_rule": "tier != 'GOLDEN' for 1 day"
-        },
-        "watch_persistence": {
-          "enabled": false,
-          "rule_version": "v1"
-        },
-        "margin_decompression": {
-          "enabled": false,
-          "rule_version": "v1"
-        },
-        "regime_shift": {
-          "enabled": false,
-          "rule_version": "v1"
-        }
-      }
-    },
-    "market_regime": {
-      "enabled": false,
-      "classifier": "stub_v0",
-      "features": {
-        "use_vix_proxy": false,
-        "use_breadth_index": false,
-        "use_regime_dwell": false
-      }
-    },
-    "feature_flags": {
-      "day_trader_exclusion": false,
-      "day_trader_exclusion_branches": [
-        "凱基-台北",
-        "元大-總公司",
-        "永豐金-台北"
-      ]
-    },
-    "gates": {
-      "cost_safety": {
-        "lookback_days": 5,
-        "max_premium_ratio": 1.05,
-        "divergence_alert_pct": 5,
-        "anchor": "conservative"
+    "yaml": {
+      "meta": {
+        "config_version": "1.3.0",
+        "scoring_rubric_version": "1.1.0",
+        "schema_version": "1.9.0",
+        "last_updated": "2026-05-22",
+        "supersedes": "1.2.0",
+        "patches_applied": [
+          "P0-1",
+          "P0-2",
+          "P0-3",
+          "P0-4",
+          "P0-5",
+          "P1-*",
+          "P2-*",
+          "T-1",
+          "T-2",
+          "T-3",
+          "T-4",
+          "T-5",
+          "T-6",
+          "T-7"
+        ]
       },
-      "fii_sync": {
-        "indicator_brokers": [
-          "JPM",
-          "UBS",
-          "GS",
-          "ML",
-          "Citi"
+      "storage": {
+        "base_dir": ".",
+        "raw_dir": "data/raw",
+        "reports_dir": "reports",
+        "episodes_dir": "episodes",
+        "state_dir": "state",
+        "parquet_dir": "parquet",
+        "index_file": "reports/index.json",
+        "episodes_index": "episodes/index.json",
+        "state_index": "state/index.json"
+      },
+      "temporal": {
+        "lookback_window_days": 20,
+        "min_velocity_samples": 2,
+        "min_acceleration_samples": 3,
+        "ema_lookbacks": [
+          3,
+          5
         ],
-        "min_brokers": 2,
-        "min_consecutive_days": 3
-      },
-      "fii_alignment": {
-        "enabled": true,
-        "contra_days_cap": 2
-      },
-      "main_force": {
-        "min_consecutive_days": 3,
-        "volume_increasing_min_streaks": 2
-      }
-    },
-    "stage_1": {
-      "weights": {
-        "fii": 0.5,
-        "main_force": 0.5
-      },
-      "fii": {
-        "sync_count": {
-          "linear_range": [
-            3,
-            6
-          ],
-          "base_at_min": 0,
-          "base_at_max": 100
-        },
-        "buy_ratio": {
-          "linear_range": [
-            0.05,
-            0.15
-          ]
-        },
-        "holding_trend": {
-          "up": 100,
-          "flat": 50,
-          "down": 0
-        },
-        "sub_weights": {
-          "sync": 0.4,
-          "ratio": 0.4,
-          "trend": 0.2
+        "score_tree_temporal_enabled_paths": [],
+        "track_tier_transitions": true,
+        "bootstrap": {
+          "abstain_temporal_until_window_full": true,
+          "emit_event": "BOOTSTRAP_SNAPSHOT"
         }
       },
-      "main_force": {
-        "consecutive_days": {
-          "linear_range": [
-            4,
-            8
-          ],
-          "base_at_min": 0,
-          "base_at_max": 100
-        },
-        "lock_strength": {
-          "linear_range": [
-            0.1,
-            0.3
-          ]
-        },
-        "increasing_streak": {
-          "per_segment": 25,
-          "cap": 100
-        },
-        "top5_concentration": {
-          "linear_range": [
-            0.5,
-            0.8
-          ]
-        },
-        "sub_weights": {
-          "days": 0.3,
-          "lock": 0.3,
-          "streak": 0.2,
-          "concentration": 0.2
+      "episodes": {
+        "enabled": false,
+        "index_file": "episodes/index.json",
+        "storage_dir": "episodes/",
+        "types": {
+          "accumulation": {
+            "enabled": false,
+            "rule_version": "v1",
+            "trigger_rule": "main_force_consecutive_days >= 3",
+            "ongoing_rule": "main_force_consecutive_days >= 1",
+            "resolve_rule": "main_force_consecutive_days == 0 for 2 days",
+            "fail_rule": null
+          },
+          "distribution": {
+            "enabled": false,
+            "rule_version": "v1",
+            "trigger_rule": "main_force_consecutive_days <= -3",
+            "ongoing_rule": "main_force_consecutive_days <= 0",
+            "resolve_rule": "main_force_consecutive_days >= 0 for 2 days",
+            "fail_rule": null
+          },
+          "breakout_attempt": {
+            "enabled": false,
+            "rule_version": "v1",
+            "trigger_rule": "current_price > rolling_high_20d",
+            "ongoing_rule": "current_price > breakout_level - 3%",
+            "resolve_rule": "current_price > rolling_high_20d for 3 days",
+            "fail_rule": "current_price < breakout_level - 3%"
+          },
+          "recovery_attempt": {
+            "enabled": false,
+            "rule_version": "v1"
+          },
+          "golden_persistence": {
+            "enabled": false,
+            "rule_version": "v1",
+            "trigger_rule": "tier == 'GOLDEN'",
+            "ongoing_rule": "tier == 'GOLDEN'",
+            "resolve_rule": "tier != 'GOLDEN' for 1 day"
+          },
+          "watch_persistence": {
+            "enabled": false,
+            "rule_version": "v1"
+          },
+          "margin_decompression": {
+            "enabled": false,
+            "rule_version": "v1"
+          },
+          "regime_shift": {
+            "enabled": false,
+            "rule_version": "v1"
+          }
         }
-      }
-    },
-    "stage_2": {
-      "weights": {
-        "concentration": 0.5,
-        "margin": 0.5
       },
-      "concentration": {
-        "shareholder_delta": {
-          "linear_range": [
-            0.0,
-            -0.05
-          ]
+      "market_regime": {
+        "enabled": false,
+        "classifier": "stub_v0",
+        "features": {
+          "use_vix_proxy": false,
+          "use_breadth_index": false,
+          "use_regime_dwell": false
+        }
+      },
+      "feature_flags": {
+        "day_trader_exclusion": false,
+        "day_trader_exclusion_branches": [
+          "凱基-台北",
+          "元大-總公司",
+          "永豐金-台北"
+        ]
+      },
+      "gates": {
+        "cost_safety": {
+          "lookback_days": 5,
+          "max_premium_ratio": 1.05,
+          "divergence_alert_pct": 5,
+          "anchor": "conservative"
         },
-        "broker_count_diff_negative_streak": {
-          "levels": {
-            "5": 100,
-            "3": 60,
-            "0": 0
+        "fii_sync": {
+          "indicator_brokers": [
+            "JPM",
+            "UBS",
+            "GS",
+            "ML",
+            "Citi"
+          ],
+          "min_brokers": 2,
+          "min_consecutive_days": 3
+        },
+        "fii_alignment": {
+          "enabled": true,
+          "contra_days_cap": 2
+        },
+        "main_force": {
+          "min_consecutive_days": 3,
+          "volume_increasing_min_streaks": 2
+        }
+      },
+      "stage_1": {
+        "weights": {
+          "fii": 0.5,
+          "main_force": 0.5
+        },
+        "fii": {
+          "sync_count": {
+            "linear_range": [
+              3,
+              6
+            ],
+            "base_at_min": 0,
+            "base_at_max": 100
+          },
+          "buy_ratio": {
+            "linear_range": [
+              0.05,
+              0.15
+            ]
+          },
+          "holding_trend": {
+            "up": 100,
+            "flat": 50,
+            "down": 0
+          },
+          "sub_weights": {
+            "sync": 0.4,
+            "ratio": 0.4,
+            "trend": 0.2
           }
         },
-        "large_holder_400": {
-          "linear_range": [
-            0.0,
-            0.03
-          ]
-        },
-        "large_holder_1000": {
-          "linear_range": [
-            0.0,
-            0.02
-          ]
-        },
-        "sub_weights": {
-          "shareholders": 0.3,
-          "diff": 0.2,
-          "L400": 0.25,
-          "L1000": 0.25
+        "main_force": {
+          "consecutive_days": {
+            "linear_range": [
+              4,
+              8
+            ],
+            "base_at_min": 0,
+            "base_at_max": 100
+          },
+          "lock_strength": {
+            "linear_range": [
+              0.1,
+              0.3
+            ]
+          },
+          "increasing_streak": {
+            "per_segment": 25,
+            "cap": 100
+          },
+          "top5_concentration": {
+            "linear_range": [
+              0.5,
+              0.8
+            ]
+          },
+          "sub_weights": {
+            "days": 0.3,
+            "lock": 0.3,
+            "streak": 0.2,
+            "concentration": 0.2
+          }
         }
       },
-      "margin": {
-        "maintenance_curve": {
-          "130": 100,
-          "140": 80,
-          "150": 50,
-          "160": 20
+      "stage_2": {
+        "weights": {
+          "concentration": 0.5,
+          "margin": 0.5
         },
-        "healthy_wash": {
-          "per_day": 10,
-          "cap": 100
+        "concentration": {
+          "shareholder_delta": {
+            "linear_range": [
+              0.0,
+              -0.05
+            ]
+          },
+          "broker_count_diff_negative_streak": {
+            "levels": {
+              "5": 100,
+              "3": 60,
+              "0": 0
+            }
+          },
+          "large_holder_400": {
+            "linear_range": [
+              0.0,
+              0.03
+            ]
+          },
+          "large_holder_1000": {
+            "linear_range": [
+              0.0,
+              0.02
+            ]
+          },
+          "sub_weights": {
+            "shareholders": 0.3,
+            "diff": 0.2,
+            "L400": 0.25,
+            "L1000": 0.25
+          }
         },
-        "unhealthy_resistance": {
-          "per_day": -15,
-          "floor": 0
-        },
-        "panic_signal": {
-          "max_maintenance_ratio": 142,
-          "min_quiet_volume_days": 3
-        },
-        "sub_weights": {
-          "maintenance": 0.5,
-          "healthy_wash": 0.3,
-          "unhealthy_penalty": 0.2
+        "margin": {
+          "maintenance_curve": {
+            "130": 100,
+            "140": 80,
+            "150": 50,
+            "160": 20
+          },
+          "healthy_wash": {
+            "per_day": 10,
+            "cap": 100
+          },
+          "unhealthy_resistance": {
+            "per_day": -15,
+            "floor": 0
+          },
+          "panic_signal": {
+            "max_maintenance_ratio": 142,
+            "min_quiet_volume_days": 3
+          },
+          "sub_weights": {
+            "maintenance": 0.5,
+            "healthy_wash": 0.3,
+            "unhealthy_penalty": 0.2
+          }
         }
+      },
+      "stage_3": {
+        "weights": {
+          "price_action": 0.6,
+          "trend_2h": 0.4
+        },
+        "price_action": {
+          "scores": {
+            "pin_bar": 40,
+            "engulfing": 50,
+            "terminal": 30,
+            "retest": 20
+          },
+          "pin_bar": {
+            "lower_shadow_to_body_ratio": 2.0
+          },
+          "aggregation": "max_with_retest_bonus"
+        },
+        "trend_2h": {
+          "above_ema_positive_slope": 100,
+          "above_ema_flat_slope": 60,
+          "below_ema": 0
+        },
+        "trade_type": {
+          "T1_conditions": {
+            "max_margin_maintenance_ratio": 140,
+            "requires_wash_completion": true
+          },
+          "T2_conditions": {
+            "requires_fii_lock": true,
+            "requires_main_force_lock": true,
+            "requires_breakout_retest": true
+          }
+        }
+      },
+      "composite": {
+        "weights": {
+          "stage_1": 0.4,
+          "stage_2": 0.35,
+          "stage_3": 0.25
+        }
+      },
+      "tiers": {
+        "golden_min": 85,
+        "watch_min": 70,
+        "neutral_min": 50
+      },
+      "ranking": {
+        "tie_breakers": [
+          {
+            "key": "composite_score",
+            "direction": "desc"
+          },
+          {
+            "key": "stage_1",
+            "direction": "desc"
+          },
+          {
+            "key": "main_force_consecutive_days",
+            "direction": "desc"
+          },
+          {
+            "key": "fii_sync_count",
+            "direction": "desc"
+          },
+          {
+            "key": "ticker",
+            "direction": "asc"
+          }
+        ]
+      },
+      "data_validation": {
+        "on_missing_field": "zero_with_warning",
+        "on_unknown_schema_version": "fail",
+        "tdcc_max_lag_days": 7
       }
     },
-    "stage_3": {
-      "weights": {
-        "price_action": 0.6,
-        "trend_2h": 0.4
+    "engine_params": {
+      "CHIP_SCORE_CONFIG": {
+        "vol_ratio": {
+          "max": 8,
+          "label": "投量比",
+          "desc": "主力買超 ÷ 市場成交量",
+          "thresholds": [
+            0.12,
+            0.06
+          ],
+          "scores": [
+            8,
+            4,
+            0
+          ]
+        },
+        "streak": {
+          "max": 10,
+          "label": "連續買超",
+          "desc": "連續主力淨買超天數",
+          "thresholds": [
+            7,
+            5,
+            3,
+            1
+          ],
+          "scores": [
+            10,
+            8,
+            6,
+            3,
+            0
+          ]
+        },
+        "concentration": {
+          "max": 8,
+          "label": "籌碼集中度",
+          "desc": "大戶持股變化(TDCC)",
+          "thresholds": [],
+          "scores": [
+            0
+          ]
+        },
+        "institutional": {
+          "max": 8,
+          "label": "法人同向",
+          "desc": "主力/外資/投信同向淨買家數",
+          "thresholds": [
+            3,
+            2,
+            1
+          ],
+          "scores": [
+            8,
+            5,
+            2,
+            0
+          ]
+        },
+        "cost_support": {
+          "max": 6,
+          "label": "成本支撐",
+          "desc": "現價距主力成本距離(越近越好)",
+          "thresholds": [
+            1.02,
+            1.05
+          ],
+          "scores": [
+            6,
+            3,
+            0
+          ]
+        }
       },
-      "price_action": {
+      "DIST_AUTO_FILTER_CONSISTENCY": "弱",
+      "DIST_AUTO_FILTER_MARGIN_MIN": 1.12,
+      "DIST_CONSISTENCY_CONFIG": {
+        "strong_rank_max": 15,
+        "strong_vol_min": 8000,
         "scores": {
-          "pin_bar": 40,
-          "engulfing": 50,
-          "terminal": 30,
-          "retest": 20
-        },
-        "pin_bar": {
-          "lower_shadow_to_body_ratio": 2.0
-        },
-        "aggregation": "max_with_retest_bonus"
+          "both_strong_buy": [
+            5,
+            "最高共振"
+          ],
+          "both_buy": [
+            3,
+            "一般共振"
+          ],
+          "foreign_lead": [
+            3,
+            "外資主導"
+          ],
+          "main_lead": [
+            3,
+            "主力主導"
+          ],
+          "either_sell": [
+            -3,
+            "扣分"
+          ],
+          "both_sell": [
+            -5,
+            "強烈賣超"
+          ],
+          "neutral": [
+            0,
+            "中性 / 分歧"
+          ]
+        }
       },
-      "trend_2h": {
-        "above_ema_positive_slope": 100,
-        "above_ema_flat_slope": 60,
-        "below_ema": 0
-      },
-      "trade_type": {
-        "T1_conditions": {
-          "max_margin_maintenance_ratio": 140,
-          "requires_wash_completion": true
+      "DIST_GRADE_BANDS": [
+        [
+          4,
+          "強",
+          "#52B788"
+        ],
+        [
+          1,
+          "中",
+          "#D4A84B"
+        ],
+        [
+          -99,
+          "弱",
+          "#E05C7A"
+        ]
+      ],
+      "DIST_SAFETY_MARGIN_BANDS": [
+        [
+          1.03,
+          "綠",
+          "#52B788",
+          "安全，可積極布局"
+        ],
+        [
+          1.08,
+          "黃",
+          "#D4A84B",
+          "中等，小心 / 分批"
+        ],
+        [
+          1.15,
+          "橙",
+          "#C47A5A",
+          "偏高，建議減碼"
+        ],
+        [
+          null,
+          "紅",
+          "#E05C7A",
+          "高風險，強烈建議減碼或移除"
+        ]
+      ],
+      "GOLDEN_CONVICTION_CAP": 1.0,
+      "GOLDEN_GOLD_SPON_MIN": 0.45,
+      "GOLDEN_SCORE_SPON_HIGH": 0.7,
+      "GOLDEN_SCORE_SPON_MID": 0.55,
+      "GOLDEN_SCORE_STREAK_HIGH": 5,
+      "GOLDEN_SCORE_STREAK_MID": 3,
+      "GOLDEN_SECTOR_TOP_N_TIGHT": 3,
+      "GOLDEN_TIER_PRIME": 0.65,
+      "GOLDEN_TIER_STRONG": 0.4,
+      "GOLDEN_W_ACCELERATION_POSITIVE": 0.05,
+      "GOLDEN_W_SECTOR_TOP3": 0.05,
+      "GOLDEN_W_SPON_HIGH": 0.2,
+      "GOLDEN_W_SPON_MID": 0.1,
+      "GOLDEN_W_STATE_CONFIRMED": 0.15,
+      "GOLDEN_W_STREAK_HIGH": 0.25,
+      "GOLDEN_W_STREAK_MID": 0.15,
+      "GOLDEN_W_TIER_A": 0.1,
+      "GOLDEN_W_VELOCITY_POSITIVE": 0.1,
+      "GRADE_PCT_MAP": [
+        [
+          0.8,
+          "強",
+          "#D4A84B"
+        ],
+        [
+          0.6,
+          "中",
+          "#7EB8D4"
+        ],
+        [
+          0.0,
+          "弱",
+          "#8B949E"
+        ]
+      ],
+      "MC_BREADTH_TREND_FAST": 0.1,
+      "MC_BREADTH_TREND_SLOW": 0.02,
+      "MC_BREAKOUT_CHG_MIN": 2.0,
+      "MC_BREAKOUT_HIGHRISK_RETREAT": 3,
+      "MC_BREAKOUT_LOOKBACK": 10,
+      "MC_BREAKOUT_RETREAT_MIN": 2,
+      "MC_BREAKOUT_VOL_MULT": 1.8,
+      "MC_COST_DIVERGENCE_PCT": 5.0,
+      "MC_REGIME_MILD_RISKON_BREADTH": 0.6,
+      "MC_REGIME_MILD_RISKON_CHG": 1.0,
+      "MC_REGIME_OFFENSIVE_BREADTH": 0.75,
+      "MC_REGIME_OFFENSIVE_CHG": 3.0,
+      "MC_REGIME_RETREAT_BREADTH": 0.25,
+      "MC_REGIME_RETREAT_CHG": -2.0,
+      "MC_REGIME_WAITING_BREADTH": 0.35,
+      "MC_TRANSITION_BREADTH_DELTA": 0.25,
+      "MC_TRANSITION_CHG_DELTA": 3.0,
+      "MC_W2_FII_RATIO": 0.3,
+      "MC_W3_SOLID_MIN_ABSENCE": 2,
+      "MC_W5_CHURN_RATIO": 0.6,
+      "MC_W5_SELL_RATIO": 1.0,
+      "MC_WEAKENING_RECENCY_MAX": 3,
+      "SM_ABSENT_EXITED": 3,
+      "SM_ACCEL_DISTRIBUTING": -500,
+      "SM_BREADTH_CONFIRMED": 0.5,
+      "SM_COLLAPSE_WINDOW": 2,
+      "SM_DAYS_SINCE_FAIL_RISK": 10,
+      "SM_DEBOUNCE_SNAPSHOTS": 2,
+      "SM_DIST_LOCKOUT_SNAPSHOTS": 5,
+      "SM_FLIPS_UNSTABLE_30D": 2,
+      "SM_SECTOR_TOP_N_CONFIRM": 5,
+      "SM_SPON_CONFIRMED": 0.5,
+      "SM_SPON_STRENGTHENING": 0.4,
+      "SM_STREAK_ACCUMULATING": 1,
+      "SM_STREAK_CONFIRMED": 3,
+      "SM_STREAK_STRENGTHENING": 3,
+      "TEMP_LEVELS": [
+        [
+          0.7,
+          "extreme",
+          "極端",
+          "#E05C7A"
+        ],
+        [
+          0.5,
+          "hot",
+          "過熱",
+          "#C47A5A"
+        ],
+        [
+          0.35,
+          "warm",
+          "偏熱",
+          "#D4A84B"
+        ],
+        [
+          0.2,
+          "stable",
+          "穩定",
+          "#7EB8D4"
+        ],
+        [
+          0.0,
+          "cool",
+          "冷靜",
+          "#52B788"
+        ]
+      ],
+      "TEMP_W_BREADTH": 0.3,
+      "TEMP_W_DISTRIB": 0.3,
+      "TEMP_W_RISK_RATIO": 0.4,
+      "TIER_A": {
+        "2330": {
+          "name": "台積電",
+          "name_en": "TSMC",
+          "group": "semiconductor",
+          "group_zh": "半導體"
         },
-        "T2_conditions": {
-          "requires_fii_lock": true,
-          "requires_main_force_lock": true,
-          "requires_breakout_retest": true
+        "2454": {
+          "name": "聯發科",
+          "name_en": "MediaTek",
+          "group": "semiconductor",
+          "group_zh": "半導體"
+        },
+        "2317": {
+          "name": "鴻海",
+          "name_en": "Hon Hai",
+          "group": "electronics",
+          "group_zh": "電子代工"
+        },
+        "2382": {
+          "name": "廣達",
+          "name_en": "Quanta",
+          "group": "electronics",
+          "group_zh": "電子代工"
+        },
+        "2308": {
+          "name": "台達電",
+          "name_en": "Delta",
+          "group": "electronics",
+          "group_zh": "電子代工"
+        },
+        "2881": {
+          "name": "富邦金",
+          "name_en": "Fubon FHC",
+          "group": "financials",
+          "group_zh": "金融"
+        },
+        "2882": {
+          "name": "國泰金",
+          "name_en": "Cathay FHC",
+          "group": "financials",
+          "group_zh": "金融"
+        },
+        "2891": {
+          "name": "中信金",
+          "name_en": "CTBC FHC",
+          "group": "financials",
+          "group_zh": "金融"
         }
       }
-    },
-    "composite": {
-      "weights": {
-        "stage_1": 0.4,
-        "stage_2": 0.35,
-        "stage_3": 0.25
-      }
-    },
-    "tiers": {
-      "golden_min": 85,
-      "watch_min": 70,
-      "neutral_min": 50
-    },
-    "ranking": {
-      "tie_breakers": [
-        {
-          "key": "composite_score",
-          "direction": "desc"
-        },
-        {
-          "key": "stage_1",
-          "direction": "desc"
-        },
-        {
-          "key": "main_force_consecutive_days",
-          "direction": "desc"
-        },
-        {
-          "key": "fii_sync_count",
-          "direction": "desc"
-        },
-        {
-          "key": "ticker",
-          "direction": "asc"
-        }
-      ]
-    },
-    "data_validation": {
-      "on_missing_field": "zero_with_warning",
-      "on_unknown_schema_version": "fail",
-      "tdcc_max_lag_days": 7
     }
   },
   "universe_size": 34,
   "eligible_count": 0,
+  "fii_pending": true,
+  "obs_landing": false,
+  "fii_sell_raw": [
+    {
+      "rank": 1,
+      "code": "6770",
+      "name": "力積電",
+      "sellVol": 87948,
+      "close": 83.2,
+      "chgPct": -2.5,
+      "isETF": false
+    },
+    {
+      "rank": 2,
+      "code": "2337",
+      "name": "旺宏",
+      "sellVol": 54163,
+      "close": 161.5,
+      "chgPct": -10.5,
+      "isETF": false
+    },
+    {
+      "rank": 3,
+      "code": "2312",
+      "name": "金寶",
+      "sellVol": 33120,
+      "close": 36.4,
+      "chgPct": -1.6,
+      "isETF": false
+    },
+    {
+      "rank": 4,
+      "code": "2884",
+      "name": "玉山金",
+      "sellVol": 30257,
+      "close": 35.45,
+      "chgPct": 0.45,
+      "isETF": false
+    },
+    {
+      "rank": 5,
+      "code": "2886",
+      "name": "兆豐金",
+      "sellVol": 26839,
+      "close": 46.65,
+      "chgPct": 2.1,
+      "isETF": false
+    },
+    {
+      "rank": 8,
+      "code": "8150",
+      "name": "南茂",
+      "sellVol": 21119,
+      "close": 96.0,
+      "chgPct": -7.0,
+      "isETF": false
+    },
+    {
+      "rank": 9,
+      "code": "2890",
+      "name": "永豐金",
+      "sellVol": 18370,
+      "close": 39.95,
+      "chgPct": 0.4,
+      "isETF": false
+    },
+    {
+      "rank": 10,
+      "code": "2324",
+      "name": "仁寶",
+      "sellVol": 17691,
+      "close": 36.85,
+      "chgPct": -1.05,
+      "isETF": false
+    },
+    {
+      "rank": 11,
+      "code": "2880",
+      "name": "華南金",
+      "sellVol": 17043,
+      "close": 38.0,
+      "chgPct": 1.0,
+      "isETF": false
+    },
+    {
+      "rank": 12,
+      "code": "2344",
+      "name": "華邦電",
+      "sellVol": 16919,
+      "close": 219.5,
+      "chgPct": 14.5,
+      "isETF": false
+    },
+    {
+      "rank": 13,
+      "code": "6116",
+      "name": "彩晶",
+      "sellVol": 14464,
+      "close": 19.5,
+      "chgPct": 0.1,
+      "isETF": false
+    },
+    {
+      "rank": 14,
+      "code": "6282",
+      "name": "康舒",
+      "sellVol": 13692,
+      "close": 58.7,
+      "chgPct": -3.3,
+      "isETF": false
+    },
+    {
+      "rank": 15,
+      "code": "3231",
+      "name": "緯創",
+      "sellVol": 13680,
+      "close": 160.0,
+      "chgPct": 2.5,
+      "isETF": false
+    },
+    {
+      "rank": 16,
+      "code": "4904",
+      "name": "遠傳",
+      "sellVol": 13059,
+      "close": 108.5,
+      "chgPct": 1.5,
+      "isETF": false
+    },
+    {
+      "rank": 17,
+      "code": "2408",
+      "name": "南亞科",
+      "sellVol": 10246,
+      "close": 477.0,
+      "chgPct": 33.5,
+      "isETF": false
+    },
+    {
+      "rank": 18,
+      "code": "2002",
+      "name": "中鋼",
+      "sellVol": 9130,
+      "close": 19.05,
+      "chgPct": -0.3,
+      "isETF": false
+    },
+    {
+      "rank": 19,
+      "code": "9904",
+      "name": "寶成",
+      "sellVol": 8839,
+      "close": 25.95,
+      "chgPct": 0.0,
+      "isETF": false
+    },
+    {
+      "rank": 20,
+      "code": "2481",
+      "name": "強茂",
+      "sellVol": 8160,
+      "close": 192.0,
+      "chgPct": -3.0,
+      "isETF": false
+    },
+    {
+      "rank": 21,
+      "code": "4958",
+      "name": "臻鼎-KY",
+      "sellVol": 7349,
+      "close": 602.0,
+      "chgPct": 15.0,
+      "isETF": false
+    },
+    {
+      "rank": 22,
+      "code": "9105",
+      "name": "泰金寶-DR",
+      "sellVol": 6976,
+      "close": 9.62,
+      "chgPct": -0.38,
+      "isETF": false
+    },
+    {
+      "rank": 23,
+      "code": "2633",
+      "name": "台灣高鐵",
+      "sellVol": 6922,
+      "close": 26.25,
+      "chgPct": 0.3,
+      "isETF": false
+    },
+    {
+      "rank": 24,
+      "code": "1303",
+      "name": "南亞",
+      "sellVol": 6803,
+      "close": 155.0,
+      "chgPct": -1.0,
+      "isETF": false
+    },
+    {
+      "rank": 25,
+      "code": "8105",
+      "name": "凌巨",
+      "sellVol": 6433,
+      "close": 25.15,
+      "chgPct": 1.65,
+      "isETF": false
+    },
+    {
+      "rank": 26,
+      "code": "2313",
+      "name": "華通",
+      "sellVol": 6247,
+      "close": 233.0,
+      "chgPct": -7.0,
+      "isETF": false
+    },
+    {
+      "rank": 27,
+      "code": "1409",
+      "name": "新纖",
+      "sellVol": 6165,
+      "close": 27.05,
+      "chgPct": -0.9,
+      "isETF": false
+    },
+    {
+      "rank": 28,
+      "code": "2330",
+      "name": "台積電",
+      "sellVol": 6104,
+      "close": 2390.0,
+      "chgPct": 0.0,
+      "isETF": false
+    },
+    {
+      "rank": 29,
+      "code": "1402",
+      "name": "遠東新",
+      "sellVol": 6009,
+      "close": 28.6,
+      "chgPct": 0.15,
+      "isETF": false
+    },
+    {
+      "rank": 30,
+      "code": "8926",
+      "name": "台汽電",
+      "sellVol": 5741,
+      "close": 78.1,
+      "chgPct": -3.8,
+      "isETF": false
+    },
+    {
+      "rank": 31,
+      "code": "2382",
+      "name": "廣達",
+      "sellVol": 5591,
+      "close": 366.5,
+      "chgPct": -5.5,
+      "isETF": false
+    },
+    {
+      "rank": 32,
+      "code": "1313",
+      "name": "聯成",
+      "sellVol": 5425,
+      "close": 12.55,
+      "chgPct": 0.75,
+      "isETF": false
+    },
+    {
+      "rank": 33,
+      "code": "3714",
+      "name": "富采",
+      "sellVol": 5370,
+      "close": 67.5,
+      "chgPct": -3.7,
+      "isETF": false
+    },
+    {
+      "rank": 34,
+      "code": "3149",
+      "name": "正達",
+      "sellVol": 5083,
+      "close": 100.0,
+      "chgPct": -2.0,
+      "isETF": false
+    },
+    {
+      "rank": 35,
+      "code": "2426",
+      "name": "鼎元",
+      "sellVol": 4815,
+      "close": 85.1,
+      "chgPct": -8.2,
+      "isETF": false
+    },
+    {
+      "rank": 36,
+      "code": "2371",
+      "name": "大同",
+      "sellVol": 4557,
+      "close": 27.3,
+      "chgPct": -0.25,
+      "isETF": false
+    },
+    {
+      "rank": 37,
+      "code": "2603",
+      "name": "長榮",
+      "sellVol": 4230,
+      "close": 185.0,
+      "chgPct": -1.5,
+      "isETF": false
+    },
+    {
+      "rank": 38,
+      "code": "8422",
+      "name": "可寧衛*",
+      "sellVol": 4134,
+      "close": 28.25,
+      "chgPct": -0.4,
+      "isETF": false
+    },
+    {
+      "rank": 39,
+      "code": "2399",
+      "name": "映泰",
+      "sellVol": 3931,
+      "close": 52.3,
+      "chgPct": -2.0,
+      "isETF": false
+    },
+    {
+      "rank": 40,
+      "code": "1216",
+      "name": "統一",
+      "sellVol": 3893,
+      "close": 75.6,
+      "chgPct": 0.5,
+      "isETF": false
+    },
+    {
+      "rank": 41,
+      "code": "5876",
+      "name": "上海商銀",
+      "sellVol": 3847,
+      "close": 42.0,
+      "chgPct": 0.45,
+      "isETF": false
+    },
+    {
+      "rank": 42,
+      "code": "3706",
+      "name": "神達",
+      "sellVol": 3599,
+      "close": 85.5,
+      "chgPct": -1.2,
+      "isETF": false
+    },
+    {
+      "rank": 43,
+      "code": "2375",
+      "name": "凱美",
+      "sellVol": 3106,
+      "close": 212.0,
+      "chgPct": 0.5,
+      "isETF": false
+    },
+    {
+      "rank": 45,
+      "code": "4906",
+      "name": "正文",
+      "sellVol": 3058,
+      "close": 43.25,
+      "chgPct": -1.6,
+      "isETF": false
+    },
+    {
+      "rank": 46,
+      "code": "3006",
+      "name": "晶豪科",
+      "sellVol": 3045,
+      "close": 240.0,
+      "chgPct": -6.5,
+      "isETF": false
+    },
+    {
+      "rank": 47,
+      "code": "6239",
+      "name": "力成",
+      "sellVol": 2967,
+      "close": 326.0,
+      "chgPct": -12.0,
+      "isETF": false
+    },
+    {
+      "rank": 48,
+      "code": "5285",
+      "name": "界霖",
+      "sellVol": 2915,
+      "close": 101.5,
+      "chgPct": -7.0,
+      "isETF": false
+    },
+    {
+      "rank": 49,
+      "code": "2327",
+      "name": "國巨*",
+      "sellVol": 2709,
+      "close": 1125.0,
+      "chgPct": 75.0,
+      "isETF": false
+    }
+  ],
+  "main_force_sell_raw": [
+    {
+      "rank": 2,
+      "code": "6770",
+      "name": "力積電",
+      "sellVol": 85759,
+      "close": 83.2,
+      "chgPct": -2.5,
+      "isETF": false
+    },
+    {
+      "rank": 4,
+      "code": "2409",
+      "name": "友達",
+      "sellVol": 55660,
+      "close": 30.4,
+      "chgPct": -0.1,
+      "isETF": false
+    },
+    {
+      "rank": 5,
+      "code": "2337",
+      "name": "旺宏",
+      "sellVol": 50604,
+      "close": 161.5,
+      "chgPct": -10.5,
+      "isETF": false
+    },
+    {
+      "rank": 6,
+      "code": "2312",
+      "name": "金寶",
+      "sellVol": 44214,
+      "close": 36.4,
+      "chgPct": -1.6,
+      "isETF": false
+    },
+    {
+      "rank": 7,
+      "code": "3481",
+      "name": "群創",
+      "sellVol": 43785,
+      "close": 70.9,
+      "chgPct": 1.5,
+      "isETF": false
+    },
+    {
+      "rank": 10,
+      "code": "9105",
+      "name": "泰金寶-DR",
+      "sellVol": 27651,
+      "close": 9.62,
+      "chgPct": -0.38,
+      "isETF": false
+    },
+    {
+      "rank": 12,
+      "code": "2303",
+      "name": "聯電",
+      "sellVol": 21777,
+      "close": 178.5,
+      "chgPct": 0.5,
+      "isETF": false
+    },
+    {
+      "rank": 13,
+      "code": "8150",
+      "name": "南茂",
+      "sellVol": 20873,
+      "close": 96.0,
+      "chgPct": -7.0,
+      "isETF": false
+    },
+    {
+      "rank": 14,
+      "code": "2324",
+      "name": "仁寶",
+      "sellVol": 15070,
+      "close": 36.85,
+      "chgPct": -1.05,
+      "isETF": false
+    },
+    {
+      "rank": 15,
+      "code": "6282",
+      "name": "康舒",
+      "sellVol": 12473,
+      "close": 58.7,
+      "chgPct": -3.3,
+      "isETF": false
+    },
+    {
+      "rank": 16,
+      "code": "6116",
+      "name": "彩晶",
+      "sellVol": 11500,
+      "close": 19.5,
+      "chgPct": 0.1,
+      "isETF": false
+    },
+    {
+      "rank": 18,
+      "code": "9904",
+      "name": "寶成",
+      "sellVol": 8141,
+      "close": 25.95,
+      "chgPct": 0.0,
+      "isETF": false
+    },
+    {
+      "rank": 19,
+      "code": "2002",
+      "name": "中鋼",
+      "sellVol": 7673,
+      "close": 19.05,
+      "chgPct": -0.3,
+      "isETF": false
+    },
+    {
+      "rank": 23,
+      "code": "4958",
+      "name": "臻鼎-KY",
+      "sellVol": 6058,
+      "close": 602.0,
+      "chgPct": 15.0,
+      "isETF": false
+    },
+    {
+      "rank": 24,
+      "code": "1409",
+      "name": "新纖",
+      "sellVol": 5968,
+      "close": 27.05,
+      "chgPct": -0.9,
+      "isETF": false
+    },
+    {
+      "rank": 25,
+      "code": "2330",
+      "name": "台積電",
+      "sellVol": 5888,
+      "close": 2390.0,
+      "chgPct": 0.0,
+      "isETF": false
+    },
+    {
+      "rank": 26,
+      "code": "2301",
+      "name": "光寶科",
+      "sellVol": 5886,
+      "close": 215.0,
+      "chgPct": -1.5,
+      "isETF": false
+    },
+    {
+      "rank": 28,
+      "code": "2313",
+      "name": "華通",
+      "sellVol": 5774,
+      "close": 233.0,
+      "chgPct": -7.0,
+      "isETF": false
+    },
+    {
+      "rank": 29,
+      "code": "6239",
+      "name": "力成",
+      "sellVol": 5479,
+      "close": 326.0,
+      "chgPct": -12.0,
+      "isETF": false
+    },
+    {
+      "rank": 30,
+      "code": "8105",
+      "name": "凌巨",
+      "sellVol": 5342,
+      "close": 25.15,
+      "chgPct": 1.65,
+      "isETF": false
+    },
+    {
+      "rank": 31,
+      "code": "3711",
+      "name": "日月光投控",
+      "sellVol": 5198,
+      "close": 641.0,
+      "chgPct": -12.0,
+      "isETF": false
+    },
+    {
+      "rank": 32,
+      "code": "3714",
+      "name": "富采",
+      "sellVol": 5135,
+      "close": 67.5,
+      "chgPct": -3.7,
+      "isETF": false
+    },
+    {
+      "rank": 33,
+      "code": "1313",
+      "name": "聯成",
+      "sellVol": 5048,
+      "close": 12.55,
+      "chgPct": 0.75,
+      "isETF": false
+    },
+    {
+      "rank": 34,
+      "code": "2603",
+      "name": "長榮",
+      "sellVol": 5022,
+      "close": 185.0,
+      "chgPct": -1.5,
+      "isETF": false
+    },
+    {
+      "rank": 35,
+      "code": "2351",
+      "name": "順德",
+      "sellVol": 4687,
+      "close": 209.0,
+      "chgPct": -8.5,
+      "isETF": false
+    },
+    {
+      "rank": 37,
+      "code": "8926",
+      "name": "台汽電",
+      "sellVol": 4409,
+      "close": 78.1,
+      "chgPct": -3.8,
+      "isETF": false
+    },
+    {
+      "rank": 38,
+      "code": "3576",
+      "name": "聯合再生",
+      "sellVol": 4306,
+      "close": 17.25,
+      "chgPct": -0.55,
+      "isETF": false
+    },
+    {
+      "rank": 39,
+      "code": "3149",
+      "name": "正達",
+      "sellVol": 4256,
+      "close": 100.0,
+      "chgPct": -2.0,
+      "isETF": false
+    },
+    {
+      "rank": 40,
+      "code": "2302",
+      "name": "麗正",
+      "sellVol": 4208,
+      "close": 48.0,
+      "chgPct": -2.2,
+      "isETF": false
+    },
+    {
+      "rank": 41,
+      "code": "2426",
+      "name": "鼎元",
+      "sellVol": 3919,
+      "close": 85.1,
+      "chgPct": -8.2,
+      "isETF": false
+    },
+    {
+      "rank": 43,
+      "code": "3706",
+      "name": "神達",
+      "sellVol": 3665,
+      "close": 85.5,
+      "chgPct": -1.2,
+      "isETF": false
+    },
+    {
+      "rank": 45,
+      "code": "2399",
+      "name": "映泰",
+      "sellVol": 3535,
+      "close": 52.3,
+      "chgPct": -2.0,
+      "isETF": false
+    },
+    {
+      "rank": 46,
+      "code": "5285",
+      "name": "界霖",
+      "sellVol": 3432,
+      "close": 101.5,
+      "chgPct": -7.0,
+      "isETF": false
+    },
+    {
+      "rank": 50,
+      "code": "2371",
+      "name": "大同",
+      "sellVol": 3261,
+      "close": 27.3,
+      "chgPct": -0.25,
+      "isETF": false
+    }
+  ],
   "market_regime": {
     "label": null,
     "classifier": "stub_v0",
@@ -552,12 +1600,17 @@
       ],
       "main_force_cost": 24.72,
       "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 16473,
       "main_force_volume_trend": [
         16473
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 516680,
       "shareholder_count_delta_pct": -0.3589,
@@ -635,7 +1688,7 @@
         "label_zh": "—",
         "net_cumulative": 0,
         "present_latest": false,
-        "snaps_since_seen": 3
+        "snaps_since_seen": 0
       }
     },
     {
@@ -648,10 +1701,10 @@
       "prev_close": null,
       "change_pct": 3.5,
       "volume": 41002,
-      "volume_5d_avg": 27020.0,
-      "volume_ratio": 1.517,
+      "volume_5d_avg": 23155.4,
+      "volume_ratio": 1.771,
       "velocity_3d": 18822,
-      "acceleration": 4860,
+      "acceleration": 74660,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -694,8 +1747,13 @@
         }
       ],
       "main_force_cost": 57.66,
-      "main_force_consecutive_days": 3,
+      "main_force_consecutive_days": 2,
+      "main_force_strict_streak_days": 2,
+      "main_force_positive_days_in_window": 7,
+      "net_accumulation_in_window": 285516,
       "main_force_volume_trend": [
+        6401,
+        146514,
         18445,
         34837,
         56089
@@ -703,6 +1761,8 @@
       "volume_increasing_streak": 2,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 309437,
       "shareholder_count_delta_pct": -0.8513,
@@ -778,7 +1838,7 @@
         "flags": [],
         "flag_count": 0,
         "label_zh": "—",
-        "net_cumulative": 53282,
+        "net_cumulative": 229427,
         "present_latest": true,
         "snaps_since_seen": 0
       }
@@ -793,10 +1853,10 @@
       "prev_close": null,
       "change_pct": 0.05,
       "volume": 7337,
-      "volume_5d_avg": 8961.67,
-      "volume_ratio": 0.819,
+      "volume_5d_avg": 7534.8,
+      "volume_ratio": 0.974,
       "velocity_3d": -5194,
-      "acceleration": -10389,
+      "acceleration": -11566,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -839,8 +1899,13 @@
         }
       ],
       "main_force_cost": 8.07,
-      "main_force_consecutive_days": 3,
+      "main_force_consecutive_days": 2,
+      "main_force_strict_streak_days": 2,
+      "main_force_positive_days_in_window": 6,
+      "net_accumulation_in_window": 82333,
       "main_force_volume_trend": [
+        9050,
+        9050,
         21792,
         21792,
         11403
@@ -848,6 +1913,8 @@
       "volume_increasing_streak": 1,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 302318,
       "shareholder_count_delta_pct": -0.31,
@@ -929,7 +1996,7 @@
         ],
         "flag_count": 1,
         "label_zh": "失速",
-        "net_cumulative": 43584,
+        "net_cumulative": 70930,
         "present_latest": true,
         "snaps_since_seen": 0
       }
@@ -944,10 +2011,10 @@
       "prev_close": null,
       "change_pct": 0.15,
       "volume": 5578,
-      "volume_5d_avg": 4103.67,
-      "volume_ratio": 1.359,
+      "volume_5d_avg": 5853.6,
+      "volume_ratio": 0.953,
       "velocity_3d": -255,
-      "acceleration": 3676,
+      "acceleration": 792,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -991,7 +2058,12 @@
       ],
       "main_force_cost": 28.97,
       "main_force_consecutive_days": 3,
+      "main_force_strict_streak_days": 3,
+      "main_force_positive_days_in_window": 11,
+      "net_accumulation_in_window": 193054,
       "main_force_volume_trend": [
+        16281,
+        16281,
         16281,
         14188,
         15771
@@ -999,6 +2071,8 @@
       "volume_increasing_streak": 1,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 93627,
       "shareholder_count_delta_pct": -2.0761,
@@ -1070,17 +2144,22 @@
       "signal_age_days": 1,
       "delta_vs_yesterday": "—",
       "weakening": {
-        "severity": "yellow",
+        "severity": "orange",
         "flags": [
+          {
+            "code": "W1",
+            "zh": "動能衰竭",
+            "detail": "連買10日但速度 -1,046/日"
+          },
           {
             "code": "W2",
             "zh": "雙引擎分歧",
             "detail": "主力 +14,188 vs 外資 -7,748"
           }
         ],
-        "flag_count": 1,
-        "label_zh": "失速",
-        "net_cumulative": 30469,
+        "flag_count": 2,
+        "label_zh": "轉弱",
+        "net_cumulative": 177283,
         "present_latest": true,
         "snaps_since_seen": 0
       }
@@ -1142,12 +2221,17 @@
       ],
       "main_force_cost": 76.52,
       "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 6704,
       "main_force_volume_trend": [
         6704
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 103388,
       "shareholder_count_delta_pct": -0.8763,
@@ -1225,7 +2309,7 @@
         "label_zh": "—",
         "net_cumulative": 0,
         "present_latest": false,
-        "snaps_since_seen": 3
+        "snaps_since_seen": 0
       }
     },
     {
@@ -1285,12 +2369,17 @@
       ],
       "main_force_cost": 10.1,
       "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 27748,
       "main_force_volume_trend": [
         27748
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 171750,
       "shareholder_count_delta_pct": -0.7025,
@@ -1368,7 +2457,7 @@
         "label_zh": "—",
         "net_cumulative": 0,
         "present_latest": false,
-        "snaps_since_seen": 3
+        "snaps_since_seen": 0
       }
     },
     {
@@ -1381,10 +2470,10 @@
       "prev_close": null,
       "change_pct": 0.3,
       "volume": 7422,
-      "volume_5d_avg": 30674.0,
-      "volume_ratio": 0.242,
-      "velocity_3d": -53284,
-      "acceleration": null,
+      "volume_5d_avg": 19767.4,
+      "volume_ratio": 0.375,
+      "velocity_3d": -7174,
+      "acceleration": -36908,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -1392,7 +2481,7 @@
       "fii_holding_trend_5d": null,
       "fii_sync_count": 1,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": 1,
+      "fii_consecutive_buy_days": 6,
       "main_force_buy": 16133,
       "top5_branches": [
         {
@@ -1427,14 +2516,22 @@
         }
       ],
       "main_force_cost": 71.12,
-      "main_force_consecutive_days": 2,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 7,
+      "net_accumulation_in_window": 171106,
       "main_force_volume_trend": [
+        11949,
+        9947,
+        30480,
         69417,
         16133
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 201988,
       "shareholder_count_delta_pct": -2.9273,
@@ -1506,11 +2603,17 @@
       "signal_age_days": 1,
       "delta_vs_yesterday": "—",
       "weakening": {
-        "severity": "none",
-        "flags": [],
-        "flag_count": 0,
-        "label_zh": "—",
-        "net_cumulative": 69417,
+        "severity": "orange",
+        "flags": [
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買6日，缺席2日（最後 06-22）"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "轉弱",
+        "net_cumulative": 154973,
         "present_latest": false,
         "snaps_since_seen": 2
       }
@@ -1525,10 +2628,10 @@
       "prev_close": null,
       "change_pct": 75.0,
       "volume": 6370,
-      "volume_5d_avg": 6370.0,
-      "volume_ratio": 1.0,
-      "velocity_3d": null,
-      "acceleration": null,
+      "volume_5d_avg": 10280.8,
+      "volume_ratio": 0.62,
+      "velocity_3d": -6255,
+      "acceleration": 0,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -1572,12 +2675,21 @@
       ],
       "main_force_cost": 972.75,
       "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 5,
+      "net_accumulation_in_window": 63909,
       "main_force_volume_trend": [
+        3545,
+        21346,
+        21346,
+        8836,
         8836
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 352784,
       "shareholder_count_delta_pct": -0.9674,
@@ -1649,17 +2761,27 @@
       "signal_age_days": 1,
       "delta_vs_yesterday": "—",
       "weakening": {
-        "severity": "yellow",
+        "severity": "red",
         "flags": [
+          {
+            "code": "W1",
+            "zh": "動能衰竭",
+            "detail": "連買4日但速度 -6,255/日"
+          },
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買4日，缺席3日（最後 06-18）"
+          },
           {
             "code": "W5",
             "zh": "分點賣壓",
             "detail": "分點賣 17,587 vs 買 8,836"
           }
         ],
-        "flag_count": 1,
-        "label_zh": "失速",
-        "net_cumulative": 0,
+        "flag_count": 3,
+        "label_zh": "出貨確認",
+        "net_cumulative": 55073,
         "present_latest": false,
         "snaps_since_seen": 3
       }
@@ -1674,10 +2796,10 @@
       "prev_close": null,
       "change_pct": 14.5,
       "volume": 19308,
-      "volume_5d_avg": 19308.0,
-      "volume_ratio": 1.0,
-      "velocity_3d": null,
-      "acceleration": null,
+      "volume_5d_avg": 30533.4,
+      "volume_ratio": 0.632,
+      "velocity_3d": 1017,
+      "acceleration": -2618,
       "market_volume": 253065,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -1721,12 +2843,21 @@
       ],
       "main_force_cost": 218.12,
       "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 8,
+      "net_accumulation_in_window": 398292,
       "main_force_volume_trend": [
+        60080,
+        60080,
+        50735,
+        67350,
         52769
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 427925,
       "shareholder_count_delta_pct": -11.0694,
@@ -1798,11 +2929,17 @@
       "signal_age_days": 1,
       "delta_vs_yesterday": "—",
       "weakening": {
-        "severity": "none",
-        "flags": [],
-        "flag_count": 0,
-        "label_zh": "—",
-        "net_cumulative": 0,
+        "severity": "orange",
+        "flags": [
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買7日，缺席3日（最後 06-18）"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "轉弱",
+        "net_cumulative": 345523,
         "present_latest": false,
         "snaps_since_seen": 3
       }
@@ -1863,7 +3000,10 @@
         }
       ],
       "main_force_cost": 74.75,
-      "main_force_consecutive_days": 2,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 2,
+      "net_accumulation_in_window": 27312,
       "main_force_volume_trend": [
         9511,
         17801
@@ -1871,6 +3011,8 @@
       "volume_increasing_streak": 1,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 126047,
       "shareholder_count_delta_pct": -0.3951,
@@ -1961,10 +3103,10 @@
       "prev_close": null,
       "change_pct": 33.5,
       "volume": 3862,
-      "volume_5d_avg": 10402.5,
-      "volume_ratio": 0.371,
-      "velocity_3d": -9548,
-      "acceleration": null,
+      "volume_5d_avg": 16628.0,
+      "volume_ratio": 0.232,
+      "velocity_3d": 2454,
+      "acceleration": -4774,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -1972,7 +3114,7 @@
       "fii_holding_trend_5d": null,
       "fii_sync_count": 1,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": 1,
+      "fii_consecutive_buy_days": 4,
       "main_force_buy": 21055,
       "top5_branches": [
         {
@@ -2007,14 +3149,22 @@
         }
       ],
       "main_force_cost": 473.76,
-      "main_force_consecutive_days": 2,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 6,
+      "net_accumulation_in_window": 156367,
       "main_force_volume_trend": [
+        56330,
+        16147,
+        16147,
         30603,
         21055
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 299060,
       "shareholder_count_delta_pct": -13.0779,
@@ -2086,11 +3236,17 @@
       "signal_age_days": 1,
       "delta_vs_yesterday": "—",
       "weakening": {
-        "severity": "none",
-        "flags": [],
-        "flag_count": 0,
-        "label_zh": "—",
-        "net_cumulative": 30603,
+        "severity": "orange",
+        "flags": [
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買5日，缺席2日（最後 06-22）"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "轉弱",
+        "net_cumulative": 135312,
         "present_latest": false,
         "snaps_since_seen": 2
       }
@@ -2105,10 +3261,10 @@
       "prev_close": null,
       "change_pct": 1.0,
       "volume": 4693,
-      "volume_5d_avg": 13307.0,
-      "volume_ratio": 0.353,
+      "volume_5d_avg": 15075.5,
+      "volume_ratio": 0.311,
       "velocity_3d": -12552,
-      "acceleration": -17233,
+      "acceleration": -13244,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -2151,8 +3307,12 @@
         }
       ],
       "main_force_cost": 329.32,
-      "main_force_consecutive_days": 3,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 4,
+      "net_accumulation_in_window": 103525,
       "main_force_volume_trend": [
+        29153,
         34471,
         30535,
         9366
@@ -2160,6 +3320,8 @@
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 255236,
       "shareholder_count_delta_pct": 1.7403,
@@ -2231,11 +3393,17 @@
       "signal_age_days": 1,
       "delta_vs_yesterday": "—",
       "weakening": {
-        "severity": "none",
-        "flags": [],
-        "flag_count": 0,
-        "label_zh": "—",
-        "net_cumulative": 65006,
+        "severity": "orange",
+        "flags": [
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買3日，缺席1日（最後 06-23）"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "轉弱",
+        "net_cumulative": 94159,
         "present_latest": false,
         "snaps_since_seen": 1
       }
@@ -2266,12 +3434,17 @@
       "top5_branches": [],
       "main_force_cost": null,
       "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 4095,
       "main_force_volume_trend": [
         4095
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 59673,
       "shareholder_count_delta_pct": -0.3507,
@@ -2349,7 +3522,7 @@
         "label_zh": "—",
         "net_cumulative": 0,
         "present_latest": false,
-        "snaps_since_seen": 3
+        "snaps_since_seen": 0
       }
     },
     {
@@ -2378,12 +3551,17 @@
       "top5_branches": [],
       "main_force_cost": null,
       "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 4002,
       "main_force_volume_trend": [
         4002
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 37617,
       "shareholder_count_delta_pct": 13.1611,
@@ -2461,7 +3639,7 @@
         "label_zh": "—",
         "net_cumulative": 0,
         "present_latest": false,
-        "snaps_since_seen": 3
+        "snaps_since_seen": 0
       }
     },
     {
@@ -2474,10 +3652,10 @@
       "prev_close": null,
       "change_pct": 0.95,
       "volume": 46871,
-      "volume_5d_avg": 47194.67,
-      "volume_ratio": 0.993,
+      "volume_5d_avg": 35614.4,
+      "volume_ratio": 1.316,
       "velocity_3d": 11724,
-      "acceleration": -54453,
+      "acceleration": -8012,
       "market_volume": 146260,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -2521,7 +3699,12 @@
       ],
       "main_force_cost": 24.29,
       "main_force_consecutive_days": 3,
+      "main_force_strict_streak_days": 3,
+      "main_force_positive_days_in_window": 10,
+      "net_accumulation_in_window": 388152,
       "main_force_volume_trend": [
+        37525,
+        43130,
         43652,
         82602,
         67099
@@ -2529,6 +3712,8 @@
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 262216,
       "shareholder_count_delta_pct": -2.3768,
@@ -2604,7 +3789,7 @@
         "flags": [],
         "flag_count": 0,
         "label_zh": "—",
-        "net_cumulative": 126254,
+        "net_cumulative": 321053,
         "present_latest": true,
         "snaps_since_seen": 0
       }
@@ -2619,10 +3804,10 @@
       "prev_close": null,
       "change_pct": 0.5,
       "volume": 22622,
-      "volume_5d_avg": 28673.33,
-      "volume_ratio": 0.789,
+      "volume_5d_avg": 35428.0,
+      "volume_ratio": 0.639,
       "velocity_3d": -10617,
-      "acceleration": -11420,
+      "acceleration": -21788,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -2666,7 +3851,12 @@
       ],
       "main_force_cost": 45.01,
       "main_force_consecutive_days": 3,
+      "main_force_strict_streak_days": 3,
+      "main_force_positive_days_in_window": 12,
+      "net_accumulation_in_window": 372901,
       "main_force_volume_trend": [
+        114571,
+        23029,
         50279,
         45372,
         29045
@@ -2674,6 +3864,8 @@
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 229873,
       "shareholder_count_delta_pct": -5.3767,
@@ -2749,7 +3941,7 @@
         "flags": [],
         "flag_count": 0,
         "label_zh": "—",
-        "net_cumulative": 95651,
+        "net_cumulative": 343856,
         "present_latest": true,
         "snaps_since_seen": 0
       }
@@ -2764,10 +3956,10 @@
       "prev_close": null,
       "change_pct": 0.3,
       "volume": 3884,
-      "volume_5d_avg": 3884.0,
-      "volume_ratio": 1.0,
-      "velocity_3d": null,
-      "acceleration": null,
+      "volume_5d_avg": 3983.33,
+      "volume_ratio": 0.975,
+      "velocity_3d": 3903,
+      "acceleration": 3882,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -2775,7 +3967,7 @@
       "fii_holding_trend_5d": null,
       "fii_sync_count": 1,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": 0,
+      "fii_consecutive_buy_days": 2,
       "main_force_buy": 10858,
       "top5_branches": [
         {
@@ -2811,12 +4003,19 @@
       ],
       "main_force_cost": 26.32,
       "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 3,
+      "net_accumulation_in_window": 18924,
       "main_force_volume_trend": [
+        3052,
+        5014,
         10858
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 108052,
       "shareholder_count_delta_pct": -0.4615,
@@ -2894,7 +4093,7 @@
         "label_zh": "—",
         "net_cumulative": 0,
         "present_latest": false,
-        "snaps_since_seen": 3
+        "snaps_since_seen": 0
       }
     },
     {
@@ -2907,10 +4106,10 @@
       "prev_close": null,
       "change_pct": 0.6,
       "volume": 10918,
-      "volume_5d_avg": 12332.5,
-      "volume_ratio": 0.885,
-      "velocity_3d": -2688,
-      "acceleration": null,
+      "volume_5d_avg": 18072.2,
+      "volume_ratio": 0.604,
+      "velocity_3d": 454,
+      "acceleration": 7518,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -2918,7 +4117,7 @@
       "fii_holding_trend_5d": null,
       "fii_sync_count": 1,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": 1,
+      "fii_consecutive_buy_days": 3,
       "main_force_buy": 18421,
       "top5_branches": [
         {
@@ -2953,14 +4152,22 @@
         }
       ],
       "main_force_cost": 23.36,
-      "main_force_consecutive_days": 2,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 6,
+      "net_accumulation_in_window": 197417,
       "main_force_volume_trend": [
+        68452,
+        35236,
+        17513,
         21109,
         18421
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 269667,
       "shareholder_count_delta_pct": -0.2172,
@@ -3032,11 +4239,17 @@
       "signal_age_days": 1,
       "delta_vs_yesterday": "—",
       "weakening": {
-        "severity": "none",
-        "flags": [],
-        "flag_count": 0,
-        "label_zh": "—",
-        "net_cumulative": 21109,
+        "severity": "orange",
+        "flags": [
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買5日，缺席1日（最後 06-23）"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "轉弱",
+        "net_cumulative": 178996,
         "present_latest": false,
         "snaps_since_seen": 1
       }
@@ -3051,10 +4264,10 @@
       "prev_close": null,
       "change_pct": 0.2,
       "volume": 3850,
-      "volume_5d_avg": 5523.5,
-      "volume_ratio": 0.697,
-      "velocity_3d": -4740,
-      "acceleration": null,
+      "volume_5d_avg": 6631.67,
+      "volume_ratio": 0.581,
+      "velocity_3d": -2364,
+      "acceleration": -4753,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -3097,14 +4310,20 @@
         }
       ],
       "main_force_cost": 19.99,
-      "main_force_consecutive_days": 2,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 3,
+      "net_accumulation_in_window": 36314,
       "main_force_volume_trend": [
+        13676,
         13689,
         8949
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 247344,
       "shareholder_count_delta_pct": -0.3862,
@@ -3180,7 +4399,7 @@
         "flags": [],
         "flag_count": 0,
         "label_zh": "—",
-        "net_cumulative": 13689,
+        "net_cumulative": 27365,
         "present_latest": false,
         "snaps_since_seen": 1
       }
@@ -3195,10 +4414,10 @@
       "prev_close": null,
       "change_pct": 0.2,
       "volume": 7474,
-      "volume_5d_avg": 9191.33,
-      "volume_ratio": 0.813,
+      "volume_5d_avg": 7568.4,
+      "volume_ratio": 0.988,
       "velocity_3d": -128,
-      "acceleration": 8680,
+      "acceleration": -1525,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -3206,7 +4425,7 @@
       "fii_holding_trend_5d": null,
       "fii_sync_count": 1,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": 2,
+      "fii_consecutive_buy_days": 4,
       "main_force_buy": 22984,
       "top5_branches": [
         {
@@ -3242,7 +4461,12 @@
       ],
       "main_force_cost": 17.96,
       "main_force_consecutive_days": 3,
+      "main_force_strict_streak_days": 3,
+      "main_force_positive_days_in_window": 6,
+      "net_accumulation_in_window": 140790,
       "main_force_volume_trend": [
+        11620,
+        15978,
         23240,
         18772,
         22984
@@ -3250,6 +4474,8 @@
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 379341,
       "shareholder_count_delta_pct": -0.3902,
@@ -3325,7 +4551,7 @@
         "flags": [],
         "flag_count": 0,
         "label_zh": "—",
-        "net_cumulative": 42012,
+        "net_cumulative": 117806,
         "present_latest": true,
         "snaps_since_seen": 0
       }
@@ -3340,10 +4566,10 @@
       "prev_close": null,
       "change_pct": 0.1,
       "volume": 4476,
-      "volume_5d_avg": 4775.0,
-      "volume_ratio": 0.937,
-      "velocity_3d": 0,
-      "acceleration": null,
+      "volume_5d_avg": 6744.0,
+      "volume_ratio": 0.664,
+      "velocity_3d": -998,
+      "acceleration": -1652,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -3386,14 +4612,22 @@
         }
       ],
       "main_force_cost": 12.94,
-      "main_force_consecutive_days": 2,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 7,
+      "net_accumulation_in_window": 151565,
       "main_force_volume_trend": [
+        27672,
+        15658,
+        18961,
         16965,
         16965
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 102386,
       "shareholder_count_delta_pct": -1.1203,
@@ -3465,17 +4699,22 @@
       "signal_age_days": 1,
       "delta_vs_yesterday": "—",
       "weakening": {
-        "severity": "yellow",
+        "severity": "orange",
         "flags": [
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買6日，缺席1日（最後 06-23）"
+          },
           {
             "code": "W5",
             "zh": "分點賣壓",
             "detail": "分點賣 18,522 vs 買 16,965"
           }
         ],
-        "flag_count": 1,
-        "label_zh": "失速",
-        "net_cumulative": 16965,
+        "flag_count": 2,
+        "label_zh": "轉弱",
+        "net_cumulative": 134600,
         "present_latest": false,
         "snaps_since_seen": 1
       }
@@ -3490,10 +4729,10 @@
       "prev_close": null,
       "change_pct": 0.7,
       "volume": 15706,
-      "volume_5d_avg": 15706.0,
-      "volume_ratio": 1.0,
-      "velocity_3d": null,
-      "acceleration": null,
+      "volume_5d_avg": 14542.8,
+      "volume_ratio": 1.08,
+      "velocity_3d": -6492,
+      "acceleration": -3888,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -3501,7 +4740,7 @@
       "fii_holding_trend_5d": null,
       "fii_sync_count": 1,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": 0,
+      "fii_consecutive_buy_days": 4,
       "main_force_buy": 30659,
       "top5_branches": [
         {
@@ -3537,12 +4776,21 @@
       ],
       "main_force_cost": 30.4,
       "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 9,
+      "net_accumulation_in_window": 659819,
       "main_force_volume_trend": [
+        44234,
+        48852,
+        43643,
+        43643,
         30659
       ],
-      "volume_increasing_streak": 0,
+      "volume_increasing_streak": 2,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 739974,
       "shareholder_count_delta_pct": -0.0844,
@@ -3614,11 +4862,17 @@
       "signal_age_days": 1,
       "delta_vs_yesterday": "—",
       "weakening": {
-        "severity": "none",
-        "flags": [],
-        "flag_count": 0,
-        "label_zh": "—",
-        "net_cumulative": 0,
+        "severity": "orange",
+        "flags": [
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買8日，缺席3日（最後 06-18）"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "轉弱",
+        "net_cumulative": 629160,
         "present_latest": false,
         "snaps_since_seen": 3
       }
@@ -3633,10 +4887,10 @@
       "prev_close": null,
       "change_pct": 0.45,
       "volume": 5545,
-      "volume_5d_avg": 10231.33,
-      "volume_ratio": 0.542,
+      "volume_5d_avg": 13782.0,
+      "volume_ratio": 0.402,
       "velocity_3d": -4176,
-      "acceleration": 22229,
+      "acceleration": -5394,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -3679,8 +4933,13 @@
         }
       ],
       "main_force_cost": 35.16,
-      "main_force_consecutive_days": 3,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 11,
+      "net_accumulation_in_window": 357872,
       "main_force_volume_trend": [
+        36771,
+        30096,
         47822,
         32532,
         39471
@@ -3688,6 +4947,8 @@
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 597139,
       "shareholder_count_delta_pct": -1.2383,
@@ -3759,17 +5020,22 @@
       "signal_age_days": 1,
       "delta_vs_yesterday": "—",
       "weakening": {
-        "severity": "yellow",
+        "severity": "orange",
         "flags": [
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買10日，缺席1日（最後 06-23）"
+          },
           {
             "code": "W5",
             "zh": "分點賣壓",
             "detail": "分點賣 42,032 vs 買 39,471"
           }
         ],
-        "flag_count": 1,
-        "label_zh": "失速",
-        "net_cumulative": 80354,
+        "flag_count": 2,
+        "label_zh": "轉弱",
+        "net_cumulative": 318401,
         "present_latest": false,
         "snaps_since_seen": 1
       }
@@ -3784,10 +5050,10 @@
       "prev_close": null,
       "change_pct": 2.1,
       "volume": 9718,
-      "volume_5d_avg": 7482.5,
-      "volume_ratio": 1.299,
-      "velocity_3d": 4675,
-      "acceleration": null,
+      "volume_5d_avg": 6767.2,
+      "volume_ratio": 1.436,
+      "velocity_3d": -2454,
+      "acceleration": -10718,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -3830,14 +5096,22 @@
         }
       ],
       "main_force_cost": 44.67,
-      "main_force_consecutive_days": 2,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 9,
+      "net_accumulation_in_window": 313520,
       "main_force_volume_trend": [
+        35171,
+        20157,
+        46269,
         36685,
         41360
       ],
       "volume_increasing_streak": 1,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 465168,
       "shareholder_count_delta_pct": -0.7078,
@@ -3909,11 +5183,17 @@
       "signal_age_days": 1,
       "delta_vs_yesterday": "—",
       "weakening": {
-        "severity": "none",
-        "flags": [],
-        "flag_count": 0,
-        "label_zh": "—",
-        "net_cumulative": 36685,
+        "severity": "orange",
+        "flags": [
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買8日，缺席1日（最後 06-23）"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "轉弱",
+        "net_cumulative": 272160,
         "present_latest": false,
         "snaps_since_seen": 1
       }
@@ -3928,10 +5208,10 @@
       "prev_close": null,
       "change_pct": 0.25,
       "volume": 7818,
-      "volume_5d_avg": 9449.0,
-      "volume_ratio": 0.827,
-      "velocity_3d": 0,
-      "acceleration": null,
+      "volume_5d_avg": 17448.8,
+      "volume_ratio": 0.448,
+      "velocity_3d": 4650,
+      "acceleration": 3841,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -3939,7 +5219,7 @@
       "fii_holding_trend_5d": null,
       "fii_sync_count": 1,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": 1,
+      "fii_consecutive_buy_days": 5,
       "main_force_buy": 38918,
       "top5_branches": [
         {
@@ -3974,14 +5254,22 @@
         }
       ],
       "main_force_cost": 32.38,
-      "main_force_consecutive_days": 2,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 10,
+      "net_accumulation_in_window": 477239,
       "main_force_volume_trend": [
+        58401,
+        37299,
+        29617,
         38918,
         38918
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 710642,
       "shareholder_count_delta_pct": -0.4823,
@@ -4053,11 +5341,17 @@
       "signal_age_days": 1,
       "delta_vs_yesterday": "—",
       "weakening": {
-        "severity": "none",
-        "flags": [],
-        "flag_count": 0,
-        "label_zh": "—",
-        "net_cumulative": 38918,
+        "severity": "orange",
+        "flags": [
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買9日，缺席1日（最後 06-23）"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "轉弱",
+        "net_cumulative": 438321,
         "present_latest": false,
         "snaps_since_seen": 1
       }
@@ -4072,10 +5366,10 @@
       "prev_close": null,
       "change_pct": 0.4,
       "volume": 4238,
-      "volume_5d_avg": 5418.33,
-      "volume_ratio": 0.782,
+      "volume_5d_avg": 9765.2,
+      "volume_ratio": 0.434,
       "velocity_3d": -15084,
-      "acceleration": 39889,
+      "acceleration": 2430,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -4118,8 +5412,13 @@
         }
       ],
       "main_force_cost": 39.45,
-      "main_force_consecutive_days": 3,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 11,
+      "net_accumulation_in_window": 447776,
       "main_force_volume_trend": [
+        37427,
+        72756,
         72756,
         37727,
         42587
@@ -4127,6 +5426,8 @@
       "volume_increasing_streak": 1,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 452648,
       "shareholder_count_delta_pct": -0.8104,
@@ -4198,11 +5499,22 @@
       "signal_age_days": 1,
       "delta_vs_yesterday": "—",
       "weakening": {
-        "severity": "none",
-        "flags": [],
-        "flag_count": 0,
-        "label_zh": "—",
-        "net_cumulative": 110483,
+        "severity": "orange",
+        "flags": [
+          {
+            "code": "W1",
+            "zh": "動能衰竭",
+            "detail": "連買10日但速度 -17,514/日"
+          },
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買10日，缺席1日（最後 06-23）"
+          }
+        ],
+        "flag_count": 2,
+        "label_zh": "轉弱",
+        "net_cumulative": 405189,
         "present_latest": false,
         "snaps_since_seen": 1
       }
@@ -4217,10 +5529,10 @@
       "prev_close": null,
       "change_pct": 0.8,
       "volume": 18262,
-      "volume_5d_avg": 10253.0,
-      "volume_ratio": 1.781,
+      "volume_5d_avg": 12190.0,
+      "volume_ratio": 1.498,
       "velocity_3d": -3614,
-      "acceleration": -7227,
+      "acceleration": -3614,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -4264,7 +5576,12 @@
       ],
       "main_force_cost": 32.97,
       "main_force_consecutive_days": 3,
+      "main_force_strict_streak_days": 3,
+      "main_force_positive_days_in_window": 12,
+      "net_accumulation_in_window": 459432,
       "main_force_volume_trend": [
+        30323,
+        38348,
         38348,
         38348,
         31121
@@ -4272,6 +5589,8 @@
       "volume_increasing_streak": 1,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 451124,
       "shareholder_count_delta_pct": -0.89,
@@ -4347,7 +5666,7 @@
         "flags": [],
         "flag_count": 0,
         "label_zh": "—",
-        "net_cumulative": 76696,
+        "net_cumulative": 428311,
         "present_latest": true,
         "snaps_since_seen": 0
       }
@@ -4409,12 +5728,17 @@
       ],
       "main_force_cost": 1003.48,
       "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 13912,
       "main_force_volume_trend": [
         13912
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 333452,
       "shareholder_count_delta_pct": -3.8963,
@@ -4492,7 +5816,7 @@
         "label_zh": "—",
         "net_cumulative": 0,
         "present_latest": false,
-        "snaps_since_seen": 3
+        "snaps_since_seen": 0
       }
     },
     {
@@ -4505,9 +5829,9 @@
       "prev_close": null,
       "change_pct": 73.0,
       "volume": 6815,
-      "volume_5d_avg": 6815.0,
-      "volume_ratio": 1.0,
-      "velocity_3d": null,
+      "volume_5d_avg": 7453.5,
+      "volume_ratio": 0.914,
+      "velocity_3d": -1277,
       "acceleration": null,
       "market_volume": null,
       "fii_net_buy": null,
@@ -4521,12 +5845,18 @@
       "top5_branches": [],
       "main_force_cost": null,
       "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 2,
+      "net_accumulation_in_window": 14907,
       "main_force_volume_trend": [
+        8092,
         6815
       ],
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 118205,
       "shareholder_count_delta_pct": -3.0534,
@@ -4604,7 +5934,7 @@
         "label_zh": "—",
         "net_cumulative": 0,
         "present_latest": false,
-        "snaps_since_seen": 3
+        "snaps_since_seen": 0
       }
     },
     {
@@ -4617,10 +5947,10 @@
       "prev_close": null,
       "change_pct": 2.0,
       "volume": 5284,
-      "volume_5d_avg": 4992.0,
-      "volume_ratio": 1.058,
-      "velocity_3d": 44,
-      "acceleration": null,
+      "volume_5d_avg": 5134.2,
+      "volume_ratio": 1.029,
+      "velocity_3d": -4708,
+      "acceleration": 22,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -4664,13 +5994,21 @@
       ],
       "main_force_cost": 86.01,
       "main_force_consecutive_days": 2,
+      "main_force_strict_streak_days": 2,
+      "main_force_positive_days_in_window": 5,
+      "net_accumulation_in_window": 70856,
       "main_force_volume_trend": [
+        3480,
+        21563,
+        21563,
         12103,
         12147
       ],
-      "volume_increasing_streak": 1,
+      "volume_increasing_streak": 2,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 160084,
       "shareholder_count_delta_pct": 6.2897,
@@ -4742,11 +6080,17 @@
       "signal_age_days": 1,
       "delta_vs_yesterday": "—",
       "weakening": {
-        "severity": "none",
-        "flags": [],
-        "flag_count": 0,
-        "label_zh": "—",
-        "net_cumulative": 12103,
+        "severity": "yellow",
+        "flags": [
+          {
+            "code": "W1",
+            "zh": "動能衰竭",
+            "detail": "連買4日但速度 -4,730/日"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "失速",
+        "net_cumulative": 58709,
         "present_latest": true,
         "snaps_since_seen": 0
       }
@@ -4761,10 +6105,10 @@
       "prev_close": null,
       "change_pct": 0.7,
       "volume": 28342,
-      "volume_5d_avg": 12878.33,
-      "volume_ratio": 2.201,
+      "volume_5d_avg": 10478.2,
+      "volume_ratio": 2.705,
       "velocity_3d": 10898,
-      "acceleration": 39658,
+      "acceleration": 15364,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -4808,7 +6152,12 @@
       ],
       "main_force_cost": 24.95,
       "main_force_consecutive_days": 3,
+      "main_force_strict_streak_days": 3,
+      "main_force_positive_days_in_window": 9,
+      "net_accumulation_in_window": 198823,
       "main_force_volume_trend": [
+        14449,
+        14449,
         14449,
         5518,
         36245
@@ -4816,6 +6165,8 @@
       "volume_increasing_streak": 1,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 418624,
       "shareholder_count_delta_pct": -0.9793,
@@ -4887,11 +6238,17 @@
       "signal_age_days": 1,
       "delta_vs_yesterday": "—",
       "weakening": {
-        "severity": "none",
-        "flags": [],
-        "flag_count": 0,
-        "label_zh": "—",
-        "net_cumulative": 19967,
+        "severity": "yellow",
+        "flags": [
+          {
+            "code": "W1",
+            "zh": "動能衰竭",
+            "detail": "連買8日但速度 -4,466/日"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "失速",
+        "net_cumulative": 162578,
         "present_latest": true,
         "snaps_since_seen": 0
       }
@@ -4952,7 +6309,10 @@
         }
       ],
       "main_force_cost": 337.92,
-      "main_force_consecutive_days": 3,
+      "main_force_consecutive_days": 2,
+      "main_force_strict_streak_days": 2,
+      "main_force_positive_days_in_window": 3,
+      "net_accumulation_in_window": 41506,
       "main_force_volume_trend": [
         13096,
         18650,
@@ -4961,6 +6321,8 @@
       "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 86178,
       "shareholder_count_delta_pct": -1.9423,
@@ -5051,10 +6413,10 @@
       "prev_close": null,
       "change_pct": 92.0,
       "volume": 8280,
-      "volume_5d_avg": 7031.67,
-      "volume_ratio": 1.178,
+      "volume_5d_avg": 6156.25,
+      "volume_ratio": 1.345,
       "velocity_3d": -1026,
-      "acceleration": -2051,
+      "acceleration": -5690,
       "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
@@ -5098,7 +6460,11 @@
       ],
       "main_force_cost": 1025.25,
       "main_force_consecutive_days": 3,
+      "main_force_strict_streak_days": 3,
+      "main_force_positive_days_in_window": 4,
+      "net_accumulation_in_window": 40053,
       "main_force_volume_trend": [
+        3530,
         12858,
         12858,
         10807
@@ -5106,6 +6472,8 @@
       "volume_increasing_streak": 1,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 112145,
       "shareholder_count_delta_pct": -2.0456,
@@ -5181,7 +6549,7 @@
         "flags": [],
         "flag_count": 0,
         "label_zh": "—",
-        "net_cumulative": 25716,
+        "net_cumulative": 29246,
         "present_latest": true,
         "snaps_since_seen": 0
       }
@@ -5196,9 +6564,9 @@
       "prev_close": null,
       "change_pct": 5.7,
       "volume": 16243,
-      "volume_5d_avg": 16243.0,
-      "volume_ratio": 1.0,
-      "velocity_3d": null,
+      "volume_5d_avg": 8675.0,
+      "volume_ratio": 1.872,
+      "velocity_3d": 18898,
       "acceleration": null,
       "market_volume": null,
       "fii_net_buy": null,
@@ -5207,7 +6575,7 @@
       "fii_holding_trend_5d": null,
       "fii_sync_count": 1,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": 0,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 20005,
       "top5_branches": [
         {
@@ -5243,12 +6611,18 @@
       ],
       "main_force_cost": 62.7,
       "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 2,
+      "net_accumulation_in_window": 21112,
       "main_force_volume_trend": [
+        1107,
         20005
       ],
-      "volume_increasing_streak": 0,
+      "volume_increasing_streak": 1,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": 80601,
       "shareholder_count_delta_pct": -0.6018,
@@ -5326,7 +6700,7 @@
         "label_zh": "—",
         "net_cumulative": 0,
         "present_latest": false,
-        "snaps_since_seen": 3
+        "snaps_since_seen": 0
       }
     }
   ],
@@ -5396,13 +6770,23 @@
     {
       "ticker": null,
       "event": "LOOKBACK_VERIFIED",
-      "reason": "Lookback chain attached: 3 prior snapshots",
+      "reason": "Lookback chain attached: 13 prior snapshots",
       "step": "core.ingest.attach_lookback",
       "data": {
         "lookback_snapshots": {
-          "2026-06-22": "sha256:4eb15f5df71eee604f0cedf9b6bbaa198f4a6e35c1474c746e847b5556ae1be8",
-          "2026-06-23": "sha256:d048a42794de851f9e96fb244a657fea475bc49613e974daec145b256d87f90d",
-          "2026-06-24": "sha256:d40b95c94239e08af272bc2f76db6f9b011f1fbd27916eee551d54769f0a403b"
+          "2026-06-05": "sha256:1584b05db010bcabb6aa4e55b14661fbd189406fb03e14288d8a093ff8696121",
+          "2026-06-08": "sha256:b125fca4d91056b7bf1084b86ab1bbe29571f20138ab5f6ad82f77e3f69577ff",
+          "2026-06-09": "sha256:75e1a72d04f2ce181fe3a93ce85679a83496ca633a0862dae1568d79b58a9551",
+          "2026-06-10": "sha256:7ca62edafc91743f4dc6f406c8c62b3ad0e258b606864ca72cfba9fc140cc3d8",
+          "2026-06-11": "sha256:b8546092242d4fbfa778067cdb11f226bc0343f9b7b78467f66b56e45723d5ac",
+          "2026-06-12": "sha256:e1e3cee2a2782847cab29353f2ff1825decca3f86b5acfb8e86731f6401e7aee",
+          "2026-06-15": "sha256:35496d0e4ff7a85de38a8a2aa447716de45dd26a5aa0bc6b13d3e4d498e3533a",
+          "2026-06-16": "sha256:1cd54277d287f36693e0d37736f037469f5795ab852419cdc5272a2c4ef11005",
+          "2026-06-17": "sha256:5bdc842881be90e1c7c7c71d9fca227630641f2c0765cd428e9bd8e1ff9a79e2",
+          "2026-06-18": "sha256:60f9bc186b88d3624346bd0380c36a5ab8c1f290f51d0030eb50f7a79025a8d8",
+          "2026-06-22": "sha256:38f964b87416a352c10181558c2d98a502388e724b8191f650087d3e3a5f0681",
+          "2026-06-23": "sha256:9a7a47fb000dfd1b95787b6db543fc65612fdf72ed6198ba79875fb90ea96241",
+          "2026-06-24": "sha256:851d5ec36c333df1143aeaf6872363b0609a9abe0176aa1bbe61d006301c56ee"
         }
       }
     },

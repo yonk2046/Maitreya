@@ -1,17 +1,17 @@
 {
-  "schema_version": "1.4.0",
+  "schema_version": "1.9.0",
   "date": "2026-05-26",
-  "generated_at": "2026-05-27T00:02:03Z",
-  "config_hash": "sha256:aa4b089663c92dec8309b5048475fe48fcb1c18be0fd42e17500fa23f58026ed",
+  "generated_at": "2026-07-14T11:35:13Z",
+  "config_hash": "sha256:7495e7628db79b119e98b6db9f306348d4b47f6d0883d14a08337f0bcb45a7d8",
   "core_version": "core@0.1.0-p3a",
   "environment": {
-    "core_commit_sha": "0000000000000000000000000000000000000000",
+    "core_commit_sha": "60e067e7cc16d5b517653ca06a50fe1b415a2eb2",
     "core_version": "core@0.1.0-p3a",
-    "python": "3.10.12",
-    "numpy": "2.2.6",
+    "python": "3.9.6",
+    "numpy": "2.0.2",
     "pandas": "2.3.3",
     "pyyaml": "6.0.3",
-    "jsonschema": "4.26.0",
+    "jsonschema": "4.25.1",
     "decimal_context": {
       "prec": 28,
       "rounding": "ROUND_HALF_EVEN"
@@ -21,20 +21,27 @@
       "LC_NUMERIC": "C"
     },
     "timezone": "UTC",
-    "os": "linux-6.8.0-106-generic-aarch64",
+    "os": "darwin-24.6.0-arm64",
     "lookback_snapshots": {
       "2026-05-25": "sha256:cfb64944485ebd04d48f7aad79e4b12162c89da210765f9dad9d659cdd747e9d",
+      "2026-05-08": "sha256:083e61926e310cca8d4d73b557dfae71ea62f070f03d88588564cba8bbfa0eeb",
+      "2026-05-13": "sha256:f0a49c4a33b3fbc69cf1724053ca77b17ca2e1449096998cc679e9d5cbfabc7a",
+      "2026-05-14": "sha256:5ab82de8c4c6eb29419ffdc0e4d230566ab037aa429fe9bf9899c4d0f8d7cef0",
+      "2026-05-15": "sha256:7a7320bd0384c65e8577afb44c2cc2184ab258401523dda431a5b80b0b2e5d7d",
+      "2026-05-17": "sha256:20c6167e7152306109c6e3937f593cdf1f12ac45c9b9cd656faaf2739622ab10",
+      "2026-05-18": "sha256:e76c66cfd08d4e011d5cf4aaf4adbbf7d70ae42d95cac2fe89d01d9011bc081f",
+      "2026-05-20": "sha256:50eb30493f787c9f76408bc5547cddb112de0c9bb496026081db5e17ef575849",
       "2026-05-21": "sha256:7892e9f58823ca910368f85d74165f926fe12021afd25e8cec8007c48379e17c",
       "2026-05-22": "sha256:15ad0d6001fa39c32e5673421cf1293060eef78ee9e4966f1d941468149dcab4"
     },
-    "lookback_window_days": 3
+    "lookback_window_days": 10
   },
   "provenance": {
     "sources": {
       "legacy_today_json": {
         "dataset": "SCD.legacy.today_json",
         "url": "file://data/today.json",
-        "fetched_at": "2026-05-26T11:10:11Z",
+        "fetched_at": "2026-06-24T10:21:06Z",
         "raw_file": "data/today.json",
         "raw_sha256": "sha256:7473e04a4ce0e5445b392f201f079dd6cbfaaf3c53b1dbc3c514a10ff045ac87",
         "row_count": 30,
@@ -48,7 +55,12 @@
           "is_etf",
           "current_price",
           "change_pct",
-          "buy_vol_lots"
+          "buy_vol_lots",
+          "fii_net_buy",
+          "investment_trust_net_buy",
+          "prop_dealer_net_buy",
+          "total3_net_buy",
+          "fii_sync_count"
         ],
         "archived_copy_path": "_raw_archive/2026-05-26/legacy_today_json",
         "archived_sha256": "sha256:7473e04a4ce0e5445b392f201f079dd6cbfaaf3c53b1dbc3c514a10ff045ac87"
@@ -56,13 +68,13 @@
       "legacy_branches": {
         "dataset": "SCD.legacy.branches_dir",
         "url": "file://data/branches/",
-        "fetched_at": "2026-05-26T11:10:16Z",
+        "fetched_at": "2026-06-24T10:21:06Z",
         "raw_file": "data/branches/",
         "raw_sha256": "sha256:1748d4b40db56b06163bc9da36bcb6346ac77573db23d18316c0a5b85acc4e84",
         "row_count": 19,
         "vendor_id": null,
-        "report_date": "2026-05-26",
-        "data_lag_days": 0,
+        "report_date": "2026-06-24",
+        "data_lag_days": 29,
         "provides_fields": [
           "top5_branches",
           "total_buy_vol",
@@ -82,6 +94,11 @@
       "current_price": "legacy_today_json",
       "change_pct": "legacy_today_json",
       "buy_vol_lots": "legacy_today_json",
+      "fii_net_buy": "legacy_today_json",
+      "investment_trust_net_buy": "legacy_today_json",
+      "prop_dealer_net_buy": "legacy_today_json",
+      "total3_net_buy": "legacy_today_json",
+      "fii_sync_count": "legacy_today_json",
       "top5_branches": "legacy_branches",
       "total_buy_vol": "legacy_branches",
       "total_sell_vol": "legacy_branches",
@@ -91,353 +108,1397 @@
     "derived_fields": {}
   },
   "config_snapshot": {
-    "meta": {
-      "config_version": "1.3.0",
-      "scoring_rubric_version": "1.1.0",
-      "schema_version": "1.4.0",
-      "last_updated": "2026-05-22",
-      "supersedes": "1.2.0",
-      "patches_applied": [
-        "P0-1",
-        "P0-2",
-        "P0-3",
-        "P0-4",
-        "P0-5",
-        "P1-*",
-        "P2-*",
-        "T-1",
-        "T-2",
-        "T-3",
-        "T-4",
-        "T-5",
-        "T-6",
-        "T-7"
-      ]
-    },
-    "storage": {
-      "base_dir": ".",
-      "raw_dir": "data/raw",
-      "reports_dir": "reports",
-      "episodes_dir": "episodes",
-      "state_dir": "state",
-      "parquet_dir": "parquet",
-      "index_file": "reports/index.json",
-      "episodes_index": "episodes/index.json",
-      "state_index": "state/index.json"
-    },
-    "temporal": {
-      "lookback_window_days": 5,
-      "min_velocity_samples": 2,
-      "min_acceleration_samples": 3,
-      "ema_lookbacks": [
-        3,
-        5
-      ],
-      "score_tree_temporal_enabled_paths": [],
-      "track_tier_transitions": true,
-      "bootstrap": {
-        "abstain_temporal_until_window_full": true,
-        "emit_event": "BOOTSTRAP_SNAPSHOT"
-      }
-    },
-    "episodes": {
-      "enabled": false,
-      "index_file": "episodes/index.json",
-      "storage_dir": "episodes/",
-      "types": {
-        "accumulation": {
-          "enabled": false,
-          "rule_version": "v1",
-          "trigger_rule": "main_force_consecutive_days >= 3",
-          "ongoing_rule": "main_force_consecutive_days >= 1",
-          "resolve_rule": "main_force_consecutive_days == 0 for 2 days",
-          "fail_rule": null
-        },
-        "distribution": {
-          "enabled": false,
-          "rule_version": "v1",
-          "trigger_rule": "main_force_consecutive_days <= -3",
-          "ongoing_rule": "main_force_consecutive_days <= 0",
-          "resolve_rule": "main_force_consecutive_days >= 0 for 2 days",
-          "fail_rule": null
-        },
-        "breakout_attempt": {
-          "enabled": false,
-          "rule_version": "v1",
-          "trigger_rule": "current_price > rolling_high_20d",
-          "ongoing_rule": "current_price > breakout_level - 3%",
-          "resolve_rule": "current_price > rolling_high_20d for 3 days",
-          "fail_rule": "current_price < breakout_level - 3%"
-        },
-        "recovery_attempt": {
-          "enabled": false,
-          "rule_version": "v1"
-        },
-        "golden_persistence": {
-          "enabled": false,
-          "rule_version": "v1",
-          "trigger_rule": "tier == 'GOLDEN'",
-          "ongoing_rule": "tier == 'GOLDEN'",
-          "resolve_rule": "tier != 'GOLDEN' for 1 day"
-        },
-        "watch_persistence": {
-          "enabled": false,
-          "rule_version": "v1"
-        },
-        "margin_decompression": {
-          "enabled": false,
-          "rule_version": "v1"
-        },
-        "regime_shift": {
-          "enabled": false,
-          "rule_version": "v1"
-        }
-      }
-    },
-    "market_regime": {
-      "enabled": false,
-      "classifier": "stub_v0",
-      "features": {
-        "use_vix_proxy": false,
-        "use_breadth_index": false,
-        "use_regime_dwell": false
-      }
-    },
-    "feature_flags": {
-      "day_trader_exclusion": false,
-      "day_trader_exclusion_branches": [
-        "凱基-台北",
-        "元大-總公司",
-        "永豐金-台北"
-      ]
-    },
-    "gates": {
-      "cost_safety": {
-        "lookback_days": 5,
-        "max_premium_ratio": 1.05
+    "yaml": {
+      "meta": {
+        "config_version": "1.3.0",
+        "scoring_rubric_version": "1.1.0",
+        "schema_version": "1.9.0",
+        "last_updated": "2026-05-22",
+        "supersedes": "1.2.0",
+        "patches_applied": [
+          "P0-1",
+          "P0-2",
+          "P0-3",
+          "P0-4",
+          "P0-5",
+          "P1-*",
+          "P2-*",
+          "T-1",
+          "T-2",
+          "T-3",
+          "T-4",
+          "T-5",
+          "T-6",
+          "T-7"
+        ]
       },
-      "fii_sync": {
-        "indicator_brokers": [
-          "JPM",
-          "UBS",
-          "GS",
-          "ML",
-          "Citi"
+      "storage": {
+        "base_dir": ".",
+        "raw_dir": "data/raw",
+        "reports_dir": "reports",
+        "episodes_dir": "episodes",
+        "state_dir": "state",
+        "parquet_dir": "parquet",
+        "index_file": "reports/index.json",
+        "episodes_index": "episodes/index.json",
+        "state_index": "state/index.json"
+      },
+      "temporal": {
+        "lookback_window_days": 20,
+        "min_velocity_samples": 2,
+        "min_acceleration_samples": 3,
+        "ema_lookbacks": [
+          3,
+          5
         ],
-        "min_brokers": 2,
-        "min_consecutive_days": 3
-      },
-      "main_force": {
-        "min_consecutive_days": 3,
-        "volume_increasing_min_streaks": 2
-      }
-    },
-    "stage_1": {
-      "weights": {
-        "fii": 0.5,
-        "main_force": 0.5
-      },
-      "fii": {
-        "sync_count": {
-          "linear_range": [
-            3,
-            6
-          ],
-          "base_at_min": 0,
-          "base_at_max": 100
-        },
-        "buy_ratio": {
-          "linear_range": [
-            0.05,
-            0.15
-          ]
-        },
-        "holding_trend": {
-          "up": 100,
-          "flat": 50,
-          "down": 0
-        },
-        "sub_weights": {
-          "sync": 0.4,
-          "ratio": 0.4,
-          "trend": 0.2
+        "score_tree_temporal_enabled_paths": [],
+        "track_tier_transitions": true,
+        "bootstrap": {
+          "abstain_temporal_until_window_full": true,
+          "emit_event": "BOOTSTRAP_SNAPSHOT"
         }
       },
-      "main_force": {
-        "consecutive_days": {
-          "linear_range": [
-            4,
-            8
-          ],
-          "base_at_min": 0,
-          "base_at_max": 100
-        },
-        "lock_strength": {
-          "linear_range": [
-            0.1,
-            0.3
-          ]
-        },
-        "increasing_streak": {
-          "per_segment": 25,
-          "cap": 100
-        },
-        "top5_concentration": {
-          "linear_range": [
-            0.5,
-            0.8
-          ]
-        },
-        "sub_weights": {
-          "days": 0.3,
-          "lock": 0.3,
-          "streak": 0.2,
-          "concentration": 0.2
+      "episodes": {
+        "enabled": false,
+        "index_file": "episodes/index.json",
+        "storage_dir": "episodes/",
+        "types": {
+          "accumulation": {
+            "enabled": false,
+            "rule_version": "v1",
+            "trigger_rule": "main_force_consecutive_days >= 3",
+            "ongoing_rule": "main_force_consecutive_days >= 1",
+            "resolve_rule": "main_force_consecutive_days == 0 for 2 days",
+            "fail_rule": null
+          },
+          "distribution": {
+            "enabled": false,
+            "rule_version": "v1",
+            "trigger_rule": "main_force_consecutive_days <= -3",
+            "ongoing_rule": "main_force_consecutive_days <= 0",
+            "resolve_rule": "main_force_consecutive_days >= 0 for 2 days",
+            "fail_rule": null
+          },
+          "breakout_attempt": {
+            "enabled": false,
+            "rule_version": "v1",
+            "trigger_rule": "current_price > rolling_high_20d",
+            "ongoing_rule": "current_price > breakout_level - 3%",
+            "resolve_rule": "current_price > rolling_high_20d for 3 days",
+            "fail_rule": "current_price < breakout_level - 3%"
+          },
+          "recovery_attempt": {
+            "enabled": false,
+            "rule_version": "v1"
+          },
+          "golden_persistence": {
+            "enabled": false,
+            "rule_version": "v1",
+            "trigger_rule": "tier == 'GOLDEN'",
+            "ongoing_rule": "tier == 'GOLDEN'",
+            "resolve_rule": "tier != 'GOLDEN' for 1 day"
+          },
+          "watch_persistence": {
+            "enabled": false,
+            "rule_version": "v1"
+          },
+          "margin_decompression": {
+            "enabled": false,
+            "rule_version": "v1"
+          },
+          "regime_shift": {
+            "enabled": false,
+            "rule_version": "v1"
+          }
         }
-      }
-    },
-    "stage_2": {
-      "weights": {
-        "concentration": 0.5,
-        "margin": 0.5
       },
-      "concentration": {
-        "shareholder_delta": {
-          "linear_range": [
-            0.0,
-            -0.05
-          ]
+      "market_regime": {
+        "enabled": false,
+        "classifier": "stub_v0",
+        "features": {
+          "use_vix_proxy": false,
+          "use_breadth_index": false,
+          "use_regime_dwell": false
+        }
+      },
+      "feature_flags": {
+        "day_trader_exclusion": false,
+        "day_trader_exclusion_branches": [
+          "凱基-台北",
+          "元大-總公司",
+          "永豐金-台北"
+        ]
+      },
+      "gates": {
+        "cost_safety": {
+          "lookback_days": 5,
+          "max_premium_ratio": 1.05,
+          "divergence_alert_pct": 5,
+          "anchor": "conservative"
         },
-        "broker_count_diff_negative_streak": {
-          "levels": {
-            "5": 100,
-            "3": 60,
-            "0": 0
+        "fii_sync": {
+          "indicator_brokers": [
+            "JPM",
+            "UBS",
+            "GS",
+            "ML",
+            "Citi"
+          ],
+          "min_brokers": 2,
+          "min_consecutive_days": 3
+        },
+        "fii_alignment": {
+          "enabled": true,
+          "contra_days_cap": 2
+        },
+        "main_force": {
+          "min_consecutive_days": 3,
+          "volume_increasing_min_streaks": 2
+        }
+      },
+      "stage_1": {
+        "weights": {
+          "fii": 0.5,
+          "main_force": 0.5
+        },
+        "fii": {
+          "sync_count": {
+            "linear_range": [
+              3,
+              6
+            ],
+            "base_at_min": 0,
+            "base_at_max": 100
+          },
+          "buy_ratio": {
+            "linear_range": [
+              0.05,
+              0.15
+            ]
+          },
+          "holding_trend": {
+            "up": 100,
+            "flat": 50,
+            "down": 0
+          },
+          "sub_weights": {
+            "sync": 0.4,
+            "ratio": 0.4,
+            "trend": 0.2
           }
         },
-        "large_holder_400": {
-          "linear_range": [
-            0.0,
-            0.03
-          ]
-        },
-        "large_holder_1000": {
-          "linear_range": [
-            0.0,
-            0.02
-          ]
-        },
-        "sub_weights": {
-          "shareholders": 0.3,
-          "diff": 0.2,
-          "L400": 0.25,
-          "L1000": 0.25
+        "main_force": {
+          "consecutive_days": {
+            "linear_range": [
+              4,
+              8
+            ],
+            "base_at_min": 0,
+            "base_at_max": 100
+          },
+          "lock_strength": {
+            "linear_range": [
+              0.1,
+              0.3
+            ]
+          },
+          "increasing_streak": {
+            "per_segment": 25,
+            "cap": 100
+          },
+          "top5_concentration": {
+            "linear_range": [
+              0.5,
+              0.8
+            ]
+          },
+          "sub_weights": {
+            "days": 0.3,
+            "lock": 0.3,
+            "streak": 0.2,
+            "concentration": 0.2
+          }
         }
       },
-      "margin": {
-        "maintenance_curve": {
-          "130": 100,
-          "140": 80,
-          "150": 50,
-          "160": 20
+      "stage_2": {
+        "weights": {
+          "concentration": 0.5,
+          "margin": 0.5
         },
-        "healthy_wash": {
-          "per_day": 10,
-          "cap": 100
+        "concentration": {
+          "shareholder_delta": {
+            "linear_range": [
+              0.0,
+              -0.05
+            ]
+          },
+          "broker_count_diff_negative_streak": {
+            "levels": {
+              "5": 100,
+              "3": 60,
+              "0": 0
+            }
+          },
+          "large_holder_400": {
+            "linear_range": [
+              0.0,
+              0.03
+            ]
+          },
+          "large_holder_1000": {
+            "linear_range": [
+              0.0,
+              0.02
+            ]
+          },
+          "sub_weights": {
+            "shareholders": 0.3,
+            "diff": 0.2,
+            "L400": 0.25,
+            "L1000": 0.25
+          }
         },
-        "unhealthy_resistance": {
-          "per_day": -15,
-          "floor": 0
-        },
-        "panic_signal": {
-          "max_maintenance_ratio": 142,
-          "min_quiet_volume_days": 3
-        },
-        "sub_weights": {
-          "maintenance": 0.5,
-          "healthy_wash": 0.3,
-          "unhealthy_penalty": 0.2
+        "margin": {
+          "maintenance_curve": {
+            "130": 100,
+            "140": 80,
+            "150": 50,
+            "160": 20
+          },
+          "healthy_wash": {
+            "per_day": 10,
+            "cap": 100
+          },
+          "unhealthy_resistance": {
+            "per_day": -15,
+            "floor": 0
+          },
+          "panic_signal": {
+            "max_maintenance_ratio": 142,
+            "min_quiet_volume_days": 3
+          },
+          "sub_weights": {
+            "maintenance": 0.5,
+            "healthy_wash": 0.3,
+            "unhealthy_penalty": 0.2
+          }
         }
+      },
+      "stage_3": {
+        "weights": {
+          "price_action": 0.6,
+          "trend_2h": 0.4
+        },
+        "price_action": {
+          "scores": {
+            "pin_bar": 40,
+            "engulfing": 50,
+            "terminal": 30,
+            "retest": 20
+          },
+          "pin_bar": {
+            "lower_shadow_to_body_ratio": 2.0
+          },
+          "aggregation": "max_with_retest_bonus"
+        },
+        "trend_2h": {
+          "above_ema_positive_slope": 100,
+          "above_ema_flat_slope": 60,
+          "below_ema": 0
+        },
+        "trade_type": {
+          "T1_conditions": {
+            "max_margin_maintenance_ratio": 140,
+            "requires_wash_completion": true
+          },
+          "T2_conditions": {
+            "requires_fii_lock": true,
+            "requires_main_force_lock": true,
+            "requires_breakout_retest": true
+          }
+        }
+      },
+      "composite": {
+        "weights": {
+          "stage_1": 0.4,
+          "stage_2": 0.35,
+          "stage_3": 0.25
+        }
+      },
+      "tiers": {
+        "golden_min": 85,
+        "watch_min": 70,
+        "neutral_min": 50
+      },
+      "ranking": {
+        "tie_breakers": [
+          {
+            "key": "composite_score",
+            "direction": "desc"
+          },
+          {
+            "key": "stage_1",
+            "direction": "desc"
+          },
+          {
+            "key": "main_force_consecutive_days",
+            "direction": "desc"
+          },
+          {
+            "key": "fii_sync_count",
+            "direction": "desc"
+          },
+          {
+            "key": "ticker",
+            "direction": "asc"
+          }
+        ]
+      },
+      "data_validation": {
+        "on_missing_field": "zero_with_warning",
+        "on_unknown_schema_version": "fail",
+        "tdcc_max_lag_days": 7
       }
     },
-    "stage_3": {
-      "weights": {
-        "price_action": 0.6,
-        "trend_2h": 0.4
+    "engine_params": {
+      "CHIP_SCORE_CONFIG": {
+        "vol_ratio": {
+          "max": 8,
+          "label": "投量比",
+          "desc": "主力買超 ÷ 市場成交量",
+          "thresholds": [
+            0.12,
+            0.06
+          ],
+          "scores": [
+            8,
+            4,
+            0
+          ]
+        },
+        "streak": {
+          "max": 10,
+          "label": "連續買超",
+          "desc": "連續主力淨買超天數",
+          "thresholds": [
+            7,
+            5,
+            3,
+            1
+          ],
+          "scores": [
+            10,
+            8,
+            6,
+            3,
+            0
+          ]
+        },
+        "concentration": {
+          "max": 8,
+          "label": "籌碼集中度",
+          "desc": "大戶持股變化(TDCC)",
+          "thresholds": [],
+          "scores": [
+            0
+          ]
+        },
+        "institutional": {
+          "max": 8,
+          "label": "法人同向",
+          "desc": "主力/外資/投信同向淨買家數",
+          "thresholds": [
+            3,
+            2,
+            1
+          ],
+          "scores": [
+            8,
+            5,
+            2,
+            0
+          ]
+        },
+        "cost_support": {
+          "max": 6,
+          "label": "成本支撐",
+          "desc": "現價距主力成本距離(越近越好)",
+          "thresholds": [
+            1.02,
+            1.05
+          ],
+          "scores": [
+            6,
+            3,
+            0
+          ]
+        }
       },
-      "price_action": {
+      "DIST_AUTO_FILTER_CONSISTENCY": "弱",
+      "DIST_AUTO_FILTER_MARGIN_MIN": 1.12,
+      "DIST_CONSISTENCY_CONFIG": {
+        "strong_rank_max": 15,
+        "strong_vol_min": 8000,
         "scores": {
-          "pin_bar": 40,
-          "engulfing": 50,
-          "terminal": 30,
-          "retest": 20
-        },
-        "pin_bar": {
-          "lower_shadow_to_body_ratio": 2.0
-        },
-        "aggregation": "max_with_retest_bonus"
+          "both_strong_buy": [
+            5,
+            "最高共振"
+          ],
+          "both_buy": [
+            3,
+            "一般共振"
+          ],
+          "foreign_lead": [
+            3,
+            "外資主導"
+          ],
+          "main_lead": [
+            3,
+            "主力主導"
+          ],
+          "either_sell": [
+            -3,
+            "扣分"
+          ],
+          "both_sell": [
+            -5,
+            "強烈賣超"
+          ],
+          "neutral": [
+            0,
+            "中性 / 分歧"
+          ]
+        }
       },
-      "trend_2h": {
-        "above_ema_positive_slope": 100,
-        "above_ema_flat_slope": 60,
-        "below_ema": 0
-      },
-      "trade_type": {
-        "T1_conditions": {
-          "max_margin_maintenance_ratio": 140,
-          "requires_wash_completion": true
+      "DIST_GRADE_BANDS": [
+        [
+          4,
+          "強",
+          "#52B788"
+        ],
+        [
+          1,
+          "中",
+          "#D4A84B"
+        ],
+        [
+          -99,
+          "弱",
+          "#E05C7A"
+        ]
+      ],
+      "DIST_SAFETY_MARGIN_BANDS": [
+        [
+          1.03,
+          "綠",
+          "#52B788",
+          "安全，可積極布局"
+        ],
+        [
+          1.08,
+          "黃",
+          "#D4A84B",
+          "中等，小心 / 分批"
+        ],
+        [
+          1.15,
+          "橙",
+          "#C47A5A",
+          "偏高，建議減碼"
+        ],
+        [
+          null,
+          "紅",
+          "#E05C7A",
+          "高風險，強烈建議減碼或移除"
+        ]
+      ],
+      "GOLDEN_CONVICTION_CAP": 1.0,
+      "GOLDEN_GOLD_SPON_MIN": 0.45,
+      "GOLDEN_SCORE_SPON_HIGH": 0.7,
+      "GOLDEN_SCORE_SPON_MID": 0.55,
+      "GOLDEN_SCORE_STREAK_HIGH": 5,
+      "GOLDEN_SCORE_STREAK_MID": 3,
+      "GOLDEN_SECTOR_TOP_N_TIGHT": 3,
+      "GOLDEN_TIER_PRIME": 0.65,
+      "GOLDEN_TIER_STRONG": 0.4,
+      "GOLDEN_W_ACCELERATION_POSITIVE": 0.05,
+      "GOLDEN_W_SECTOR_TOP3": 0.05,
+      "GOLDEN_W_SPON_HIGH": 0.2,
+      "GOLDEN_W_SPON_MID": 0.1,
+      "GOLDEN_W_STATE_CONFIRMED": 0.15,
+      "GOLDEN_W_STREAK_HIGH": 0.25,
+      "GOLDEN_W_STREAK_MID": 0.15,
+      "GOLDEN_W_TIER_A": 0.1,
+      "GOLDEN_W_VELOCITY_POSITIVE": 0.1,
+      "GRADE_PCT_MAP": [
+        [
+          0.8,
+          "強",
+          "#D4A84B"
+        ],
+        [
+          0.6,
+          "中",
+          "#7EB8D4"
+        ],
+        [
+          0.0,
+          "弱",
+          "#8B949E"
+        ]
+      ],
+      "MC_BREADTH_TREND_FAST": 0.1,
+      "MC_BREADTH_TREND_SLOW": 0.02,
+      "MC_BREAKOUT_CHG_MIN": 2.0,
+      "MC_BREAKOUT_HIGHRISK_RETREAT": 3,
+      "MC_BREAKOUT_LOOKBACK": 10,
+      "MC_BREAKOUT_RETREAT_MIN": 2,
+      "MC_BREAKOUT_VOL_MULT": 1.8,
+      "MC_COST_DIVERGENCE_PCT": 5.0,
+      "MC_REGIME_MILD_RISKON_BREADTH": 0.6,
+      "MC_REGIME_MILD_RISKON_CHG": 1.0,
+      "MC_REGIME_OFFENSIVE_BREADTH": 0.75,
+      "MC_REGIME_OFFENSIVE_CHG": 3.0,
+      "MC_REGIME_RETREAT_BREADTH": 0.25,
+      "MC_REGIME_RETREAT_CHG": -2.0,
+      "MC_REGIME_WAITING_BREADTH": 0.35,
+      "MC_TRANSITION_BREADTH_DELTA": 0.25,
+      "MC_TRANSITION_CHG_DELTA": 3.0,
+      "MC_W2_FII_RATIO": 0.3,
+      "MC_W3_SOLID_MIN_ABSENCE": 2,
+      "MC_W5_CHURN_RATIO": 0.6,
+      "MC_W5_SELL_RATIO": 1.0,
+      "MC_WEAKENING_RECENCY_MAX": 3,
+      "SM_ABSENT_EXITED": 3,
+      "SM_ACCEL_DISTRIBUTING": -500,
+      "SM_BREADTH_CONFIRMED": 0.5,
+      "SM_COLLAPSE_WINDOW": 2,
+      "SM_DAYS_SINCE_FAIL_RISK": 10,
+      "SM_DEBOUNCE_SNAPSHOTS": 2,
+      "SM_DIST_LOCKOUT_SNAPSHOTS": 5,
+      "SM_FLIPS_UNSTABLE_30D": 2,
+      "SM_SECTOR_TOP_N_CONFIRM": 5,
+      "SM_SPON_CONFIRMED": 0.5,
+      "SM_SPON_STRENGTHENING": 0.4,
+      "SM_STREAK_ACCUMULATING": 1,
+      "SM_STREAK_CONFIRMED": 3,
+      "SM_STREAK_STRENGTHENING": 3,
+      "TEMP_LEVELS": [
+        [
+          0.7,
+          "extreme",
+          "極端",
+          "#E05C7A"
+        ],
+        [
+          0.5,
+          "hot",
+          "過熱",
+          "#C47A5A"
+        ],
+        [
+          0.35,
+          "warm",
+          "偏熱",
+          "#D4A84B"
+        ],
+        [
+          0.2,
+          "stable",
+          "穩定",
+          "#7EB8D4"
+        ],
+        [
+          0.0,
+          "cool",
+          "冷靜",
+          "#52B788"
+        ]
+      ],
+      "TEMP_W_BREADTH": 0.3,
+      "TEMP_W_DISTRIB": 0.3,
+      "TEMP_W_RISK_RATIO": 0.4,
+      "TIER_A": {
+        "2330": {
+          "name": "台積電",
+          "name_en": "TSMC",
+          "group": "semiconductor",
+          "group_zh": "半導體"
         },
-        "T2_conditions": {
-          "requires_fii_lock": true,
-          "requires_main_force_lock": true,
-          "requires_breakout_retest": true
+        "2454": {
+          "name": "聯發科",
+          "name_en": "MediaTek",
+          "group": "semiconductor",
+          "group_zh": "半導體"
+        },
+        "2317": {
+          "name": "鴻海",
+          "name_en": "Hon Hai",
+          "group": "electronics",
+          "group_zh": "電子代工"
+        },
+        "2382": {
+          "name": "廣達",
+          "name_en": "Quanta",
+          "group": "electronics",
+          "group_zh": "電子代工"
+        },
+        "2308": {
+          "name": "台達電",
+          "name_en": "Delta",
+          "group": "electronics",
+          "group_zh": "電子代工"
+        },
+        "2881": {
+          "name": "富邦金",
+          "name_en": "Fubon FHC",
+          "group": "financials",
+          "group_zh": "金融"
+        },
+        "2882": {
+          "name": "國泰金",
+          "name_en": "Cathay FHC",
+          "group": "financials",
+          "group_zh": "金融"
+        },
+        "2891": {
+          "name": "中信金",
+          "name_en": "CTBC FHC",
+          "group": "financials",
+          "group_zh": "金融"
         }
       }
-    },
-    "composite": {
-      "weights": {
-        "stage_1": 0.4,
-        "stage_2": 0.35,
-        "stage_3": 0.25
-      }
-    },
-    "tiers": {
-      "golden_min": 85,
-      "watch_min": 70,
-      "neutral_min": 50
-    },
-    "ranking": {
-      "tie_breakers": [
-        {
-          "key": "composite_score",
-          "direction": "desc"
-        },
-        {
-          "key": "stage_1",
-          "direction": "desc"
-        },
-        {
-          "key": "main_force_consecutive_days",
-          "direction": "desc"
-        },
-        {
-          "key": "fii_sync_count",
-          "direction": "desc"
-        },
-        {
-          "key": "ticker",
-          "direction": "asc"
-        }
-      ]
-    },
-    "data_validation": {
-      "on_missing_field": "zero_with_warning",
-      "on_unknown_schema_version": "fail",
-      "tdcc_max_lag_days": 7
     }
   },
   "universe_size": 30,
   "eligible_count": 0,
+  "fii_pending": false,
+  "obs_landing": false,
+  "fii_sell_raw": [
+    {
+      "rank": 1,
+      "code": "3481",
+      "name": "群創",
+      "sellVol": 202890,
+      "close": 45.7,
+      "chgPct": -3.4,
+      "isETF": false
+    },
+    {
+      "rank": 2,
+      "code": "2409",
+      "name": "友達",
+      "sellVol": 166130,
+      "close": 22.0,
+      "chgPct": -2.4,
+      "isETF": false
+    },
+    {
+      "rank": 3,
+      "code": "6116",
+      "name": "彩晶",
+      "sellVol": 34300,
+      "close": 13.65,
+      "chgPct": 0.65,
+      "isETF": false
+    },
+    {
+      "rank": 5,
+      "code": "2880",
+      "name": "華南金",
+      "sellVol": 31853,
+      "close": 30.15,
+      "chgPct": -0.4,
+      "isETF": false
+    },
+    {
+      "rank": 6,
+      "code": "2356",
+      "name": "英業達",
+      "sellVol": 31655,
+      "close": 62.6,
+      "chgPct": -2.8,
+      "isETF": false
+    },
+    {
+      "rank": 7,
+      "code": "2002",
+      "name": "中鋼",
+      "sellVol": 25412,
+      "close": 19.5,
+      "chgPct": -0.45,
+      "isETF": false
+    },
+    {
+      "rank": 8,
+      "code": "2618",
+      "name": "長榮航",
+      "sellVol": 24050,
+      "close": 35.2,
+      "chgPct": -0.25,
+      "isETF": false
+    },
+    {
+      "rank": 9,
+      "code": "2610",
+      "name": "華航",
+      "sellVol": 17686,
+      "close": 18.65,
+      "chgPct": -0.2,
+      "isETF": false
+    },
+    {
+      "rank": 11,
+      "code": "2382",
+      "name": "廣達",
+      "sellVol": 16003,
+      "close": 316.5,
+      "chgPct": 0.0,
+      "isETF": false
+    },
+    {
+      "rank": 12,
+      "code": "1101",
+      "name": "台泥",
+      "sellVol": 15529,
+      "close": 23.95,
+      "chgPct": -0.35,
+      "isETF": false
+    },
+    {
+      "rank": 13,
+      "code": "2324",
+      "name": "仁寶",
+      "sellVol": 15249,
+      "close": 33.6,
+      "chgPct": -1.05,
+      "isETF": false
+    },
+    {
+      "rank": 14,
+      "code": "2367",
+      "name": "燿華",
+      "sellVol": 14539,
+      "close": 66.7,
+      "chgPct": -3.4,
+      "isETF": false
+    },
+    {
+      "rank": 16,
+      "code": "2313",
+      "name": "華通",
+      "sellVol": 13229,
+      "close": 284.5,
+      "chgPct": -14.0,
+      "isETF": false
+    },
+    {
+      "rank": 17,
+      "code": "2886",
+      "name": "兆豐金",
+      "sellVol": 13079,
+      "close": 39.4,
+      "chgPct": -0.1,
+      "isETF": false
+    },
+    {
+      "rank": 18,
+      "code": "1402",
+      "name": "遠東新",
+      "sellVol": 12769,
+      "close": 26.05,
+      "chgPct": -1.15,
+      "isETF": false
+    },
+    {
+      "rank": 19,
+      "code": "2892",
+      "name": "第一金",
+      "sellVol": 12749,
+      "close": 27.7,
+      "chgPct": 0.1,
+      "isETF": false
+    },
+    {
+      "rank": 21,
+      "code": "2353",
+      "name": "宏��",
+      "sellVol": 11880,
+      "close": 31.9,
+      "chgPct": -0.6,
+      "isETF": false
+    },
+    {
+      "rank": 23,
+      "code": "3045",
+      "name": "台灣大",
+      "sellVol": 11129,
+      "close": 110.5,
+      "chgPct": -1.0,
+      "isETF": false
+    },
+    {
+      "rank": 24,
+      "code": "1102",
+      "name": "亞泥",
+      "sellVol": 10694,
+      "close": 33.25,
+      "chgPct": -0.35,
+      "isETF": false
+    },
+    {
+      "rank": 26,
+      "code": "2801",
+      "name": "彰銀",
+      "sellVol": 10303,
+      "close": 20.15,
+      "chgPct": -0.05,
+      "isETF": false
+    },
+    {
+      "rank": 27,
+      "code": "1216",
+      "name": "統一",
+      "sellVol": 9593,
+      "close": 70.8,
+      "chgPct": -0.4,
+      "isETF": false
+    },
+    {
+      "rank": 29,
+      "code": "2633",
+      "name": "台灣高鐵",
+      "sellVol": 9530,
+      "close": 25.05,
+      "chgPct": -0.25,
+      "isETF": false
+    },
+    {
+      "rank": 30,
+      "code": "2603",
+      "name": "長榮",
+      "sellVol": 9238,
+      "close": 211.5,
+      "chgPct": -2.5,
+      "isETF": false
+    },
+    {
+      "rank": 31,
+      "code": "2412",
+      "name": "中華電",
+      "sellVol": 9162,
+      "close": 136.0,
+      "chgPct": -0.5,
+      "isETF": false
+    },
+    {
+      "rank": 32,
+      "code": "2402",
+      "name": "毅嘉",
+      "sellVol": 8064,
+      "close": 70.1,
+      "chgPct": 2.3,
+      "isETF": false
+    },
+    {
+      "rank": 33,
+      "code": "2330",
+      "name": "台積電",
+      "sellVol": 7749,
+      "close": 2270.0,
+      "chgPct": -40.0,
+      "isETF": false
+    },
+    {
+      "rank": 34,
+      "code": "6443",
+      "name": "元晶",
+      "sellVol": 7567,
+      "close": 42.3,
+      "chgPct": -0.95,
+      "isETF": false
+    },
+    {
+      "rank": 35,
+      "code": "2027",
+      "name": "大成鋼",
+      "sellVol": 7448,
+      "close": 41.35,
+      "chgPct": -2.45,
+      "isETF": false
+    },
+    {
+      "rank": 36,
+      "code": "1301",
+      "name": "台塑",
+      "sellVol": 6955,
+      "close": 44.75,
+      "chgPct": -0.05,
+      "isETF": false
+    },
+    {
+      "rank": 37,
+      "code": "2912",
+      "name": "統一超",
+      "sellVol": 6633,
+      "close": 209.5,
+      "chgPct": -3.0,
+      "isETF": false
+    },
+    {
+      "rank": 39,
+      "code": "9904",
+      "name": "寶成",
+      "sellVol": 5286,
+      "close": 25.55,
+      "chgPct": -0.1,
+      "isETF": false
+    },
+    {
+      "rank": 40,
+      "code": "2377",
+      "name": "微星",
+      "sellVol": 4938,
+      "close": 126.0,
+      "chgPct": -1.0,
+      "isETF": false
+    },
+    {
+      "rank": 41,
+      "code": "4904",
+      "name": "遠傳",
+      "sellVol": 4824,
+      "close": 94.0,
+      "chgPct": -0.2,
+      "isETF": false
+    },
+    {
+      "rank": 42,
+      "code": "5876",
+      "name": "上海商銀",
+      "sellVol": 4790,
+      "close": 39.45,
+      "chgPct": -0.3,
+      "isETF": false
+    },
+    {
+      "rank": 43,
+      "code": "2515",
+      "name": "中工",
+      "sellVol": 4632,
+      "close": 12.85,
+      "chgPct": -0.3,
+      "isETF": false
+    },
+    {
+      "rank": 44,
+      "code": "2014",
+      "name": "中鴻",
+      "sellVol": 4603,
+      "close": 18.1,
+      "chgPct": -0.75,
+      "isETF": false
+    },
+    {
+      "rank": 45,
+      "code": "1708",
+      "name": "東鹼",
+      "sellVol": 4469,
+      "close": 38.3,
+      "chgPct": -1.75,
+      "isETF": false
+    },
+    {
+      "rank": 46,
+      "code": "3576",
+      "name": "聯合再生",
+      "sellVol": 4197,
+      "close": 18.9,
+      "chgPct": -0.45,
+      "isETF": false
+    },
+    {
+      "rank": 47,
+      "code": "5871",
+      "name": "中租-KY",
+      "sellVol": 4174,
+      "close": 107.0,
+      "chgPct": -2.0,
+      "isETF": false
+    },
+    {
+      "rank": 48,
+      "code": "5880",
+      "name": "合庫金",
+      "sellVol": 4137,
+      "close": 22.7,
+      "chgPct": 0.05,
+      "isETF": false
+    },
+    {
+      "rank": 50,
+      "code": "3016",
+      "name": "嘉晶",
+      "sellVol": 4044,
+      "close": 126.0,
+      "chgPct": -7.0,
+      "isETF": false
+    }
+  ],
+  "main_force_sell_raw": [
+    {
+      "rank": 1,
+      "code": "3481",
+      "name": "群創",
+      "sellVol": 282276,
+      "close": 45.7,
+      "chgPct": -3.4,
+      "isETF": false
+    },
+    {
+      "rank": 2,
+      "code": "2409",
+      "name": "友達",
+      "sellVol": 280782,
+      "close": 22.0,
+      "chgPct": -2.4,
+      "isETF": false
+    },
+    {
+      "rank": 3,
+      "code": "2002",
+      "name": "中鋼",
+      "sellVol": 67226,
+      "close": 19.5,
+      "chgPct": -0.45,
+      "isETF": false
+    },
+    {
+      "rank": 4,
+      "code": "2324",
+      "name": "仁寶",
+      "sellVol": 52333,
+      "close": 33.6,
+      "chgPct": -1.05,
+      "isETF": false
+    },
+    {
+      "rank": 5,
+      "code": "2356",
+      "name": "英業達",
+      "sellVol": 44502,
+      "close": 62.6,
+      "chgPct": -2.8,
+      "isETF": false
+    },
+    {
+      "rank": 6,
+      "code": "6116",
+      "name": "彩晶",
+      "sellVol": 35586,
+      "close": 13.65,
+      "chgPct": 0.65,
+      "isETF": false
+    },
+    {
+      "rank": 9,
+      "code": "2489",
+      "name": "瑞軒",
+      "sellVol": 17525,
+      "close": 51.7,
+      "chgPct": -4.8,
+      "isETF": false
+    },
+    {
+      "rank": 11,
+      "code": "2353",
+      "name": "宏��",
+      "sellVol": 15908,
+      "close": 31.9,
+      "chgPct": -0.6,
+      "isETF": false
+    },
+    {
+      "rank": 12,
+      "code": "2313",
+      "name": "華通",
+      "sellVol": 15271,
+      "close": 284.5,
+      "chgPct": -14.0,
+      "isETF": false
+    },
+    {
+      "rank": 13,
+      "code": "1402",
+      "name": "遠東新",
+      "sellVol": 14875,
+      "close": 26.05,
+      "chgPct": -1.15,
+      "isETF": false
+    },
+    {
+      "rank": 14,
+      "code": "2367",
+      "name": "燿華",
+      "sellVol": 13450,
+      "close": 66.7,
+      "chgPct": -3.4,
+      "isETF": false
+    },
+    {
+      "rank": 15,
+      "code": "2880",
+      "name": "華南金",
+      "sellVol": 11098,
+      "close": 30.15,
+      "chgPct": -0.4,
+      "isETF": false
+    },
+    {
+      "rank": 16,
+      "code": "2610",
+      "name": "華航",
+      "sellVol": 10165,
+      "close": 18.65,
+      "chgPct": -0.2,
+      "isETF": false
+    },
+    {
+      "rank": 19,
+      "code": "2402",
+      "name": "毅嘉",
+      "sellVol": 8432,
+      "close": 70.1,
+      "chgPct": 2.3,
+      "isETF": false
+    },
+    {
+      "rank": 21,
+      "code": "2027",
+      "name": "大成鋼",
+      "sellVol": 7896,
+      "close": 41.35,
+      "chgPct": -2.45,
+      "isETF": false
+    },
+    {
+      "rank": 24,
+      "code": "2633",
+      "name": "台灣高鐵",
+      "sellVol": 7455,
+      "close": 25.05,
+      "chgPct": -0.25,
+      "isETF": false
+    },
+    {
+      "rank": 25,
+      "code": "4906",
+      "name": "正文",
+      "sellVol": 7419,
+      "close": 42.85,
+      "chgPct": -1.45,
+      "isETF": false
+    },
+    {
+      "rank": 26,
+      "code": "1102",
+      "name": "亞泥",
+      "sellVol": 7366,
+      "close": 33.25,
+      "chgPct": -0.35,
+      "isETF": false
+    },
+    {
+      "rank": 27,
+      "code": "2801",
+      "name": "彰銀",
+      "sellVol": 7365,
+      "close": 20.15,
+      "chgPct": -0.05,
+      "isETF": false
+    },
+    {
+      "rank": 28,
+      "code": "6443",
+      "name": "元晶",
+      "sellVol": 6666,
+      "close": 42.3,
+      "chgPct": -0.95,
+      "isETF": false
+    },
+    {
+      "rank": 29,
+      "code": "1101",
+      "name": "台泥",
+      "sellVol": 6623,
+      "close": 23.95,
+      "chgPct": -0.35,
+      "isETF": false
+    },
+    {
+      "rank": 30,
+      "code": "3576",
+      "name": "聯合再生",
+      "sellVol": 6492,
+      "close": 18.9,
+      "chgPct": -0.45,
+      "isETF": false
+    },
+    {
+      "rank": 31,
+      "code": "2330",
+      "name": "台積電",
+      "sellVol": 6363,
+      "close": 2270.0,
+      "chgPct": -40.0,
+      "isETF": false
+    },
+    {
+      "rank": 33,
+      "code": "2014",
+      "name": "中鴻",
+      "sellVol": 5976,
+      "close": 18.1,
+      "chgPct": -0.75,
+      "isETF": false
+    },
+    {
+      "rank": 34,
+      "code": "3711",
+      "name": "日月光投控",
+      "sellVol": 5760,
+      "close": 611.0,
+      "chgPct": -6.0,
+      "isETF": false
+    },
+    {
+      "rank": 35,
+      "code": "3035",
+      "name": "智原",
+      "sellVol": 5010,
+      "close": 208.0,
+      "chgPct": -10.5,
+      "isETF": false
+    },
+    {
+      "rank": 36,
+      "code": "2441",
+      "name": "超豐",
+      "sellVol": 5001,
+      "close": 136.0,
+      "chgPct": 7.5,
+      "isETF": false
+    },
+    {
+      "rank": 38,
+      "code": "2883",
+      "name": "凱基金",
+      "sellVol": 4595,
+      "close": 21.55,
+      "chgPct": -0.1,
+      "isETF": false
+    },
+    {
+      "rank": 39,
+      "code": "4919",
+      "name": "新唐",
+      "sellVol": 4535,
+      "close": 211.0,
+      "chgPct": -8.0,
+      "isETF": false
+    },
+    {
+      "rank": 40,
+      "code": "3016",
+      "name": "嘉晶",
+      "sellVol": 4418,
+      "close": 126.0,
+      "chgPct": -7.0,
+      "isETF": false
+    },
+    {
+      "rank": 41,
+      "code": "9904",
+      "name": "寶成",
+      "sellVol": 4048,
+      "close": 25.55,
+      "chgPct": -0.1,
+      "isETF": false
+    },
+    {
+      "rank": 42,
+      "code": "2327",
+      "name": "國巨*",
+      "sellVol": 4037,
+      "close": 661.0,
+      "chgPct": -30.0,
+      "isETF": false
+    },
+    {
+      "rank": 43,
+      "code": "3045",
+      "name": "台灣大",
+      "sellVol": 3952,
+      "close": 110.5,
+      "chgPct": -1.0,
+      "isETF": false
+    },
+    {
+      "rank": 44,
+      "code": "1708",
+      "name": "東鹼",
+      "sellVol": 3797,
+      "close": 38.3,
+      "chgPct": -1.75,
+      "isETF": false
+    },
+    {
+      "rank": 45,
+      "code": "2485",
+      "name": "兆赫",
+      "sellVol": 3693,
+      "close": 74.6,
+      "chgPct": -2.1,
+      "isETF": false
+    },
+    {
+      "rank": 46,
+      "code": "2371",
+      "name": "大同",
+      "sellVol": 3578,
+      "close": 29.85,
+      "chgPct": -0.55,
+      "isETF": false
+    },
+    {
+      "rank": 48,
+      "code": "1216",
+      "name": "統一",
+      "sellVol": 3503,
+      "close": 70.8,
+      "chgPct": -0.4,
+      "isETF": false
+    },
+    {
+      "rank": 49,
+      "code": "2377",
+      "name": "微星",
+      "sellVol": 3492,
+      "close": 126.0,
+      "chgPct": -1.0,
+      "isETF": false
+    },
+    {
+      "rank": 50,
+      "code": "1301",
+      "name": "台塑",
+      "sellVol": 3465,
+      "close": 44.75,
+      "chgPct": -0.05,
+      "isETF": false
+    }
+  ],
   "market_regime": {
     "label": null,
     "classifier": "stub_v0",
@@ -458,18 +1519,22 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 90.8,
+      "open": null,
       "prev_close": null,
       "change_pct": 3.7,
       "volume": 32861,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 24685.75,
+      "volume_ratio": 1.331,
+      "velocity_3d": 3762,
+      "acceleration": -12708,
+      "market_volume": null,
+      "fii_net_buy": 34098,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 40465,
       "top5_branches": [
         {
@@ -504,11 +1569,21 @@
         }
       ],
       "main_force_cost": 91.51,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 3,
+      "net_accumulation_in_window": 106347,
+      "main_force_volume_trend": [
+        0,
+        32941,
+        32941,
+        40465
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": -1157,
+      "trust_net_buy": -1157,
+      "prop_net_buy": 2395,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -573,6 +1648,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 65882,
+        "present_latest": false,
+        "snaps_since_seen": 2
       }
     },
     {
@@ -581,26 +1670,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 17.65,
+      "open": null,
       "prev_close": null,
       "change_pct": 0.05,
       "volume": 3352,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 3352.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 3328,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 3352,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 3352,
+      "main_force_volume_trend": [
+        3352
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": -4,
+      "trust_net_buy": -4,
+      "prop_net_buy": 51,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -665,6 +1765,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -673,26 +1787,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 83.0,
+      "open": null,
       "prev_close": null,
       "change_pct": 0.8,
       "volume": 4202,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 4202.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 4049,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 3,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 4202,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 4202,
+      "main_force_volume_trend": [
+        4202
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 711,
+      "trust_net_buy": 711,
+      "prop_net_buy": 420,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -757,6 +1882,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -765,18 +1904,22 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 72.2,
+      "open": null,
       "prev_close": null,
       "change_pct": -1.7,
       "volume": 12581,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 30609.0,
+      "volume_ratio": 0.411,
+      "velocity_3d": 2310,
+      "acceleration": -9741,
+      "market_volume": 337056,
+      "fii_net_buy": 3108,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 3,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 40652,
       "top5_branches": [
         {
@@ -811,11 +1954,20 @@
         }
       ],
       "main_force_cost": 69.32,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 3,
+      "main_force_strict_streak_days": 3,
+      "main_force_positive_days_in_window": 3,
+      "net_accumulation_in_window": 119898,
+      "main_force_volume_trend": [
+        36033,
+        43213,
+        40652
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 762,
+      "trust_net_buy": 762,
+      "prop_net_buy": 755,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -880,6 +2032,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 79246,
+        "present_latest": true,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -888,18 +2054,22 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 40.0,
+      "open": null,
       "prev_close": null,
       "change_pct": 3.6,
       "volume": 25947,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 39689.0,
+      "volume_ratio": 0.654,
+      "velocity_3d": 1720,
+      "acceleration": 3439,
+      "market_volume": 210268,
+      "fii_net_buy": 30455,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 49999,
       "top5_branches": [
         {
@@ -934,11 +2104,20 @@
         }
       ],
       "main_force_cost": 30.03,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 3,
+      "net_accumulation_in_window": 143119,
+      "main_force_volume_trend": [
+        46560,
+        46560,
+        49999
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": -2772,
+      "trust_net_buy": -2772,
+      "prop_net_buy": 674,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -1003,6 +2182,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 93120,
+        "present_latest": false,
+        "snaps_since_seen": 2
       }
     },
     {
@@ -1011,18 +2204,22 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 160.5,
+      "open": null,
       "prev_close": null,
       "change_pct": 8.0,
       "volume": 29012,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 42187.5,
+      "volume_ratio": 0.688,
+      "velocity_3d": -9942,
+      "acceleration": 123549,
+      "market_volume": 163664,
+      "fii_net_buy": 29338,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 3,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 35478,
       "top5_branches": [
         {
@@ -1057,11 +2254,20 @@
         }
       ],
       "main_force_cost": 159.36,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 2,
+      "net_accumulation_in_window": 74487,
+      "main_force_volume_trend": [
+        55363,
+        -16354,
+        35478
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 2969,
+      "trust_net_buy": 2969,
+      "prop_net_buy": 77,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -1126,6 +2332,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -1134,18 +2354,22 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 141.0,
+      "open": null,
       "prev_close": null,
       "change_pct": 12.5,
       "volume": 100116,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 63752.2,
+      "volume_ratio": 1.57,
+      "velocity_3d": 33032,
+      "acceleration": 5010,
+      "market_volume": 336105,
+      "fii_net_buy": 46873,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 3,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 117505,
       "top5_branches": [
         {
@@ -1180,11 +2404,22 @@
         }
       ],
       "main_force_cost": 139.58,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 3,
+      "main_force_strict_streak_days": 3,
+      "main_force_positive_days_in_window": 5,
+      "net_accumulation_in_window": 336150,
+      "main_force_volume_trend": [
+        79061,
+        16050,
+        51442,
+        72092,
+        117505
+      ],
+      "volume_increasing_streak": 3,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 4364,
+      "trust_net_buy": 4364,
+      "prop_net_buy": 2637,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -1249,6 +2484,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 218645,
+        "present_latest": true,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -1257,26 +2506,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 37.7,
+      "open": null,
       "prev_close": null,
       "change_pct": 3.4,
       "volume": 15709,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 15709.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 9792,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 15709,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 15709,
+      "main_force_volume_trend": [
+        15709
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 0,
+      "trust_net_buy": 0,
+      "prop_net_buy": 413,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -1341,6 +2601,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -1349,26 +2623,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 338.5,
+      "open": null,
       "prev_close": null,
       "change_pct": 21.5,
       "volume": 22592,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 22592.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 24629,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 22592,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 22592,
+      "main_force_volume_trend": [
+        22592
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": -3869,
+      "trust_net_buy": -3869,
+      "prop_net_buy": 1153,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -1433,6 +2718,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -1441,26 +2740,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 147.0,
+      "open": null,
       "prev_close": null,
       "change_pct": 13.0,
       "volume": 13025,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 13025.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 8279,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 13025,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 13025,
+      "main_force_volume_trend": [
+        13025
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 0,
+      "trust_net_buy": 0,
+      "prop_net_buy": 490,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -1525,6 +2835,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -1533,26 +2857,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 70.0,
+      "open": null,
       "prev_close": null,
       "change_pct": 2.1,
       "volume": 4624,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 4624.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 2614,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 3,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 4624,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 4624,
+      "main_force_volume_trend": [
+        4624
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 230,
+      "trust_net_buy": 230,
+      "prop_net_buy": 0,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -1617,6 +2952,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -1625,18 +2974,22 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 103.5,
+      "open": null,
       "prev_close": null,
       "change_pct": 5.8,
       "volume": 38449,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 37833.67,
+      "volume_ratio": 1.016,
+      "velocity_3d": 2228,
+      "acceleration": 96840,
+      "market_volume": null,
+      "fii_net_buy": 58964,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 65078,
       "top5_branches": [
         {
@@ -1671,11 +3024,20 @@
         }
       ],
       "main_force_cost": 101.25,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 3,
+      "net_accumulation_in_window": 140130,
+      "main_force_volume_trend": [
+        60622,
+        14430,
+        65078
+      ],
+      "volume_increasing_streak": 1,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": -15279,
+      "trust_net_buy": -15279,
+      "prop_net_buy": 88,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -1740,6 +3102,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -1748,18 +3124,22 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 83.1,
+      "open": null,
       "prev_close": null,
       "change_pct": 1.6,
       "volume": 6611,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 22068.4,
+      "volume_ratio": 0.3,
+      "velocity_3d": 594,
+      "acceleration": 2664,
+      "market_volume": null,
+      "fii_net_buy": 23552,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 28970,
       "top5_branches": [
         {
@@ -1794,11 +3174,22 @@
         }
       ],
       "main_force_cost": 78.24,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 3,
+      "main_force_strict_streak_days": 3,
+      "main_force_positive_days_in_window": 5,
+      "net_accumulation_in_window": 132701,
+      "main_force_volume_trend": [
+        29281,
+        25404,
+        27782,
+        21264,
+        28970
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": -17889,
+      "trust_net_buy": -17889,
+      "prop_net_buy": -104,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -1863,6 +3254,26 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "yellow",
+        "flags": [
+          {
+            "code": "W1",
+            "zh": "動能衰竭",
+            "detail": "連買4日但速度 -2,070/日"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "失速",
+        "net_cumulative": 103731,
+        "present_latest": true,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -1871,26 +3282,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 57.3,
+      "open": null,
       "prev_close": null,
       "change_pct": 1.2,
       "volume": 5053,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 5053.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 11321,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 5053,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 5053,
+      "main_force_volume_trend": [
+        5053
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": -9778,
+      "trust_net_buy": -9778,
+      "prop_net_buy": -161,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -1955,6 +3377,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -1963,18 +3399,22 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 23.6,
+      "open": null,
       "prev_close": null,
       "change_pct": 0.3,
       "volume": 23842,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 25988.25,
+      "volume_ratio": 0.917,
+      "velocity_3d": -3914,
+      "acceleration": -20118,
+      "market_volume": 157314,
+      "fii_net_buy": 5281,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 3,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 39874,
       "top5_branches": [
         {
@@ -2009,11 +3449,21 @@
         }
       ],
       "main_force_cost": 23.73,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 3,
+      "net_accumulation_in_window": 119985,
+      "main_force_volume_trend": [
+        0,
+        47701,
+        32410,
+        39874
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 23249,
+      "trust_net_buy": 23249,
+      "prop_net_buy": -294,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -2078,6 +3528,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -2086,18 +3550,22 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 57.6,
+      "open": null,
       "prev_close": null,
       "change_pct": 0.3,
       "volume": 5225,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 19618.4,
+      "volume_ratio": 0.266,
+      "velocity_3d": 5268,
+      "acceleration": 6599,
+      "market_volume": null,
+      "fii_net_buy": 2091,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 3,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 38560,
       "top5_branches": [
         {
@@ -2132,11 +3600,22 @@
         }
       ],
       "main_force_cost": 55.74,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 5,
+      "net_accumulation_in_window": 131427,
+      "main_force_volume_trend": [
+        6137,
+        30684,
+        28023,
+        28023,
+        38560
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 3710,
+      "trust_net_buy": 3710,
+      "prop_net_buy": -3097,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -2201,6 +3680,26 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "orange",
+        "flags": [
+          {
+            "code": "W3",
+            "zh": "主力消失",
+            "detail": "曾連買4日，缺席2日（最後 05-21）"
+          }
+        ],
+        "flag_count": 1,
+        "label_zh": "轉弱",
+        "net_cumulative": 92867,
+        "present_latest": false,
+        "snaps_since_seen": 2
       }
     },
     {
@@ -2209,26 +3708,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 50.3,
+      "open": null,
       "prev_close": null,
       "change_pct": 1.1,
       "volume": 3329,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 3329.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 5770,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 3329,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 3329,
+      "main_force_volume_trend": [
+        3329
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": -22,
+      "trust_net_buy": -22,
+      "prop_net_buy": -438,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -2293,6 +3803,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -2301,26 +3825,38 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 1085.0,
+      "open": null,
       "prev_close": null,
       "change_pct": 95.0,
       "volume": 10563,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 5281.5,
+      "volume_ratio": 2.0,
+      "velocity_3d": 10563,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 8680,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 3,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 10563,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 10563,
+      "main_force_volume_trend": [
+        0,
+        10563
+      ],
+      "volume_increasing_streak": 1,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 2890,
+      "trust_net_buy": 2890,
+      "prop_net_buy": 206,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -2385,6 +3921,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -2393,26 +3943,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 87.4,
+      "open": null,
       "prev_close": null,
       "change_pct": 7.9,
       "volume": 10079,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
+      "volume_5d_avg": 10079.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 1,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 0,
       "main_force_buy": 10079,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 10079,
+      "main_force_volume_trend": [
+        10079
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -2477,6 +4038,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.3636,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -2485,26 +4060,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 186.0,
+      "open": null,
       "prev_close": null,
       "change_pct": 7.0,
       "volume": 7077,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 7077.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 8387,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 7077,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 7077,
+      "main_force_volume_trend": [
+        7077
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 0,
+      "trust_net_buy": 0,
+      "prop_net_buy": 156,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -2569,6 +4155,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -2577,26 +4177,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 44.35,
+      "open": null,
       "prev_close": null,
       "change_pct": 4.0,
       "volume": 5992,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 5992.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 1925,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 5992,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 5992,
+      "main_force_volume_trend": [
+        5992
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 0,
+      "trust_net_buy": 0,
+      "prop_net_buy": 438,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -2661,6 +4272,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -2669,26 +4294,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 342.0,
+      "open": null,
       "prev_close": null,
       "change_pct": 31.0,
       "volume": 4159,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 4159.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 714,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 4159,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 4159,
+      "main_force_volume_trend": [
+        4159
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": -90,
+      "trust_net_buy": -90,
+      "prop_net_buy": 785,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -2753,6 +4389,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -2761,26 +4411,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 304.5,
+      "open": null,
       "prev_close": null,
       "change_pct": 6.5,
       "volume": 4581,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 4581.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 4958,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 3,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 4581,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 4581,
+      "main_force_volume_trend": [
+        4581
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 215,
+      "trust_net_buy": 215,
+      "prop_net_buy": 101,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -2845,6 +4506,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -2853,26 +4528,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 82.0,
+      "open": null,
       "prev_close": null,
       "change_pct": 7.4,
       "volume": 7552,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
+      "volume_5d_avg": 7552.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
       "fii_net_buy": null,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 1,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 0,
       "main_force_buy": 7552,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 7552,
+      "main_force_volume_trend": [
+        7552
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
       "dealer_net_buy": null,
+      "trust_net_buy": null,
+      "prop_net_buy": null,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -2937,6 +4623,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.3636,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -2945,26 +4645,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 197.0,
+      "open": null,
       "prev_close": null,
       "change_pct": 17.5,
       "volume": 4423,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 4423.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 1259,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 3,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 4423,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 4423,
+      "main_force_volume_trend": [
+        4423
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 1678,
+      "trust_net_buy": 1678,
+      "prop_net_buy": 96,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -3029,6 +4740,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -3037,18 +4762,22 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 70.8,
+      "open": null,
       "prev_close": null,
       "change_pct": 3.2,
       "volume": 64918,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 71958.75,
+      "volume_ratio": 0.902,
+      "velocity_3d": -8979,
+      "acceleration": -16043,
+      "market_volume": 354361,
+      "fii_net_buy": 59833,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 3,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 78813,
       "top5_branches": [
         {
@@ -3083,11 +4812,21 @@
         }
       ],
       "main_force_cost": 71.35,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 3,
+      "main_force_strict_streak_days": 3,
+      "main_force_positive_days_in_window": 4,
+      "net_accumulation_in_window": 301730,
+      "main_force_volume_trend": [
+        56009,
+        96771,
+        70137,
+        78813
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 302,
+      "trust_net_buy": 302,
+      "prop_net_buy": 984,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -3152,6 +4891,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 222917,
+        "present_latest": true,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -3160,26 +4913,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 922.0,
+      "open": null,
       "prev_close": null,
       "change_pct": 38.0,
       "volume": 3427,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 3427.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 4947,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 3427,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 3427,
+      "main_force_volume_trend": [
+        3427
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": -209,
+      "trust_net_buy": -209,
+      "prop_net_buy": 19,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -3244,6 +5008,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -3252,26 +5030,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 49.55,
+      "open": null,
       "prev_close": null,
       "change_pct": 3.2,
       "volume": 3339,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 3339.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 3842,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 3339,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 3339,
+      "main_force_volume_trend": [
+        3339
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": -55,
+      "trust_net_buy": -55,
+      "prop_net_buy": 48,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -3336,6 +5125,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -3344,26 +5147,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 55.1,
+      "open": null,
       "prev_close": null,
       "change_pct": 5.0,
       "volume": 11029,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 11029.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 6120,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 11029,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 11029,
+      "main_force_volume_trend": [
+        11029
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 0,
+      "trust_net_buy": 0,
+      "prop_net_buy": 306,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -3428,6 +5242,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     },
     {
@@ -3436,26 +5264,37 @@
       "market": "TWSE",
       "industry": null,
       "current_price": 8.16,
+      "open": null,
       "prev_close": null,
       "change_pct": 0.74,
       "volume": 28066,
-      "volume_5d_avg": null,
-      "volume_ratio": null,
-      "fii_net_buy": null,
+      "volume_5d_avg": 28066.0,
+      "volume_ratio": 1.0,
+      "velocity_3d": null,
+      "acceleration": null,
+      "market_volume": null,
+      "fii_net_buy": 348,
       "fii_buy_ratio": null,
       "fii_holding_pct": null,
       "fii_holding_trend_5d": null,
-      "fii_sync_count": null,
+      "fii_sync_count": 2,
       "fii_brokers_buying": [],
-      "fii_consecutive_buy_days": null,
+      "fii_consecutive_buy_days": 1,
       "main_force_buy": 28066,
       "top5_branches": [],
       "main_force_cost": null,
-      "main_force_consecutive_days": null,
-      "main_force_volume_trend": [],
-      "volume_increasing_streak": null,
+      "main_force_consecutive_days": 1,
+      "main_force_strict_streak_days": 1,
+      "main_force_positive_days_in_window": 1,
+      "net_accumulation_in_window": 28066,
+      "main_force_volume_trend": [
+        28066
+      ],
+      "volume_increasing_streak": 0,
       "top5_concentration": null,
-      "dealer_net_buy": null,
+      "dealer_net_buy": 0,
+      "trust_net_buy": 0,
+      "prop_net_buy": 2344,
       "is_day_trader_branch": false,
       "shareholder_count": null,
       "shareholder_count_delta_pct": null,
@@ -3520,6 +5359,20 @@
           "trend": true,
           "reason": "P3a ingest-only; no scoring computed yet"
         }
+      },
+      "data_completeness": 0.4545,
+      "confidence_tier": "SKELETON",
+      "momentum_direction": "unknown",
+      "signal_age_days": 1,
+      "delta_vs_yesterday": "—",
+      "weakening": {
+        "severity": "none",
+        "flags": [],
+        "flag_count": 0,
+        "label_zh": "—",
+        "net_cumulative": 0,
+        "present_latest": false,
+        "snaps_since_seen": 0
       }
     }
   ],
@@ -3564,6 +5417,12 @@
     ]
   },
   "audit_log": [
+    {
+      "ticker": null,
+      "event": "DATA_WARNING",
+      "reason": "branches directory latest mtime is 2026-06-24, 29 days behind target snapshot date 2026-05-26",
+      "step": "adapters.legacy.branches"
+    },
     {
       "ticker": "9105",
       "event": "DATA_WARNING",
@@ -3686,12 +5545,25 @@
     },
     {
       "ticker": null,
+      "event": "DATA_WARNING",
+      "reason": "No TDCC cache file found for date ≤ 2026-05-26 in /Users/yoncky/SCD engine/Ai stock/data/tdcc; shareholder/large-holder fields will be None. Run tools/fetch_tdcc.py to populate.",
+      "step": "adapters.legacy.tdcc"
+    },
+    {
+      "ticker": null,
       "event": "LOOKBACK_VERIFIED",
-      "reason": "Lookback chain attached: 3 prior snapshots",
+      "reason": "Lookback chain attached: 10 prior snapshots",
       "step": "core.ingest.attach_lookback",
       "data": {
         "lookback_snapshots": {
           "2026-05-25": "sha256:cfb64944485ebd04d48f7aad79e4b12162c89da210765f9dad9d659cdd747e9d",
+          "2026-05-08": "sha256:083e61926e310cca8d4d73b557dfae71ea62f070f03d88588564cba8bbfa0eeb",
+          "2026-05-13": "sha256:f0a49c4a33b3fbc69cf1724053ca77b17ca2e1449096998cc679e9d5cbfabc7a",
+          "2026-05-14": "sha256:5ab82de8c4c6eb29419ffdc0e4d230566ab037aa429fe9bf9899c4d0f8d7cef0",
+          "2026-05-15": "sha256:7a7320bd0384c65e8577afb44c2cc2184ab258401523dda431a5b80b0b2e5d7d",
+          "2026-05-17": "sha256:20c6167e7152306109c6e3937f593cdf1f12ac45c9b9cd656faaf2739622ab10",
+          "2026-05-18": "sha256:e76c66cfd08d4e011d5cf4aaf4adbbf7d70ae42d95cac2fe89d01d9011bc081f",
+          "2026-05-20": "sha256:50eb30493f787c9f76408bc5547cddb112de0c9bb496026081db5e17ef575849",
           "2026-05-21": "sha256:7892e9f58823ca910368f85d74165f926fe12021afd25e8cec8007c48379e17c",
           "2026-05-22": "sha256:15ad0d6001fa39c32e5673421cf1293060eef78ee9e4966f1d941468149dcab4"
         }
