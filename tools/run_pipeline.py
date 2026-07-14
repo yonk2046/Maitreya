@@ -26,6 +26,7 @@ from core.archive import archive_raw_inputs
 from core.hashing import canonical_sha256, write_sidecar
 from core.ingest import ingest
 from core.replay_contract import normalize_for_replay_compare
+from core.replay_ledger import attest_from_snapshot
 from core.worm_check import snapshot_manifest, verify_manifest
 from data.adapters.legacy import adapt_legacy, legacy_paths
 from data.adapters.rollup import adapt_rollup, available_dates
@@ -35,6 +36,12 @@ REPORTS_DIR = _AI_STOCK / "reports"
 CONFIG_FILE = _AI_STOCK / "config" / "scd.example.yaml"
 INDEX_FILE = REPORTS_DIR / "index.json"
 RAW_ARCHIVE_DIR = REPORTS_DIR / "_raw_archive"
+REPLAY_LEDGER_FILE = REPORTS_DIR / "_replay_ledger.json"
+
+
+def _now_utc_iso() -> str:
+    import datetime as _dt
+    return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _load_config() -> dict:
@@ -239,10 +246,31 @@ def run(date: str | None, *, check_replay: bool = False, source: str = "auto") -
         normalize_for_replay_compare(snap2, snapshot)
         h1 = canonical_sha256(snapshot)
         h2 = canonical_sha256(snap2)
-        if h1 == h2:
+        replay_passed = h1 == h2
+        if replay_passed:
             print(f"[replay] ✅ PASS — byte-identical hash on two runs: {h1}", file=sys.stderr)
         else:
             print(f"[replay] ❌ FAIL — hash mismatch: {h1} vs {h2}", file=sys.stderr)
+
+        # Attestation ledger (L2.5, P2-W5): append a side-car verification proof
+        # that this snapshot's hash was check-replay-verified at generation time.
+        # M-state only (hashes/versions/timestamp/env fingerprint — zero market
+        # judgement); append-only + idempotent on (date, canonical_hash). Replay
+        # pass/fail above NEVER depends on this ledger — it records the result.
+        appended = attest_from_snapshot(
+            REPLAY_LEDGER_FILE,
+            snapshot,
+            canonical_hash=h1,
+            check_replay_passed=replay_passed,
+            attested_at=_now_utc_iso(),
+        )
+        if appended:
+            print(f"[ledger] attestation appended → {REPLAY_LEDGER_FILE.name} "
+                  f"(passed={replay_passed})", file=sys.stderr)
+        else:
+            print(f"[ledger] attestation already present (idempotent no-op)", file=sys.stderr)
+
+        if not replay_passed:
             return snapshot
 
     return snapshot

@@ -50,6 +50,12 @@ from core.archive import archive_raw_inputs  # noqa: E402
 from core.hashing import canonical_sha256  # noqa: E402
 from core.ingest import SCHEMA_VERSION, ingest  # noqa: E402
 from core.replay_contract import normalize_for_replay_compare  # noqa: E402
+from core.replay_ledger import (  # noqa: E402
+    current_env_fingerprint,
+    env_drift,
+    latest_entry_for,
+    load_ledger,
+)
 from data.adapters.legacy import adapt_legacy, legacy_paths  # noqa: E402
 from data.adapters.rollup import adapt_rollup  # noqa: E402
 
@@ -57,6 +63,28 @@ REPORTS_DIR = _AI_STOCK / "reports"
 INDEX_FILE = REPORTS_DIR / "index.json"
 CONFIG_FILE = _AI_STOCK / "config" / "scd.example.yaml"
 RAW_ARCHIVE_DIR = REPORTS_DIR / "_raw_archive"
+REPLAY_LEDGER_FILE = REPORTS_DIR / "_replay_ledger.json"
+
+
+def _attestation_note(ledger: dict, cur_env: dict, date: str, current_hash: str) -> str:
+    """SOFT ledger cross-check (P2-W5, L2.5). Returns a human-readable suffix.
+
+    - Ledger entry present for (date, current tip hash) → "attested" marker.
+    - Entry's environment fingerprint differs from now → drift warning (R10).
+    - NO ledger entry → empty string. A missing entry is NEVER a failure
+      (fable D-5 iron rule: replay pass/fail never depends on the ledger).
+    """
+    entry = latest_entry_for(ledger, date, current_hash)
+    if entry is None:
+        return ""
+    note = "  📜 attested"
+    if not entry.get("check_replay_passed", False):
+        note += " (recorded FAIL)"
+    drift = env_drift(entry, cur_env)
+    if drift:
+        parts = ", ".join(f"{k} {a}→{c}" for k, (a, c) in sorted(drift.items()))
+        note += f"  ⚠️ 環境已漂移 [{parts}]"
+    return note
 
 
 def _archived_dir_for(src: dict) -> pathlib.Path:
@@ -167,6 +195,11 @@ def main() -> int:
     dates = sorted(k for k in index["snapshots"].keys() if _is_iso_date(k))
     print(f"[verify-all] {len(dates)} dates to check (window={window})", file=sys.stderr)
 
+    # SOFT attestation cross-check inputs (P2-W5). Read-only; never gates.
+    ledger = load_ledger(REPLAY_LEDGER_FILE)
+    cur_env = current_env_fingerprint()
+    attested_count = 0
+
     failures: list[str] = []
     passes = 0
     legacy_passes = 0
@@ -181,9 +214,12 @@ def main() -> int:
             h_disk = canonical_sha256(on_disk_snap)
             if h_disk == entry["current_hash"]:
                 legacy_passes += 1
+                note = _attestation_note(ledger, cur_env, d, entry["current_hash"])
+                if note:
+                    attested_count += 1
                 print(
                     f"  🔒 {d}  epoch {snap_schema} — disk hash matches index "
-                    f"{h_disk[:20]}...",
+                    f"{h_disk[:20]}...{note}",
                     file=sys.stderr,
                 )
             else:
@@ -227,14 +263,18 @@ def main() -> int:
 
         if h_replay == h_current:
             passes += 1
-            print(f"  ✅ {d}  {h_current[:20]}...", file=sys.stderr)
+            note = _attestation_note(ledger, cur_env, d, h_current)
+            if note:
+                attested_count += 1
+            print(f"  ✅ {d}  {h_current[:20]}...{note}", file=sys.stderr)
         else:
             failures.append(f"{d}: current={h_current[:20]}... replay={h_replay[:20]}...")
             print(f"  ❌ {d}  current={h_current[:20]}... replay={h_replay[:20]}...", file=sys.stderr)
 
     print(
         f"\n[verify-all] {passes} full-replay-clean + {legacy_passes} legacy-epoch-clean "
-        f"of {len(dates)} dates; {len(failures)} failure(s) "
+        f"of {len(dates)} dates; {len(failures)} failure(s); "
+        f"{attested_count} ledger-attested (soft) "
         f"(current schema {SCHEMA_VERSION})",
         file=sys.stderr,
     )
