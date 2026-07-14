@@ -327,10 +327,30 @@ def test_lookback_hash_present_in_history(index):
 
 def test_lookback_hash_matches_current_strict(index):
     """STRICT continuity: every lookback hash equals the prior date's
-    current_hash. Holds only when snapshots have been re-ingested in
-    chronological order after their priors changed. Used as a stretch check —
-    failures here are not corruption but mean the chain is not fully fresh.
+    current_hash — a BUILD-TIME invariant, not a retroactive one (fable 裁定
+    W6-1, P2-W6).
+
+    Once a snapshot is attested (replay ledger) or belongs to a frozen legacy
+    epoch, its recorded lookback hashes are as-was historical statements (C10):
+    "the version I saw when I was built". Retroactively superseding a prior
+    date (e.g. the P2-W6 I-only backfill) legitimately breaks the equality for
+    such frozen referrers, and re-satisfying it would require mutating frozen
+    snapshot bytes — contradicting the supersede model itself.
+
+    Grandfather clause (deliberately NARROW — fable W6-1 condition 1):
+      equality holds, OR
+      (the referenced hash exists in the prior date's history  ← never invented
+       AND the REFERRING snapshot is attested or legacy-epoch  ← frozen).
+    For any non-attested, non-legacy snapshot the strict equality remains a
+    hard assert: a fresh build recording a stale prior hash is a build bug
+    (caught at build time by tools/run_pipeline._assert_lookback_fresh, which
+    fails fast BEFORE attestation — fable W6-1 condition 2).
     """
+    from core.ingest import SCHEMA_VERSION
+    from core.replay_ledger import latest_entry_for, load_ledger
+
+    ledger = load_ledger(REPORTS_DIR / "_replay_ledger.json")
+
     failures: list[str] = []
     for key, entry in index["snapshots"].items():
         if not _is_real_date_key(key):
@@ -339,20 +359,31 @@ def test_lookback_hash_matches_current_strict(index):
         if not f.is_file():
             continue
         snap = json.loads(f.read_text(encoding="utf-8"))
+
+        # Frozen referrer? (attested current tip, or frozen legacy epoch)
+        is_legacy_epoch = snap.get("schema_version") != SCHEMA_VERSION
+        is_attested = latest_entry_for(ledger, key, entry["current_hash"]) is not None
+        frozen_referrer = is_legacy_epoch or is_attested
+
         lookback = snap.get("environment", {}).get("lookback_snapshots", {})
         for lb_date, lb_hash in lookback.items():
             prior = index["snapshots"].get(lb_date)
             if prior is None:
                 continue
-            if lb_hash != prior["current_hash"]:
-                failures.append(
-                    f"{key}: lookback[{lb_date}]={lb_hash[:20]}... "
-                    f"!= current {prior['current_hash'][:20]}..."
-                )
-    # This assertion is the strict desideratum. If it fails, run a chronological
-    # cascade re-ingest to refresh the chain — that's intentional, not corruption.
+            if lb_hash == prior["current_hash"]:
+                continue
+            in_history = any(h["hash"] == lb_hash for h in prior["history"])
+            if frozen_referrer and in_history:
+                continue  # grandfathered: as-was reference to a superseded prior
+            failures.append(
+                f"{key}: lookback[{lb_date}]={lb_hash[:20]}... "
+                f"!= current {prior['current_hash'][:20]}... "
+                f"(in_history={in_history}, attested={is_attested}, "
+                f"legacy_epoch={is_legacy_epoch})"
+            )
     assert not failures, (
-        "STRICT continuity broken (cascade re-ingest may resolve):\n  "
+        "STRICT continuity broken for non-frozen referrer (build bug — a fresh "
+        "build must record its priors' CURRENT hashes):\n  "
         + "\n  ".join(failures)
     )
 

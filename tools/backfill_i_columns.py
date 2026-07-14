@@ -57,7 +57,7 @@ from core.replay_contract import normalize_for_replay_compare  # noqa: E402
 from data.adapters.legacy import legacy_paths  # noqa: E402
 
 # Reuse the verifier's proven replay helpers so generation == verification path.
-from tools.run_pipeline import _update_index  # noqa: E402
+from tools.run_pipeline import _assert_lookback_fresh, _update_index  # noqa: E402
 from tools.verify_all_replay import (  # noqa: E402
     CONFIG_FILE,
     INDEX_FILE,
@@ -158,6 +158,11 @@ def process_one(date_iso: str, index: dict, cfg: dict, repo_root: pathlib.Path,
     if dry_run:
         return {"date": date_iso, "status": "would_backfill", "kind": kind,
                 "from_schema": on_disk_snap.get("schema_version")}
+
+    # W6-1 build-time invariant (fable 條件 2): the lookback hashes this new
+    # snapshot records must be its priors' CURRENT tips right now — catches
+    # exactly the stale-index class of bug (cascade must reload index per day).
+    _assert_lookback_fresh(new_snap.get("environment", {}).get("lookback_snapshots", {}))
 
     out_path = REPORTS_DIR / f"{date_iso}.json"
     out_path.write_text(

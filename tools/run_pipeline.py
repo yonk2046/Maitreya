@@ -91,6 +91,44 @@ def _gather_lookback(target_date: str, window: int) -> dict[str, str]:
     return out
 
 
+def _assert_lookback_fresh(lookback: dict[str, str]) -> None:
+    """BUILD-TIME strict-continuity assertion (fable 裁定 W6-1 條件 2).
+
+    The strict invariant "lookback hash == prior date's current_hash" is a
+    BUILD-TIME invariant: it must hold at the moment a snapshot is built, and
+    only then (frozen/attested snapshots keep their as-was references when
+    priors are later superseded — the contract test grandfathers those,
+    tests/test_contracts.py::test_lookback_hash_matches_current_strict).
+
+    Because the test-side check is grandfathered for attested snapshots, a
+    build that records STALE prior hashes (e.g. gathered from a cached index
+    object that missed an in-run supersede cascade) would slip through the
+    test net once the pipeline attests it. This guard closes that hole:
+    re-read index.json NOW and fail fast — before the snapshot is written or
+    attested — if any recorded lookback hash is not the prior's current tip.
+    """
+    if not lookback or not INDEX_FILE.is_file():
+        return
+    snaps = json.loads(INDEX_FILE.read_text(encoding="utf-8")).get("snapshots", {})
+    stale = []
+    for lb_date, lb_hash in lookback.items():
+        prior = snaps.get(lb_date)
+        if prior is None:
+            stale.append(f"{lb_date}: not in index")
+        elif prior["current_hash"] != lb_hash:
+            stale.append(
+                f"{lb_date}: recorded {lb_hash[:20]}... != current "
+                f"{prior['current_hash'][:20]}..."
+            )
+    if stale:
+        raise RuntimeError(
+            "LOOKBACK_STALE (W6-1 build-time invariant): snapshot about to be "
+            "written references non-current prior hashes — the lookback was "
+            "gathered from a stale index. Refusing to write/attest.\n  "
+            + "\n  ".join(stale)
+        )
+
+
 def _update_index(snapshot_path: pathlib.Path, snapshot_hash: str, snapshot_obj: dict) -> None:
     """Append a new snapshot to index.json and link the supersedes chain.
 
@@ -215,6 +253,10 @@ def run(date: str | None, *, check_replay: bool = False, source: str = "auto") -
             f"legitimacy. See audit_log for details."
         )
     print(f"[worm] ✅ {len(worm_before)} raw files unchanged during ingest", file=sys.stderr)
+
+    # W6-1 build-time invariant: recorded lookback hashes must be the priors'
+    # CURRENT tips at write time. Fail fast before write/attest (fable 條件 2).
+    _assert_lookback_fresh(lookback)
 
     # Write snapshot + sidecar
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)

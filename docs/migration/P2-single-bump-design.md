@@ -505,3 +505,11 @@ W3/W4 可在 W2 後半並行（W4 依賴 W3 的 sm 先落），W5/W6 相對獨�
 **執行時序裁定**：W1–W7 拆包核可。**bump 執行閘門＝7/13 收盤後 1.8.1 production 驗收通過**
 （partial→supersede 機制先見真實樣本，再疊 1.9.0；驗收失敗則先修 1.8.1）。
 W1（schema/registry 宣告）本身即 SCHEMA_VERSION 變更，**同受閘門管制**——7/13 前不動工。
+
+**追加裁定 W6-1（2026-07-14，W6 執行中浮現）**：strict lookback 等式（lookback hash ==
+前置日 current_hash）是 **build-time 不變量、非回溯不變量**——快照一旦 attested/legacy-epoch
+凍結，其記錄的 lookback hash 即 as-was 歷史陳述（C10），回溯 supersede 前置日後不得要求等式
+仍成立（那等於要求改凍結 bytes，與 supersede 模型自相矛盾）。回溯檢查降為 history-membership
+（引用 hash 必須存在於前置日 history，**僅限凍結引用方**得援引；非凍結快照 strict 仍 hard
+assert）；補償性把 strict 等式移到建置時（`run_pipeline._assert_lookback_fresh`，寫入/attest
+前 fail fast），堵住「新建置誤讀 stale index」從測試網漏掉的洞。
