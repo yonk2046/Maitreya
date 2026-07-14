@@ -376,6 +376,19 @@ def regime_shift(
     snapshots: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """
+    DEPRECATED (P2-W4, NOTES #40/#41 — Phase 3 處決清單).
+    ------------------------------------------------------------------
+    市場級生產者已收斂到 core/market_family.py。pipeline 落地的市場級真值
+    (obs_market_regime/breadth/temperature) 一律走 market_family,不再走本函式。
+    本函式**留原地不刪**,因仍被 render-time 消費者依賴:
+      • core/state_machine.py:722  (SM_BREADTH_CONFIRMED 閘的 breadth_series)
+      • core/confidence.py:503     (已判死 #37,Phase 3 解散)
+      • core/market_state.py       (888 行死碼,Phase 3 處決)
+    ⚠ 本函式的 breadth = sum(mf>0)/len(mf) 仍是**買超榜母體**(依構造恆 ≈1.0,#41
+      病根)。正確母體版在 market_family.regime()/compute_breadth() (讀 market_pulse
+      twse_listed)。改讀本函式者 = 消費病態母體;新程式一律用 market_family。
+    ------------------------------------------------------------------
+
     Observe market-wide character changes across dates.
 
     Per-snapshot metrics:

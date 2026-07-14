@@ -414,10 +414,10 @@ def ingest(
     #     regime → temperature(讀當日 obs_sm_transition_risk)。
     # 裁定「空掛點不寫欄」:掛點未接引擎前不得寫任何 obs_* 欄(schema additive 容忍缺欄)。
     # obs_landing=False(W6 backfill)整段跳過:只保留 I 欄、不落任何 O。
+    market_obs: dict[str, Any] = {}
+    market_errors: list[str] = []
     if obs_landing:
-        # W3(本包)per-ticker O 落地 —— sm→golden→chip→dist(design §2c)。
-        # market grain(breadth/regime/temperature)屬 W4,此處仍為空掛點。
-        #
+        # per-ticker O 落地(W3)—— sm→golden→chip→dist(design §2c)。
         # 建「provisional 當日快照」= prior_snap_objects + 本日已組裝的 stocks,
         # 作為引擎的 20 日歷史窗尾端。引擎讀此 window(prior 皆已落地磁碟快照,
         # 混合 epoch 由 core.history_view 統一缺欄語意);sm 先算,golden 讀已落地
@@ -444,6 +444,29 @@ def ingest(
             obs = per_ticker_obs.get(rec["ticker"])
             if obs:
                 rec.update(obs)
+
+        # ⑦ market grain(頂層,W4)—— breadth(讀 market_pulse 母體,#41)→ regime
+        #   (切點 engine_params,#40)→ temperature(讀當日已落地 obs_sm_transition_risk,
+        #   #43)。temperature 讀上面剛落地的 stocks[].obs_sm_* → 順序 §2c ⑦ 成立、無環。
+        #   market_family = 唯一市場級生產者(market_context.regime_shift 標 deprecated
+        #   留原地不刪,仍被 render-time 消費;#40)。缺 market_pulse → breadth 誠實 null
+        #   + errors 記錄,絕不 fallback 到榜母體(復發 #41 即違憲)。
+        from core import market_family as _market
+        _m = _market.compute_market_obs(date, window, stocks)
+        market_obs = {
+            "obs_market_breadth":     _m["obs_market_breadth"],
+            "obs_market_regime":      _m["obs_market_regime"],
+            "obs_market_temperature": _m["obs_market_temperature"],
+        }
+        market_errors = _m["errors"]
+        for _err in market_errors:
+            audit_events.append({
+                "ticker": None,
+                "event": "MARKET_DATA_GAP",
+                "reason": _err,
+                "step": "core.market_family.compute_market_obs",
+                "data": {"date": date},
+            })
 
     # config_snapshot — 1.9.0 (P2 §4) 雙來源:yaml(scd.example.yaml 生效值)+
     #   engine_params(存活引擎判斷門檻/權重/TIER_A 名單的確定性快照)。兩者皆凍結、
@@ -490,6 +513,11 @@ def ingest(
             "confidence": None,
             "features": {"vix_proxy": None, "breadth_index": None, "regime_dwell": None},
         },
+        # 1.9.0 (P2-W4, NOTES #40/#41/#43) market grain O 三欄(頂層,grain=date)。
+        #   obs_landing=False(W6 backfill)不落任何 O → market_obs 為 {} → 不寫這三鍵
+        #   (schema additive 容忍缺欄;history_view 對 backfill epoch 統一缺欄語意)。
+        #   舊頂層 market_regime stub 維持 deprecated-pending(真值走 obs_market_regime)。
+        **market_obs,
         "episodes_active_at_start": [],
         "episodes_changed_today": [],
         "tier_transitions": [],

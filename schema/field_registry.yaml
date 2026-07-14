@@ -36,9 +36,9 @@ meta:
   snapshot_schema_version_at_authoring: "1.8.1"
   ground_truth_snapshot: "reports/2026-07-09.json"
   counts:
-    snapshot_fields: 21   # 18 + P2-W2 落值移入 3 (obs_landing/fii_sell_raw/main_force_sell_raw)
+    snapshot_fields: 24   # 18 + W2 移入 3 (obs_landing/fii_sell_raw/main_force_sell_raw) + W4 移入 3 (obs_market_regime/breadth/temperature)
     record_fields: 87     # 70 + P2-W2 移入 2 (trust/prop) + P2-W3 移入 15 (golden6/sm6/chip1/sync1/dist1)
-    planned_fields: 3     # 剩 market 三欄 (obs_market_regime/breadth/temperature,W4 落值後移入)
+    planned_fields: 0     # 22 欄全落地 (P2-W4 收尾:market 三欄移入 snapshot_fields)
   notes:
     - "現有快照全欄位登記完畢（頂層 18 + per-stock record 70 = 88 active/deprecated 欄）。"
     - >
@@ -198,8 +198,39 @@ snapshot_fields:
     grain: date
     replay: epoch-scoped-O
     owner: Market
-    status: deprecated-pending   # NOTES #40：真值走 planned obs_market_*；major 移除
-    alias: obs_market_regime      # 真值繼任欄（planned）
+    status: deprecated-pending   # NOTES #40：真值走 obs_market_*；major 移除
+    alias: obs_market_regime      # 真值繼任欄
+
+  # ── market grain O 三欄（P2-W4 落值,NOTES #40/#41/#43;grain=date,頂層）──────
+  #    生產者 = core/market_family.py（唯一市場級生產者;market_context.regime_shift
+  #    標 deprecated 留原地）。breadth 讀 market_pulse twse_listed 母體（#41），
+  #    temperature 讀當日已落地 obs_sm_transition_risk（#43），regime 切點 engine_params。
+  - name: obs_market_regime
+    semantic: "市場體制（regime_shift 收斂,切點 engine_params;NOTES #40）"
+    state: O
+    grain: date
+    replay: epoch-scoped-O
+    owner: Market
+    status: active
+    landed_version: "1.9.0"
+
+  - name: obs_market_breadth
+    semantic: "市場廣度（advancers/total,twse_listed 母體修正;缺料誠實 null,NOTES #41）"
+    state: O
+    grain: date
+    replay: epoch-scoped-O
+    owner: Market
+    status: active
+    landed_version: "1.9.0"
+
+  - name: obs_market_temperature
+    semantic: "市場溫度（讀當日已落地 obs_sm_transition_risk + 修正 breadth;NOTES #43）"
+    state: O
+    grain: date
+    replay: epoch-scoped-O
+    owner: Market
+    status: active
+    landed_version: "1.9.0"
 
   - name: episodes_active_at_start
     semantic: "快照產生時已活躍的 episode 清單"
@@ -381,17 +412,13 @@ record_fields:
 #       snapshot_fields；trust_net_buy/prop_net_buy → record_fields。
 #    ── P2-W3 已落值並移出本區塊：15 個 per-ticker O 欄（golden6/sm6/chip1/
 #       sync1/dist1）→ record_fields。
-#    ── 本區塊剩 3 個 market grain 欄，待 W4 落值後由該包移入正式區塊。
+#    ── P2-W4 已落值並移出本區塊：3 個 market grain O 欄（obs_market_regime/
+#       breadth/temperature）→ snapshot_fields。**planned 已清空(22 欄全落地)。**
 # =============================================================================
-planned_fields:
-  # market 三欄（NOTES #40；grain=date）
-  - {name: obs_market_regime,       semantic: "市場體制（regime_shift 收斂）", state: O, grain: date, replay: epoch-scoped-O, owner: Market, status: active, landed_version: "1.9.0"}
-  - {name: obs_market_breadth,      semantic: "市場廣度（母體修正後，NOTES #41）", state: O, grain: date, replay: epoch-scoped-O, owner: Market, status: active, landed_version: "1.9.0"}
-  - {name: obs_market_temperature,  semantic: "市場溫度",                  state: O, grain: date, replay: epoch-scoped-O, owner: Market, status: active, landed_version: "1.9.0"}
-  # 註:obs_landing、trust_net_buy、prop_net_buy、fii_sell_raw、main_force_sell_raw
-  #    已於 P2-W2 落值 → 依「落值的欄才移」紀律移入正式區塊
-  #    (obs_landing/fii_sell_raw/main_force_sell_raw → snapshot_fields;
-  #     trust_net_buy/prop_net_buy → record_fields)。
-  #    P2-W3 落值並移入 record_fields:obs_golden_* 六欄、obs_sm_* 六欄、
-  #    obs_chip_grade、sync_streak、obs_dist_consistency(15 per-ticker O 欄)。
-  #    本區塊剩 3 個 market grain 欄,待 W4 落值後移。
+planned_fields: []
+  # 22 欄(18 obs + 2 I record + 2 I 頂層 raw)全數落值並移入正式區塊:
+  #   P2-W2 → snapshot_fields: obs_landing/fii_sell_raw/main_force_sell_raw;
+  #           record_fields:   trust_net_buy/prop_net_buy。
+  #   P2-W3 → record_fields:   obs_golden_* 六、obs_sm_* 六、obs_chip_grade、
+  #                            sync_streak、obs_dist_consistency（15 per-ticker O）。
+  #   P2-W4 → snapshot_fields: obs_market_regime/breadth/temperature（3 market O）。

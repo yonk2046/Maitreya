@@ -184,6 +184,27 @@ MC_W3_SOLID_MIN_ABSENCE   = 2     # W3 缺席 ≥ 此才算 solid(可併紅,mark
 # ── 雙錨主力成本背離門檻(來源 market_context.py:822)─────────────────────────
 MC_COST_DIVERGENCE_PCT = 5.0  # 近/episode 錨背離 > 此 % → ⚠ 成本背離(market_context.py:822)
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+# MARKET TEMPERATURE — core/market_family.py (obs_market_temperature, NOTES #43)
+# ═══════════════════════════════════════════════════════════════════════════
+# 1.9.0(P2-W4):obs_market_temperature 落地。temperature 權重/分級改一值即無痕
+# 改變歷史市場溫度判斷,故隨 obs 落地一併外置入 config_snapshot(C11)。值一個不改,
+# 僅從 core/confidence.py 搬家(#43:temperature 移出已判死的 confidence 引擎)。
+TEMP_W_RISK_RATIO = 0.40  # elevated/critical sm 風險占比權重(原 confidence.py:124)
+TEMP_W_DISTRIB    = 0.30  # distributing 狀態占比權重(原 confidence.py:125)
+TEMP_W_BREADTH    = 0.30  # breadth 惡化(1−母體修正 breadth)權重(原 confidence.py:126)
+
+# temperature → level 分級(threshold 遞減;原 confidence.py:194-200)。
+# canonical hash 序列化為 list[list];color 為呈現屬性,隨 config 凍結不影響判斷值。
+TEMP_LEVELS = [
+    (0.70, "extreme", "極端", "#E05C7A"),
+    (0.50, "hot",     "過熱", "#C47A5A"),
+    (0.35, "warm",     "偏熱", "#D4A84B"),
+    (0.20, "stable",   "穩定", "#7EB8D4"),
+    (0.00, "cool",     "冷靜", "#52B788"),
+]
+
 # ═══════════════════════════════════════════════════════════════════════════
 # DISTRIBUTION — core/distribution.py(obs_dist_consistency,NOTES #38)
 # ═══════════════════════════════════════════════════════════════════════════
