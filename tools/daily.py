@@ -276,6 +276,120 @@ def _trading_day_oracle(target_date: str) -> tuple[bool, str]:
     return False, "TWSE MI_INDEX probe indeterminate (network/parse error) — fail-closed"
 
 
+# ---------------------------------------------------------------------------
+# Remote-first guard (雲端優先、地端備用) — 2026-07-14 事故後修法
+# ---------------------------------------------------------------------------
+# 本機 launchd 跑者 (com.scd.daily 14:30 / com.maitreya.daily 19:00) 與雲端
+# GitHub Actions (~18:05) 各自獨立跑同一條 daily pipeline;7/14 使用者 11:44
+# 開機、launchd 補跑了睡眠期間錯過的排程,盤中誤觸發本地一輪 → 雲端與地端
+# 各自產出當日不同 canonical hash 的快照,只能靠事後手動 git rebase 收拾。
+#
+# 裁示:「雲端優先,地端只是備用以防萬一」——地端在真正開始抓取(耗時的
+# Step 1 fetch)之前,先問 origin/main 今天是否已有快照;有就把雲端結果拉
+# 下來、乾淨退出,絕不重複建置出第二份不同雜湊的快照。git fetch/查詢本身
+# 失敗(離線、DNS 掛)一律視為「遠端狀態不明」,fail-open 照常本地跑——
+# 備用跑者存在的意義正是雲端/網路掛掉時仍要能出貨。
+
+def _git(*args: str, cwd: pathlib.Path = _AI_STOCK, timeout: int = 30) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", "-C", str(cwd), *args],
+        capture_output=True, text=True, timeout=timeout,
+    )
+
+
+def _git_fetch_origin() -> bool:
+    """Best-effort `git fetch origin main`. True on success, False on ANY
+    failure (offline, git missing, timeout, non-zero exit) — never raises."""
+    try:
+        proc = _git("fetch", "origin", "main", "--quiet")
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    return proc.returncode == 0
+
+
+def _remote_has_report(target_date: str) -> bool:
+    """True iff origin/main already carries a committed reports/<target_date>.json."""
+    try:
+        proc = _git("cat-file", "-e", f"origin/main:reports/{target_date}.json")
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    return proc.returncode == 0
+
+
+def _git_pull_ff_only() -> bool:
+    """Best-effort fast-forward-only pull. False (no mutation) on any non-ff
+    or failure — never merges unattended (launchd job has no one to resolve
+    a conflict)."""
+    try:
+        proc = _git("pull", "--ff-only", "origin", "main", "--quiet")
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    return proc.returncode == 0
+
+
+def _remote_first_disposition(*, force_local: bool, fetch_ok: bool, remote_has_snapshot: bool) -> str:
+    """Pure decision — testable without touching git/network.
+
+    Returns:
+      'run_local'          — proceed with the normal local build.
+      'skip_remote_ahead'  — origin/main already has today's snapshot; defer
+                              to the cloud run (pull it down, exit clean).
+    """
+    if force_local:
+        return "run_local"
+    if not fetch_ok:
+        return "run_local"   # remote state unknown → fail-open (backup runner's whole point)
+    if remote_has_snapshot:
+        return "skip_remote_ahead"
+    return "run_local"
+
+
+def _remote_first_gate(target_date: str, *, force_local: bool, log_lines: list[dict[str, Any]]) -> bool:
+    """Runs the remote-first check (+ side effects: fetch, maybe pull, log,
+    print). Returns True iff the caller should skip the local build entirely
+    because origin/main is already ahead for target_date."""
+    if force_local:
+        log_lines.append({
+            "step": "remote_first_gate", "status": "bypassed",
+            "reason": "--force-local given — remote-first guard skipped by request",
+        })
+        return False
+
+    fetch_ok = _git_fetch_origin()
+    remote_has_snapshot = _remote_has_report(target_date) if fetch_ok else False
+    disposition = _remote_first_disposition(
+        force_local=force_local, fetch_ok=fetch_ok, remote_has_snapshot=remote_has_snapshot,
+    )
+
+    if not fetch_ok:
+        log_lines.append({
+            "step": "remote_first_gate", "status": "unknown",
+            "reason": "git fetch origin main failed/unreachable — remote state unknown, "
+                      "fail-open to local build (backup-runner semantics)",
+        })
+        return False
+
+    if disposition != "skip_remote_ahead":
+        log_lines.append({
+            "step": "remote_first_gate", "status": "proceed",
+            "reason": f"origin/main has no reports/{target_date}.json yet — cloud has not "
+                      f"built today; proceeding with local build",
+        })
+        return False
+
+    pulled = _git_pull_ff_only()
+    log_lines.append({
+        "step": "remote_first_gate", "status": "skip",
+        "reason": f"origin/main already has reports/{target_date}.json — 雲端優先,"
+                  f"本地跳過建置",
+        "pulled_ff_only": pulled,
+    })
+    print(f"[remote-first] {target_date} 已存在於 origin/main,雲端優先,本地跳過建置"
+          + ("" if pulled else "(git pull --ff-only 未成功/non-ff,已略過,不強制 merge)"),
+          file=sys.stderr)
+    return True
+
+
 _ISO_DATE = __import__("re").compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -377,6 +491,7 @@ def run(
     *,
     skip_fetch: bool = False,
     allow_partial: bool = False,
+    force_local: bool = False,
 ) -> int:
     """Execute the daily flow. Returns the process exit code (0 / 1 / 2 / 3).
 
@@ -384,15 +499,34 @@ def run(
     T86 不可得時不再 skip,改建 fii_pending=True 的部分快照(價格+分點);
     滯後 T86 已在 fetch/adapter 兩層被丟棄,絕不混入。早晨班次(strict)
     會經 trading_day_gate 的補完路徑 supersede 成完整快照。
+
+    force_local: 跳過雲端優先守門(remote-first gate),不管 origin/main 是否
+    已有當日快照都照跑本地建置。手動補跑 / 修正案用。
     """
     log_lines: list[dict[str, Any]] = [{
         "step": "orchestrator_start",
         "at":   _now_utc(),
         "skip_fetch": skip_fetch,
         "allow_partial": allow_partial,
+        "force_local": force_local,
         "requested_date": date,
         "pid":  os.getpid(),
     }]
+
+    # ----- Remote-first guard (雲端優先,地端備用) -----
+    # Runs BEFORE the (expensive, and the actual source of the 7/14 dual-
+    # canonical-hash collision) fetch step. Skipped only when skip_fetch is
+    # already set (that path reuses an existing local data/today.json and is
+    # itself a deliberate re-do, not the auto-daily/backup-runner path this
+    # guard protects). Uses the explicit --date when given (most precise);
+    # otherwise falls back to today's local calendar date as the candidate
+    # target — the only date this run could plausibly be trying to build
+    # before fetch has even told us the real tradingDate.
+    if not skip_fetch:
+        candidate_date = date or dt.date.today().isoformat()
+        if _remote_first_gate(candidate_date, force_local=force_local, log_lines=log_lines):
+            _finalize(log_lines, "skip_remote_ahead", candidate_date)
+            return 0
 
     # ----- Step 1: fetch -----
     if not skip_fetch:
@@ -658,9 +792,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--allow-partial", action="store_true",
                     help="兩段式快照晚班模式:T86 不可得時建 fii_pending 部分快照而非跳過 "
                          "(只給雲端 20:00 GHA schedule 用)")
+    ap.add_argument("--force-local", action="store_true",
+                    help="跳過雲端優先守門(remote-first gate),不管 origin/main 是否已有"
+                         "當日快照都照跑本地建置(手動補跑/修正案用)")
     args = ap.parse_args(argv)
     return run(date=args.date, skip_fetch=args.skip_fetch,
-               allow_partial=args.allow_partial)
+               allow_partial=args.allow_partial, force_local=args.force_local)
 
 
 if __name__ == "__main__":

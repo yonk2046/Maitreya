@@ -116,6 +116,10 @@ def test_verify_failure_returns_2(tmp_logs_dir):
 def test_fetch_failure_returns_3_and_no_pipeline_run(tmp_logs_dir, monkeypatch):
     """If fetch fails, pipeline + verify must NOT be attempted."""
     monkeypatch.setattr(daily, "UPSTREAM_FETCH", pathlib.Path(__file__))  # any existing file
+    # Remote-first gate is orthogonal to what this test verifies; simulate an
+    # inconclusive remote check (offline) so it fails open to the normal
+    # local fetch path instead of intercepting the generic subprocess.run mock.
+    monkeypatch.setattr(daily, "_git_fetch_origin", lambda: False)
     calls: list[list[str]] = []
 
     def fake_run(argv, **kw):
@@ -188,6 +192,10 @@ def test_missing_upstream_fetch_when_not_skipped_logs_skip_and_continues(tmp_log
     fetcher hasn't been installed yet.
     """
     monkeypatch.setattr(daily, "UPSTREAM_FETCH", pathlib.Path("/definitely/not/a/real/path.py"))
+    # Remote-first gate is orthogonal to what this test verifies; simulate an
+    # inconclusive remote check (offline) so it fails open to the normal
+    # local fetch path instead of intercepting the generic subprocess.run mock.
+    monkeypatch.setattr(daily, "_git_fetch_origin", lambda: False)
     with patch.object(subprocess, "run", return_value=_FakeProc(0, "", "")):
         rc = daily.run(date="2026-05-25", skip_fetch=False)
     assert rc == 0
@@ -195,3 +203,118 @@ def test_missing_upstream_fetch_when_not_skipped_logs_skip_and_continues(tmp_log
     fetch_rows = [r for r in log if r["step"] == "fetch"]
     assert fetch_rows
     assert fetch_rows[0]["status"] == "skipped"
+
+
+# ---------------------------------------------------------------------------
+# Remote-first guard (雲端優先、地端備用) — 2026-07-14 事故後修法
+# ---------------------------------------------------------------------------
+
+def test_remote_first_disposition_pure_matrix():
+    """Pure decision table — no git, no I/O."""
+    # force_local always wins, regardless of remote state.
+    assert daily._remote_first_disposition(
+        force_local=True, fetch_ok=True, remote_has_snapshot=True,
+    ) == "run_local"
+    # fetch failure (offline / network down) → unknown remote state → fail-open.
+    assert daily._remote_first_disposition(
+        force_local=False, fetch_ok=False, remote_has_snapshot=False,
+    ) == "run_local"
+    # fetch ok, remote already has today's snapshot → defer to cloud.
+    assert daily._remote_first_disposition(
+        force_local=False, fetch_ok=True, remote_has_snapshot=True,
+    ) == "skip_remote_ahead"
+    # fetch ok, remote has nothing yet → proceed locally.
+    assert daily._remote_first_disposition(
+        force_local=False, fetch_ok=True, remote_has_snapshot=False,
+    ) == "run_local"
+
+
+def test_remote_first_gate_skips_when_remote_has_snapshot(monkeypatch):
+    """origin/main already has today's report → gate returns True (skip),
+    and attempts a best-effort ff-only pull."""
+    monkeypatch.setattr(daily, "_git_fetch_origin", lambda: True)
+    monkeypatch.setattr(daily, "_remote_has_report", lambda date: True)
+    pull_calls = []
+    monkeypatch.setattr(daily, "_git_pull_ff_only", lambda: pull_calls.append(1) or True)
+
+    log_lines: list[dict] = []
+    skip = daily._remote_first_gate("2026-07-14", force_local=False, log_lines=log_lines)
+
+    assert skip is True
+    assert pull_calls == [1]
+    statuses = [r["status"] for r in log_lines if r["step"] == "remote_first_gate"]
+    assert statuses == ["skip"]
+
+
+def test_remote_first_gate_runs_local_when_remote_has_no_snapshot(monkeypatch):
+    """origin/main has no report for today → gate returns False (run local),
+    and must NOT attempt a pull."""
+    monkeypatch.setattr(daily, "_git_fetch_origin", lambda: True)
+    monkeypatch.setattr(daily, "_remote_has_report", lambda date: False)
+    pull_calls = []
+    monkeypatch.setattr(daily, "_git_pull_ff_only", lambda: pull_calls.append(1) or True)
+
+    log_lines: list[dict] = []
+    skip = daily._remote_first_gate("2026-07-14", force_local=False, log_lines=log_lines)
+
+    assert skip is False
+    assert pull_calls == []
+    statuses = [r["status"] for r in log_lines if r["step"] == "remote_first_gate"]
+    assert statuses == ["proceed"]
+
+
+def test_remote_first_gate_runs_local_when_fetch_fails(monkeypatch):
+    """git fetch origin fails (offline) → remote state unknown → fail-open
+    to local build, and the remote-has-report check must not even run."""
+    monkeypatch.setattr(daily, "_git_fetch_origin", lambda: False)
+    has_report_calls = []
+    monkeypatch.setattr(
+        daily, "_remote_has_report",
+        lambda date: has_report_calls.append(date) or True,
+    )
+
+    log_lines: list[dict] = []
+    skip = daily._remote_first_gate("2026-07-14", force_local=False, log_lines=log_lines)
+
+    assert skip is False
+    assert has_report_calls == []
+    statuses = [r["status"] for r in log_lines if r["step"] == "remote_first_gate"]
+    assert statuses == ["unknown"]
+
+
+def test_remote_first_gate_force_local_bypasses_everything(monkeypatch):
+    """--force-local must skip the remote-first gate entirely (no git calls)."""
+    fetch_calls = []
+    monkeypatch.setattr(daily, "_git_fetch_origin", lambda: fetch_calls.append(1) or True)
+
+    log_lines: list[dict] = []
+    skip = daily._remote_first_gate("2026-07-14", force_local=True, log_lines=log_lines)
+
+    assert skip is False
+    assert fetch_calls == []
+    statuses = [r["status"] for r in log_lines if r["step"] == "remote_first_gate"]
+    assert statuses == ["bypassed"]
+
+
+def test_run_exits_clean_when_remote_already_ahead(tmp_logs_dir, monkeypatch):
+    """Full daily.run() integration: remote already has the target date's
+    report → exit 0, orchestrator_end status is skip_remote_ahead, and the
+    fetch/pipeline/verify subprocess steps must never be invoked."""
+    monkeypatch.setattr(daily, "_git_fetch_origin", lambda: True)
+    monkeypatch.setattr(daily, "_remote_has_report", lambda date: True)
+    monkeypatch.setattr(daily, "_git_pull_ff_only", lambda: True)
+
+    calls: list[list[str]] = []
+
+    def fake_run(argv, **kw):
+        calls.append(argv)
+        return _FakeProc(0, "ok", "")
+
+    with patch.object(subprocess, "run", side_effect=fake_run):
+        rc = daily.run(date="2026-07-14", skip_fetch=False)
+
+    assert rc == 0
+    assert calls == []  # no subprocess step (fetch/pipeline/verify) ever ran
+    log = _read_log("2026-07-14", tmp_logs_dir)
+    assert log[-1]["step"] == "orchestrator_end"
+    assert log[-1]["status"] == "skip_remote_ahead"

@@ -165,6 +165,12 @@ def flow_env(tmp_path, monkeypatch):
     monkeypatch.setattr(daily, "REPORTS_DIR", reports)
     monkeypatch.setattr(daily, "DAILY_LOGS", tmp_path / "_daily_logs")
     monkeypatch.setattr(daily, "UPSTREAM_FETCH", pathlib.Path("/not/a/real/fetch.py"))
+    # Remote-first gate (雲端優先守門) is orthogonal to what these partial-
+    # snapshot flow tests verify; simulate an inconclusive remote check
+    # (offline) so it fails open to the local flow instead of the blanket
+    # subprocess.run mock below making it look like origin/main already has
+    # today's report.
+    monkeypatch.setattr(daily, "_git_fetch_origin", lambda: False)
 
     def _setup(*, latest_snap: dict | None, today: dict):
         if latest_snap:

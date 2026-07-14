@@ -752,6 +752,39 @@ def _fetch_institutional_futures(date_str: str | None = None) -> dict[str, Any]:
     return result
 
 
+# ── Per-date archive error detection (2026-07-14 事故後修法) ──────────────────
+# 事故:11:46 盤中補跑打到 TWSE MI_INDEX 拿到「很抱歉，沒有符合條件的資料！」,
+# 帶 error 的 breadth 被 WORM 規則寫死進 per-date 檔,傍晚正常抓取被擋住不能
+# 覆寫 → 當日 obs_market_breadth 全 null。修法:WORM 只保護「乾淨」檔案;
+# 帶 error 的既有檔案可以被之後的乾淨抓取升級覆寫。
+
+def _pulse_has_error(pulse: dict[str, Any]) -> bool:
+    """True iff this market-pulse result carries a fetch error — either the
+    top-level errors[] is non-empty, or breadth itself carries an "error" key
+    (the field the trading-day oracle reads). Drives the per-date WORM rule:
+    only a clean (error-free) snapshot earns write-once protection.
+    """
+    if pulse.get("errors"):
+        return True
+    breadth = pulse.get("breadth")
+    if isinstance(breadth, dict) and "error" in breadth:
+        return True
+    return False
+
+
+def _archived_pulse_has_error(path: pathlib.Path) -> bool:
+    """Like _pulse_has_error but reads an existing on-disk archive file.
+    Any read/parse failure is conservatively treated as "has error" so a
+    later clean fetch is allowed to repair an unreadable archive rather than
+    being permanently blocked by it.
+    """
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return True
+    return _pulse_has_error(data)
+
+
 # ── Build + write ─────────────────────────────────────────────────────────────
 
 def fetch_and_write(
@@ -835,18 +868,30 @@ def fetch_and_write(
     print(f"\n[market-pulse] ✓ written → {out_path}", flush=True)
 
     # WORM per-date archive — data/market_pulse/YYYY-MM-DD.json.
-    # Write-once: an existing archive for this date is never overwritten, so
-    # re-running (or backfilling with --date) a date that's already archived
-    # is always safe.
+    # Write-once, but only a CLEAN archive earns the protection:
+    #   existing clean, new clean   → WORM holds, not overwritten (unchanged).
+    #   existing clean, new errored → WORM holds, not overwritten (never let
+    #                                  a worse/errored fetch clobber a good one).
+    #   existing errored, new clean → upgrade allowed (error→clean upgrade) —
+    #                                  this is the 2026-07-14 fix: a stray
+    #                                  intraday error must not permanently
+    #                                  block the honest post-close fetch.
+    #   existing errored, new errored → WORM holds (the attempt is already
+    #                                  honestly recorded; nothing better to write).
+    #   no existing archive         → always write (honest record of the attempt).
     if archive_dir is None:
         archive_dir = _project_root() / "data" / "market_pulse"
     archive_dir.mkdir(parents=True, exist_ok=True)
     archive_path = archive_dir / f"{date_str}.json"
-    if archive_path.exists():
-        print(f"[market-pulse] per-date archive already exists (WORM, not overwritten) → {archive_path}", flush=True)
-    else:
+    new_has_error = _pulse_has_error(pulse)
+    if not archive_path.exists():
         archive_path.write_text(json.dumps(pulse, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"[market-pulse] ✓ archived → {archive_path}", flush=True)
+    elif _archived_pulse_has_error(archive_path) and not new_has_error:
+        archive_path.write_text(json.dumps(pulse, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"[market-pulse] ✓ archive upgraded (error→clean upgrade) → {archive_path}", flush=True)
+    else:
+        print(f"[market-pulse] per-date archive already exists (WORM, not overwritten) → {archive_path}", flush=True)
 
     return pulse
 

@@ -278,3 +278,85 @@ def test_breadth_error_recorded_in_top_level_errors(tmp_path, monkeypatch):
 
     assert any(e.startswith("breadth:") for e in pulse["errors"])
     assert "error" in pulse["breadth"]
+
+
+# ── _pulse_has_error / archive error→clean upgrade (2026-07-14 事故後修法) ────
+#
+# 事故:11:46 盤中補跑打到 TWSE MI_INDEX 拿到「很抱歉，沒有符合條件的資料！」,
+# 帶 error 的 breadth 被舊版純 WORM 規則寫死進 per-date 檔,傍晚正常抓取被擋住
+# 不能覆寫。新規則:WORM 只保護「乾淨」檔案;帶 error 的既有檔案可被之後的
+# 乾淨抓取升級覆寫。
+
+def test_pulse_has_error_true_for_nonempty_errors_list():
+    pulse = {"errors": ["taiex: request failed"], "breadth": {"total": 1078}}
+    assert fmp._pulse_has_error(pulse) is True
+
+
+def test_pulse_has_error_true_for_breadth_error_key():
+    pulse = {"errors": [], "breadth": {"error": "stat != OK: '查無資料'"}}
+    assert fmp._pulse_has_error(pulse) is True
+
+
+def test_pulse_has_error_false_for_clean_pulse():
+    pulse = {"errors": [], "breadth": {"total": 1078, "advancers": 411}}
+    assert fmp._pulse_has_error(pulse) is False
+
+
+def test_archive_upgrades_from_error_to_clean(tmp_path, monkeypatch):
+    """既有檔帶 error,新 fetch 乾淨 → 允許覆寫(error→clean upgrade)。"""
+    out_path = tmp_path / "market_pulse.json"
+    archive_dir = tmp_path / "market_pulse"
+
+    # First run: breadth fetch errors out — per-date archive records the
+    # honest failed attempt (empty slot → always written).
+    _stub_fetchers(monkeypatch)
+    monkeypatch.setattr(fmp, "_get_json", lambda *a, **k: {"stat": "查無資料"})
+    fmp.fetch_and_write(dry_run=False, date_str="2026-07-14", out_path=out_path, archive_dir=archive_dir)
+    archive_path = archive_dir / "2026-07-14.json"
+    assert "error" in json.loads(archive_path.read_text(encoding="utf-8"))["breadth"]
+
+    # Second run (later the same day, post-close): breadth fetch succeeds.
+    _stub_fetchers(monkeypatch)
+    fmp.fetch_and_write(dry_run=False, date_str="2026-07-14", out_path=out_path, archive_dir=archive_dir)
+
+    upgraded = json.loads(archive_path.read_text(encoding="utf-8"))
+    assert "error" not in upgraded["breadth"]
+    assert upgraded["breadth"]["advancers"] == 411
+    assert upgraded["errors"] == []
+
+
+def test_archive_clean_not_overwritten_by_later_error(tmp_path, monkeypatch):
+    """既有檔乾淨,新 fetch 帶 error → 不覆寫(WORM 維持,絕不讓乾淨檔被錯誤結果沖掉)。"""
+    out_path = tmp_path / "market_pulse.json"
+    archive_dir = tmp_path / "market_pulse"
+
+    _stub_fetchers(monkeypatch)
+    fmp.fetch_and_write(dry_run=False, date_str="2026-07-14", out_path=out_path, archive_dir=archive_dir)
+    archive_path = archive_dir / "2026-07-14.json"
+    clean_content = archive_path.read_text(encoding="utf-8")
+
+    _stub_fetchers(monkeypatch)
+    monkeypatch.setattr(fmp, "_get_json", lambda *a, **k: {"stat": "查無資料"})
+    fmp.fetch_and_write(dry_run=False, date_str="2026-07-14", out_path=out_path, archive_dir=archive_dir)
+
+    assert archive_path.read_text(encoding="utf-8") == clean_content
+    still_clean = json.loads(archive_path.read_text(encoding="utf-8"))
+    assert "error" not in still_clean["breadth"]
+
+
+def test_archive_error_not_overwritten_by_another_error(tmp_path, monkeypatch):
+    """既有檔帶 error,新 fetch 也帶 error → 維持既有(已誠實記錄過一次嘗試)。"""
+    out_path = tmp_path / "market_pulse.json"
+    archive_dir = tmp_path / "market_pulse"
+
+    _stub_fetchers(monkeypatch)
+    monkeypatch.setattr(fmp, "_get_json", lambda *a, **k: {"stat": "查無資料 (first)"})
+    fmp.fetch_and_write(dry_run=False, date_str="2026-07-14", out_path=out_path, archive_dir=archive_dir)
+    archive_path = archive_dir / "2026-07-14.json"
+    first_error_content = archive_path.read_text(encoding="utf-8")
+
+    _stub_fetchers(monkeypatch)
+    monkeypatch.setattr(fmp, "_get_json", lambda *a, **k: {"stat": "查無資料 (second)"})
+    fmp.fetch_and_write(dry_run=False, date_str="2026-07-14", out_path=out_path, archive_dir=archive_dir)
+
+    assert archive_path.read_text(encoding="utf-8") == first_error_content
