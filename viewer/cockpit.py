@@ -18,7 +18,9 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import os
 import pathlib
+import subprocess
 import sys
 
 _HERE = pathlib.Path(__file__).resolve().parent
@@ -430,6 +432,34 @@ def _load_market_pulse() -> dict:
         except Exception:
             pass
     return {}
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _deployed_commit_hash() -> str:
+    """短 commit hash，用來一眼比對「雲端部署版本 vs main HEAD」(R12/補充裁定 D)。
+
+    優先讀環境變數(部署時注入，例如 Streamlit Cloud secrets/env)，
+    fallback 到本機 `git rev-parse --short HEAD`。任何一步失敗都回傳 "unknown"，
+    絕不讓 viewer crash。
+    """
+    env_hash = os.environ.get("STREAMLIT_COMMIT") or os.environ.get("COMMIT_HASH")
+    if env_hash:
+        return env_hash.strip()[:12]
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=str(_AI_STOCK),
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            out = result.stdout.strip()
+            if out:
+                return out
+    except Exception:
+        pass
+    return "unknown"
 
 
 def _real_dates() -> list[str]:
@@ -3776,6 +3806,7 @@ def _render_sidebar(snaps: list[dict]) -> str:
             for k, v in stats
         )
         st.markdown(rows_html, unsafe_allow_html=True)
+        st.caption(f"commit `{_deployed_commit_hash()}`")
 
         st.markdown('<hr class="sidebar-divider">', unsafe_allow_html=True)
 
