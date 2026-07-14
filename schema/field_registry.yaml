@@ -36,9 +36,9 @@ meta:
   snapshot_schema_version_at_authoring: "1.8.1"
   ground_truth_snapshot: "reports/2026-07-09.json"
   counts:
-    snapshot_fields: 18
-    record_fields: 70
-    planned_fields: 18
+    snapshot_fields: 21   # 18 + P2-W2 落值移入 3 (obs_landing/fii_sell_raw/main_force_sell_raw)
+    record_fields: 72     # 70 + P2-W2 落值移入 2 (trust_net_buy/prop_net_buy)
+    planned_fields: 18    # 憲法 §4 表的 18 obs_* O 欄(W3/W4 落值後移入正式區塊)
   notes:
     - "現有快照全欄位登記完畢（頂層 18 + per-stock record 70 = 88 active/deprecated 欄）。"
     - >
@@ -165,6 +165,33 @@ snapshot_fields:
     owner: Pipeline(ingest)
     status: active
 
+  - name: obs_landing
+    semantic: "1.9.0 O 態落地旗標（裁定 D-7）：true=正常 pipeline(as-was O 已落地)；false=I-only backfill 模式(只寫 I 欄、跳過 O 引擎、無 as-was O)。replay contract 據此對 false 快照走 backfill 模式重算（D-7 硬條件）。P2-W2 落值"
+    state: O
+    grain: date
+    replay: epoch-scoped-O
+    owner: Pipeline(ingest)
+    status: active
+    landed_version: "1.9.0"
+
+  - name: fii_sell_raw
+    semantic: "外資賣超原始榜 passthrough（today.json.sellList，Fubon ZGK_D topSell；C7 非破壞，形狀原封）。P2-W2 落值"
+    state: I
+    grain: date
+    replay: MUST-I
+    owner: fetch/Adapter
+    status: active
+    landed_version: "1.9.0"
+
+  - name: main_force_sell_raw
+    semantic: "主力賣超原始榜 passthrough（today.json.mainForceSell，Fubon ZGK_F topSell；C7 非破壞，形狀原封；1.9.0 obs_dist_consistency 的輸入）。P2-W2 落值"
+    state: I
+    grain: date
+    replay: MUST-I
+    owner: fetch/Adapter
+    status: active
+    landed_version: "1.9.0"
+
   - name: market_regime
     semantic: "頂層市場體制 stub（label/classifier/confidence/features 恆 stub_v0）"
     state: O
@@ -265,7 +292,9 @@ record_fields:
   - {name: main_force_volume_trend, semantic: "主力買超序列（趨勢）",      state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: mf_buy_trend_5d}
   - {name: volume_increasing_streak, semantic: "主力買超遞增連續數",       state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: mf_buy_increasing_streak}
   - {name: top5_concentration, semantic: "前 5 大分點集中度",             state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, alias: mf_top5_concentration}
-  - {name: dealer_net_buy,   semantic: "🔴 名叫自營商實裝投信淨買（張）from T86（ingest:182←investment_trust_net_buy）；正名 staging 已交付見下方 trust_net_buy/prop_net_buy（planned_fields）。Phase 2(1.9.0) 動作備忘（只記載不執行）：alias 雙寫——dealer_net_buy 舊名續寫投信值至 major、新欄 trust_net_buy 同值雙寫、prop_net_buy 新增落地真自營商值（現行快照無此值，非既有欄的 alias）", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: trust_net_buy}
+  - {name: dealer_net_buy,   semantic: "🔴 名叫自營商實裝投信淨買（張）from T86（ingest←investment_trust_net_buy）；正名已於 1.9.0(P2-W2) 落地——trust_net_buy 同值雙寫（見下）。dealer_net_buy 舊名續寫投信值至 2.0 major 移除（C5），major 前不動避免破壞現有消費者", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: trust_net_buy}
+  - {name: trust_net_buy,    semantic: "投信淨買（張）from T86 正名 — 與 dealer_net_buy 同值雙寫（正名該欄實裝的投信值）；1.9.0(P2-W2) 落地", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, landed_version: "1.9.0"}
+  - {name: prop_net_buy,     semantic: "自營商淨買（張）from T86 — 真值 adapter 早算出（prop_dealer_net_buy）但 ingest 從未讀取、被丟棄；1.9.0(P2-W2) 搶救落地（非既有欄的 alias）", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, landed_version: "1.9.0"}
   - {name: is_day_trader_branch, semantic: "是否當沖分點",                state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, alias: mf_is_day_trader}
 
   # ── TDCC 集保週資料 (I + O) ──────────────────────────────────────────────
@@ -321,13 +350,15 @@ record_fields:
 
 # =============================================================================
 # C. 1.9.0 落地清單（P2-W1 宣告：status planned→active、加 landed_version: "1.9.0"）
-#    憲法 §4：obs_chip_grade 含 total 子值計 1 欄 → 18 obs 判斷欄 + 4 raw I 欄 = 22 欄。
-#    另加 obs_landing 旗標（O/date，D-7 backfill 模式標記）= 本區塊共 23 條。
+#    憲法 §4：obs_chip_grade 含 total 子值計 1 欄 → 18 obs 判斷欄。
 #    ── 區塊名沿用 planned_fields（CI 對拍以 status 欄為準，非區塊名；見
 #       tests/test_field_registry.py 的 _by_status）。W1 只做宣告：canonical_schema.json
-#       已顯式宣告型別、SCHEMA_VERSION→1.9.0；ingest 尚未寫值（W2/W3/W4），故這些
-#       active 欄暫不出現在最新（1.8.1）快照。W2+ 逐批寫值後，欄移入 snapshot_fields/
-#       record_fields 正式區塊由該包處理（見 P2-EXECUTION-PLAYBOOK W2/W3/W4）。
+#       已顯式宣告型別、SCHEMA_VERSION→1.9.0。「落值的欄才移」：某欄開始寫值後由該包
+#       將其移入 snapshot_fields/record_fields 正式區塊。
+#    ── P2-W2 已落值並移出本區塊：obs_landing/fii_sell_raw/main_force_sell_raw →
+#       snapshot_fields；trust_net_buy/prop_net_buy → record_fields。
+#    ── 本區塊剩 18 個 obs_* O 欄（golden6/sm6/chip1/sync1/dist1/market3），待
+#       W3(per-ticker)/W4(market) 落值後由該包移入正式區塊。
 # =============================================================================
 planned_fields:
   # golden 六欄（NOTES #26）
@@ -354,13 +385,7 @@ planned_fields:
   - {name: obs_market_regime,       semantic: "市場體制（regime_shift 收斂）", state: O, grain: date, replay: epoch-scoped-O, owner: Market, status: active, landed_version: "1.9.0"}
   - {name: obs_market_breadth,      semantic: "市場廣度（母體修正後，NOTES #41）", state: O, grain: date, replay: epoch-scoped-O, owner: Market, status: active, landed_version: "1.9.0"}
   - {name: obs_market_temperature,  semantic: "市場溫度",                  state: O, grain: date, replay: epoch-scoped-O, owner: Market, status: active, landed_version: "1.9.0"}
-  # obs_landing 旗標（裁定 D-7；grain=date）— I-only backfill 模式標記
-  - {name: obs_landing,             semantic: "O 態落地旗標：true=正常 pipeline(as-was O 已落地)；false=I-only backfill 模式(只寫 I 欄、跳過 O 引擎、無 as-was O)。replay contract 據此對 false 快照走 backfill 模式重算（D-7 硬條件）", state: O, grain: date, replay: epoch-scoped-O, owner: Pipeline(ingest), status: active, landed_version: "1.9.0"}
-
-  # ── Phase 1 第 3+4 線 staging（NOTES #1/#38）：adapter 已輸出正名 key，
-  #    ingest 尚未消費（零快照內容變更，見 docs/migration/P1-worm-backfill-report.md）。
-  #    landing 時機隨 1.9.0 單一 bump（dealer_net_buy 正名 + 賣方 raw 入 canonical 同批）。
-  - {name: trust_net_buy,           semantic: "投信淨買（張）from T86 正名 — 現同一值誤裝在 dealer_net_buy（見該欄 semantic）；data/adapters/legacy.py 已 staging 輸出，1.9.0 landing 時與 dealer_net_buy 同值雙寫", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, landed_version: "1.9.0"}
-  - {name: prop_net_buy,            semantic: "自營商淨買（張）from T86 正名 — 真值 adapter 早已算出（prop_dealer_net_buy）但 core/ingest.py 從未讀取、被丟棄；data/adapters/legacy.py 已 staging 輸出，1.9.0 landing 時新增落地（現行快照無此值，非既有欄的 alias）", state: I, grain: ticker, replay: MUST-I, owner: fetch/Adapter, status: active, landed_version: "1.9.0"}
-  - {name: fii_sell_raw,            semantic: "外資賣超原始榜 passthrough（today.json.sellList，Fubon ZGK_D topSell；C7 非破壞，形狀原封不動）", state: I, grain: date, replay: MUST-I, owner: fetch/Adapter, status: active, landed_version: "1.9.0"}
-  - {name: main_force_sell_raw,     semantic: "主力賣超原始榜 passthrough（today.json.mainForceSell，Fubon ZGK_F topSell；C7 非破壞，形狀原封不動；1.9.0 obs_dist_consistency 的輸入）", state: I, grain: date, replay: MUST-I, owner: fetch/Adapter, status: active, landed_version: "1.9.0"}
+  # 註:obs_landing、trust_net_buy、prop_net_buy、fii_sell_raw、main_force_sell_raw
+  #    已於 P2-W2 落值 → 依「落值的欄才移」紀律移入正式區塊
+  #    (obs_landing/fii_sell_raw/main_force_sell_raw → snapshot_fields;
+  #     trust_net_buy/prop_net_buy → record_fields)。其餘 18 個 obs_* O 欄待 W3/W4 落值後移。

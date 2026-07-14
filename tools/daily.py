@@ -110,6 +110,55 @@ def _fii_published() -> bool:
     return True
 
 
+def _fii_published_for(date_iso: str) -> bool:
+    """True iff today.json currently carries fresh T86 belonging to `date_iso`.
+
+    Like _fii_published() but pinned to a SPECIFIC date: t86 present AND
+    t86Date == date_iso (YYYYMMDD). This is the only honest live signal that a
+    given day's 三大法人 is obtainable right now — used by the build-order
+    invariant to decide whether an uncompleted prior partial can be completed
+    before a new day is built (補充裁定 B / R5). Reads today.json fresh; any
+    read error / mismatch / missing t86Date returns False (fail-closed).
+    """
+    if not TODAY_JSON.is_file():
+        return False
+    try:
+        d = json.loads(TODAY_JSON.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return False
+    if not d.get("t86"):
+        return False
+    t86_date = str(d.get("t86Date") or "").strip()
+    want = str(date_iso or "").replace("-", "").strip()
+    return bool(t86_date) and bool(want) and t86_date == want
+
+
+def _build_order_disposition(
+    target_date: str,
+    latest: str | None,
+    latest_is_partial: bool,
+    prior_t86_available: bool,
+) -> str:
+    """Build-order invariant (補充裁定 B / FORWARD-RISK-REGISTER R5).
+
+    Before building a NEW day (target_date > latest), if the latest committed
+    snapshot is an uncompleted partial (fii_pending) AND its T86 is obtainable
+    now, complete THAT prior day first so we never焊死 a永久「用舊 priors 算的
+    日子」into the as-was record (1.9.0 後 obs 全落地,破洞會被焊進紀錄).
+
+    Pure ISO-date + boolean decision (mirrors _trading_day_gate's testability):
+      'complete_prior' — latest is a completable partial older than target_date;
+                         complete it (supersede) before building target_date.
+      'proceed'        — no hazard, or the prior partial is not completable now
+                         (其 T86 不可得 → 誠實無法補完,不阻塞新日建置).
+    """
+    if latest is None or target_date <= latest:
+        return "proceed"
+    if latest_is_partial and prior_t86_available:
+        return "complete_prior"
+    return "proceed"
+
+
 def _snapshot_is_partial(date: str) -> bool:
     """True iff reports/<date>.json exists and carries fii_pending=True.
 
@@ -427,6 +476,49 @@ def run(
                 print(f"[daily] no new trading session — target_date={target_date} already "
                       f"committed; skipping cleanly (exit 0)", file=sys.stderr)
                 return 0
+
+        # ----- Build-order invariant (補充裁定 B / R5) -----
+        # Before building a NEW day, if the latest committed snapshot is an
+        # uncompleted partial (fii_pending) whose T86 is obtainable now, complete
+        # THAT prior day first (supersede) so a fetch-jitter-missed completion
+        # doesn't焊死 a permanent「用舊 priors 算的日子」into the as-was record.
+        # Honest limitation: once the new day's fetch has overwritten today.json,
+        # the prior day's late T86 is typically no longer live (_fii_published_for
+        # returns False) → not completable here → we proceed (the ruling's
+        # conditional「且其 T86 現在可得」). Only when the prior day's T86 is still
+        # the loaded one (completion-retry window) does this fire.
+        if decision == "proceed":
+            disp = _build_order_disposition(
+                target_date, latest,
+                latest_is_partial=_snapshot_is_partial(latest) if latest else False,
+                prior_t86_available=_fii_published_for(latest) if latest else False,
+            )
+            if disp == "complete_prior":
+                log_lines.append({
+                    "step": "build_order_invariant", "status": "complete_prior",
+                    "reason": f"latest committed report {latest} is an uncompleted "
+                              f"partial (fii_pending) and its T86 is now available; "
+                              f"completing it (supersede) BEFORE building new day "
+                              f"{target_date} — 補充裁定 B / R5 build-order invariant",
+                })
+                print(f"[daily] build-order invariant — 先補完前日 partial {latest} "
+                      f"再建 {target_date}", file=sys.stderr)
+                rc, _, err = _run_step(
+                    name="pipeline_complete_prior",
+                    argv=[sys.executable, "-m", "tools.run_pipeline",
+                          "--date", latest, "--check-replay"],
+                    cwd=_AI_STOCK,
+                    log_lines=log_lines,
+                    timeout_sec=600,
+                )
+                if rc != 0:
+                    # We determined the prior partial WAS completable (T86 live) yet
+                    # completion failed — building the new day now would焊死 the hole.
+                    # Fail loudly instead of silently proceeding.
+                    _finalize(log_lines, "prior_partial_completion_failed", target_date)
+                    print(f"[daily] 前日 partial {latest} 補完失敗 rc={rc}:\n{err}",
+                          file=sys.stderr)
+                    return 1
 
         # ----- FII-published gate -----
         # Don't build a canonical snapshot before 三大法人(T86) is published —

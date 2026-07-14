@@ -193,3 +193,101 @@ def test_c11_chip_score_config_drives_output():
         cell[2] = original
 
     assert chip_score.compute(**kwargs).total == 6         # restored
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 4. P2-W2 — config_snapshot 雙來源 + config_hash 覆蓋 engine_params(§4/C11)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_as_config_dict_is_deterministic_and_env_free():
+    from core.hashing import canonical_sha256
+    a = ep.as_config_dict()
+    b = ep.as_config_dict()
+    # 同 code 兩次呼叫 → 位元相同(確定性、零環境依賴)
+    assert canonical_sha256(a) == canonical_sha256(b)
+    # 收錄所有 public UPPERCASE 判斷參數
+    for k in ("TIER_A", "CHIP_SCORE_CONFIG", "GRADE_PCT_MAP",
+              "GOLDEN_TIER_PRIME", "SM_BREADTH_CONFIRMED", "MC_COST_DIVERGENCE_PCT"):
+        assert k in a, f"as_config_dict missing {k}"
+    # 頂層鍵已排序(確定性輸出)
+    assert list(a.keys()) == sorted(a.keys())
+
+
+def test_as_config_dict_is_deep_copied():
+    # 回傳深拷貝 — 呼叫端變更不得回頭 desync 存活引擎正在用的共享 config
+    d = ep.as_config_dict()
+    d["CHIP_SCORE_CONFIG"]["streak"]["max"] = 99999
+    assert ep.CHIP_SCORE_CONFIG["streak"]["max"] == 10
+
+
+def _ingest_snapshot():
+    import yaml
+    from data.adapters.legacy import adapt_legacy
+    from core.ingest import ingest
+    cfg = yaml.safe_load((_AI_STOCK / "config" / "scd.example.yaml").read_text(encoding="utf-8"))
+    return ingest(adapt_legacy(), cfg), cfg
+
+
+def test_config_snapshot_is_two_source_without_strategies():
+    snap, _cfg = _ingest_snapshot()
+    cs = snap["config_snapshot"]
+    assert set(cs.keys()) == {"yaml", "engine_params"}        # 雙來源
+    assert "strategies" not in cs                              # 裁定 D-4
+    assert cs["engine_params"]["GOLDEN_TIER_PRIME"] == ep.GOLDEN_TIER_PRIME
+
+
+def test_config_hash_covers_engine_params():
+    """改 engine_params 任一值 → config_hash 變;還原 → 復原(C11,涵蓋雙來源)。"""
+    from core.ingest import ingest
+    import yaml
+    from data.adapters.legacy import adapt_legacy
+    cfg = yaml.safe_load((_AI_STOCK / "config" / "scd.example.yaml").read_text(encoding="utf-8"))
+    a = adapt_legacy()
+    h0 = ingest(a, cfg)["config_hash"]
+    original = ep.GOLDEN_TIER_PRIME
+    try:
+        ep.GOLDEN_TIER_PRIME = 0.999
+        assert ingest(a, cfg)["config_hash"] != h0            # engine_params 進 hash
+    finally:
+        ep.GOLDEN_TIER_PRIME = original
+    assert ingest(a, cfg)["config_hash"] == h0                # 還原復原
+
+
+def test_config_hash_covers_yaml():
+    from core.ingest import ingest
+    import copy as _copy
+    import yaml
+    from data.adapters.legacy import adapt_legacy
+    cfg = yaml.safe_load((_AI_STOCK / "config" / "scd.example.yaml").read_text(encoding="utf-8"))
+    a = adapt_legacy()
+    h0 = ingest(a, cfg)["config_hash"]
+    cfg2 = _copy.deepcopy(cfg)
+    cfg2["tiers"]["golden_min"] = 999
+    assert ingest(a, cfg2)["config_hash"] != h0               # yaml 也進 hash
+
+
+def test_i_columns_and_obs_landing_land():
+    snap, _cfg = _ingest_snapshot()
+    # 頂層 I 欄 + obs_landing
+    assert snap["obs_landing"] is True
+    assert isinstance(snap["fii_sell_raw"], list)
+    assert isinstance(snap["main_force_sell_raw"], list)
+    # per-ticker I 欄:trust_net_buy 與 dealer_net_buy 同值雙寫;prop_net_buy 存在
+    for rec in snap["stocks"]:
+        assert "trust_net_buy" in rec and "prop_net_buy" in rec
+        assert rec["trust_net_buy"] == rec["dealer_net_buy"]   # 正名同值雙寫
+    # W2:O 欄尚未落地(空掛點不寫欄)
+    for rec in snap["stocks"]:
+        assert not [k for k in rec if k.startswith("obs_")]
+
+
+def test_obs_landing_false_still_skips_o_and_writes_flag():
+    """W6 backfill 模式契約前置:obs_landing=False → 旗標 False、仍不含 obs_* 欄。"""
+    import yaml
+    from data.adapters.legacy import adapt_legacy
+    from core.ingest import ingest
+    cfg = yaml.safe_load((_AI_STOCK / "config" / "scd.example.yaml").read_text(encoding="utf-8"))
+    snap = ingest(adapt_legacy(), cfg, obs_landing=False)
+    assert snap["obs_landing"] is False
+    for rec in snap["stocks"]:
+        assert not [k for k in rec if k.startswith("obs_")]

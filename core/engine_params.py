@@ -21,6 +21,7 @@ C11 演示:改本檔任一參數 → importlib.reload(該引擎)→ 輸出改變
 """
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -182,3 +183,33 @@ MC_W3_SOLID_MIN_ABSENCE   = 2     # W3 缺席 ≥ 此才算 solid(可併紅,mark
 
 # ── 雙錨主力成本背離門檻(來源 market_context.py:822)─────────────────────────
 MC_COST_DIVERGENCE_PCT = 5.0  # 近/episode 錨背離 > 此 % → ⚠ 成本背離(market_context.py:822)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# as_config_dict — 判斷參數的確定性序列化(P2-W2:config_snapshot 雙來源之一)
+# ═══════════════════════════════════════════════════════════════════════════
+def as_config_dict() -> dict[str, Any]:
+    """回傳「本檔所有 public UPPERCASE 判斷參數 → 值」的確定性有序 dict。
+
+    P2 §4b:1.9.0 起 config_snapshot 從單一 yaml 升為 {yaml, engine_params}
+    雙來源,兩者皆凍結、皆入 canonical config_hash。本函式產出 engine_params
+    來源。設計紅線(對齊 core/engine_params.py 檔頭):
+
+      • 純函式 — 零環境依賴、零 I/O(不讀檔、不解析 YAML)。同一份 code 恆回相同
+        內容 → 入 config_hash 具確定性(改本檔任一參數 → dict 變 → hash 變,
+        C11 對 replay 可見)。
+      • 鍵排序(sorted)— 頂層鍵序穩定;canonical_bytes 另以 sort_keys=True 遞迴
+        正規化,故巢狀鍵序不影響 hash,此處排序僅為快照可讀性的穩定輸出。
+      • 深拷貝 — 回傳全新物件,呼叫端(或其後續變更)絕不會回頭 desync 存活引擎
+        正在使用的同一份 config dict(CHIP_SCORE_CONFIG / TIER_A 等為共享參照)。
+
+    收錄準則:module 層級名稱為 public UPPERCASE(全大寫、非 `_` 開頭)者全收,
+    含 TIER_A / GOLDEN_* / SM_* / CHIP_SCORE_CONFIG / GRADE_PCT_MAP / MC_*。
+    """
+    g = globals()
+    out = {
+        name: copy.deepcopy(value)
+        for name, value in g.items()
+        if name.isupper() and not name.startswith("_")
+    }
+    return dict(sorted(out.items()))

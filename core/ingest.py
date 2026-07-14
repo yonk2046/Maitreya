@@ -25,17 +25,23 @@ from typing import Any
 
 import yaml
 
+from core import engine_params
 from core.hashing import canonical_sha256
 from core.market_context import weakening_profile, temporal_enrich
 
 
 SCHEMA_VERSION = "1.9.0"
-# 1.9.0 (2026-07-13): 單一 bump — 22 canonical 欄一次落地宣告(P2-single-bump-design)。
-#   W1 只做「宣告」:canonical_schema.json 顯式宣告 22 欄+obs_landing+config_snapshot 雙來源
-#   結構;registry planned→active;SCHEMA_VERSION 1.8.1→1.9.0。ingest 計算邏輯(obs 引擎
-#   接線/config_snapshot 雙來源/I 欄寫入)屬 W2+,W1 尚未寫值 → 此時跑 pipeline 產出 1.9.0
-#   版本號但 stocks 尚無 obs 欄,屬預期中間態。所有新欄 additive(schema 非 required)。
-#   舊 1.8.1 及更早快照全部轉 legacy-epoch-clean(hash 鎖定,單一 bump 歸零代價,判例 #22)。
+# 1.9.0 (2026-07-13): 單一 bump — 22 canonical 欄一次落地(P2-single-bump-design)。
+#   W1 宣告:canonical_schema.json 顯式宣告 22 欄+obs_landing+config_snapshot 雙來源結構;
+#     registry planned→active;SCHEMA_VERSION 1.8.1→1.9.0。
+#   W2 (本輪) 落值第一包:①引擎呼叫框架+順序骨架(§2c),obs_landing 閘;②I 欄落地——
+#     trust_net_buy/prop_net_buy 進 StockRecord、fii_sell_raw/main_force_sell_raw 進頂層;
+#     ③config_snapshot 升為 {yaml, engine_params} 雙來源、config_hash 覆蓋雙來源;
+#     ④obs_landing 旗標(正常 pipeline=true)。O 欄(obs_golden/sm/chip/dist/market)此包
+#     不寫值——框架留好掛點給 W3(per-ticker)/W4(market),空掛點不寫欄。故此時快照含 I 欄
+#     +config_snapshot 雙來源+obs_landing,尚無 obs_* O 欄,屬 W2 預期中間態。
+#   所有新欄 additive(schema 非 required)。舊 1.8.1 及更早快照全部轉 legacy-epoch-clean
+#   (hash 鎖定,單一 bump 歸零代價,判例 #22)。
 # 1.8.1 (2026-07-07): 兩段式快照 — 新增頂層布林 fii_pending。
 #   - True = 建快照時當日 T86(三大法人)不可得,fii 欄位全 None(誠實標缺,
 #     絕不塞滯後值);早晨 T86 到手後由 supersede 重建為 fii_pending=False。
@@ -185,7 +191,13 @@ def _abstain_stock_record(ticker: str, raw: dict, has_branches: bool) -> dict:
         "main_force_volume_trend":     [],
         "volume_increasing_streak":    None,
         "top5_concentration":          None,
-        "dealer_net_buy":              raw.get("investment_trust_net_buy"),  # 投信淨買（張）from T86
+        "dealer_net_buy":              raw.get("investment_trust_net_buy"),  # 🔴 誤名:實裝投信淨買（張）from T86
+        # 1.9.0 (P2-W2, §1c/§3a) dealer/trust/prop 正名落地 —— adapter 已 staging：
+        #   trust_net_buy = 投信正名，與 dealer_net_buy 同值雙寫（舊名續寫至 2.0 major，C5）。
+        #   prop_net_buy  = 真自營商值，adapter 早已算出(prop_dealer_net_buy)但 ingest 從未讀取、
+        #                   被丟棄；此處搶救落地（現行快照無此值，非既有欄的 alias）。
+        "trust_net_buy":               raw.get("trust_net_buy"),      # 投信淨買（張）正名（== dealer_net_buy）
+        "prop_net_buy":                raw.get("prop_net_buy"),       # 自營商淨買（張）新落地
         "is_day_trader_branch":        False,
 
         # TDCC weekly — populated by data/adapters/tdcc_adapter.py via enrich_universe()
@@ -275,14 +287,22 @@ def ingest(
     repo_root: str | os.PathLike | None = None,
     prior_snapshots: dict[str, str] | None = None,     # {date: sha256}
     prior_snap_objects: list[dict] | None = None,       # actual snapshot dicts for weakening_profile
+    obs_landing: bool = True,
 ) -> dict:
-    """Build a v1.6 canonical snapshot from adapter output.
+    """Build a canonical snapshot from adapter output.
 
     Args:
         adapter_output: dict from data.adapters.legacy.adapt_legacy()
-        config: loaded scd.example.yaml dict (frozen into config_snapshot)
+        config: loaded scd.example.yaml dict (frozen into config_snapshot.yaml)
         repo_root: path used to read git SHA
         prior_snapshots: optional {YYYY-MM-DD: "sha256:..."} for lookback chain
+        obs_landing: 1.9.0 (P2 §7c, 裁定 D-7) O 態落地旗標。
+            True  = 正常 pipeline —— 當日跑 O 引擎、落地 as-was obs_* 序列(W3/W4)。
+            False = I-only backfill 模式(W6 回填歷史日)—— 只寫 I 欄、跳過 O 引擎、
+                    obs_* 欄不寫。replay contract 據頂層 obs_landing 旗標對 false 快照
+                    走 backfill 模式重算(D-7 硬條件)。頂層永遠寫入此旗標。
+            W2 本包:O 引擎尚未接線(W3/W4),故 True 分支目前是空掛點(不寫 obs_* 欄);
+            旗標本身照寫,骨架與 W6 的 False 語意已就位。
 
     Returns: snapshot dict (NOT yet written to disk).
     """
@@ -360,8 +380,38 @@ def ingest(
 
         stocks.append(rec)
 
-    # config_hash — canonical hash of config dict (excluding ephemeral fields)
-    config_hash = canonical_sha256(config)
+    # ══ O 態引擎管線 (obs_* 落地) ════════════════════════════════════════════
+    # 呼叫順序 = 設計骨架(P2 §2c):breadth → regime → sm → golden → chip →
+    #   distribution → temperature。順序即依賴:breadth 先於 sm(SM_BREADTH_CONFIRMED)、
+    #   sm 先於 {golden, temperature}(golden 讀已落地 obs_sm_state 不重算 sm;temperature
+    #   讀 obs_sm_transition_risk,#43)。C10 bootstrap:1.9.0 首日 sm 從 raw 歷史起算,
+    #   days_in_state 從 1,之前狀態誠實放棄(不用今日 code 回算歷史,#48)。
+    #
+    # W2 本包只搭「框架與順序」,不接 O 引擎:
+    #   • W3 在此填 per-ticker —— sm(6) → golden(6,改讀落地 obs_sm_state) → chip →
+    #     sync_streak → dist(讀頂層賣方 raw)。
+    #   • W4 在此填 market(頂層) —— breadth(讀 market_pulse/<date>.json 母體) →
+    #     regime → temperature(讀當日 obs_sm_transition_risk)。
+    # 裁定「空掛點不寫欄」:掛點未接引擎前不得寫任何 obs_* 欄(schema additive 容忍缺欄)。
+    # obs_landing=False(W6 backfill)整段跳過:只保留 I 欄、不落任何 O。
+    if obs_landing:
+        # W3/W4 插入點 —— 見 P2-single-bump-design §2c 呼叫順序。
+        # (W2:空掛點,不寫 obs_* 欄。)
+        pass
+
+    # config_snapshot — 1.9.0 (P2 §4) 雙來源:yaml(scd.example.yaml 生效值)+
+    #   engine_params(存活引擎判斷門檻/權重/TIER_A 名單的確定性快照)。兩者皆凍結、
+    #   皆入 canonical config_hash → 「改參數無痕」紅線(不變量 #7)兩來源全覆蓋。
+    #   strategies 不入(裁定 D-4:只影響回測產物,per-run pin,不污染每日 canonical)。
+    config_snapshot = {
+        "yaml":          config,
+        "engine_params": engine_params.as_config_dict(),
+    }
+    # config_hash — canonical hash of the two-source config_snapshot (yaml+engine_params).
+    config_hash = canonical_sha256(config_snapshot)
+
+    # 賣方 raw passthrough(頂層,grain=date;C7 非破壞、形狀原封)——adapter staging 已備。
+    sell_raw = adapter_output.get("sell_raw", {}) or {}
 
     provenance = {
         "sources":         prov_sources,
@@ -377,12 +427,17 @@ def ingest(
         "core_version":   CORE_VERSION,
         "environment":    env,
         "provenance":     provenance,
-        "config_snapshot": config,
+        "config_snapshot": config_snapshot,   # 1.9.0 雙來源 {yaml, engine_params}(P2 §4)
         "universe_size":  len(universe),
         "eligible_count": 0,        # all abstained
         # 1.8.1 兩段式快照:True = 當日 T86 未到手,fii 欄位全 None 待補
         # (rollup/backfill adapter 不帶此鍵 → False)。
         "fii_pending":    bool(adapter_output.get("fii_pending", False)),
+        # 1.9.0 (P2-W2 §7c, 裁定 D-7) O 態落地旗標(正常 pipeline=True;W6 backfill=False)。
+        "obs_landing":    bool(obs_landing),
+        # 1.9.0 (P2-W2 §1c, C7) 賣方原始榜 passthrough(頂層,grain=date,形狀原封)。
+        "fii_sell_raw":        sell_raw.get("fii_sell_raw", []),
+        "main_force_sell_raw": sell_raw.get("main_force_sell_raw", []),
         "market_regime": {
             "label": None,
             "classifier": "stub_v0",
