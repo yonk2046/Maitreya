@@ -102,38 +102,16 @@ _LIVE_BRANCH  = _AI_STOCK / "data" / "branches"
 
 
 # ── Tunable thresholds — single source of truth ──────────────────────────────
-
-CONSISTENCY_CONFIG: dict = {
-    "strong_rank_max":  15,      # 前 15 名視為強力訊號
-    "strong_vol_min":   8000,    # 買/賣超 > 8,000 張視為強力訊號
-    "scores": {
-        "both_strong_buy":   (+5, "最高共振"),
-        "both_buy":          (+3, "一般共振"),       # neither side hit the strength bar
-        "foreign_lead":      (+3, "外資主導"),
-        "main_lead":         (+3, "主力主導"),
-        "either_sell":       (-3, "扣分"),
-        "both_sell":         (-5, "強烈賣超"),
-        "neutral":           ( 0, "中性 / 分歧"),
-    },
-}
-
-GRADE_BANDS = [
-    (4,  "強", "#52B788"),   # green
-    (1,  "中", "#D4A84B"),   # yellow/gold
-    (-99, "弱", "#E05C7A"),  # red — catches everything ≤ 0
-]
-
-SAFETY_MARGIN_BANDS = [
-    # (upper_bound_exclusive, label, color, hint)
-    (1.03, "綠", "#52B788", "安全，可積極布局"),
-    (1.08, "黃", "#D4A84B", "中等，小心 / 分批"),
-    (1.15, "橙", "#C47A5A", "偏高，建議減碼"),
-    (float("inf"), "紅", "#E05C7A", "高風險，強烈建議減碼或移除"),
-]
-
-# Auto-filter (display-only) thresholds
-AUTO_FILTER_MARGIN_MIN   = 1.12
-AUTO_FILTER_CONSISTENCY  = "弱"
+# Externalised to core/engine_params.py (Phase 1 第 1 線 — 判斷參數外置, C11);
+# 1.9.0 obs_dist_consistency 落地後這些門檻入 config_snapshot。Re-exported here
+# so existing consumers/internal references are unchanged → output bit-identical.
+from core.engine_params import (
+    DIST_CONSISTENCY_CONFIG as CONSISTENCY_CONFIG,
+    DIST_GRADE_BANDS as GRADE_BANDS,
+    DIST_SAFETY_MARGIN_BANDS as SAFETY_MARGIN_BANDS,
+    DIST_AUTO_FILTER_MARGIN_MIN as AUTO_FILTER_MARGIN_MIN,
+    DIST_AUTO_FILTER_CONSISTENCY as AUTO_FILTER_CONSISTENCY,
+)
 
 # ── Suggested action matrix (display-only synthesis) ─────────────────────────
 # Keyed by (consistency_grade, safety_margin_label). Values: (action, detail)
@@ -401,7 +379,7 @@ def _safety_margin(current_price: float | None, main_force_cost: float | None
         return None, "—", "#6B8EAA", "主力成本資料待補"
     ratio = current_price / main_force_cost
     for upper, label, color, hint in SAFETY_MARGIN_BANDS:
-        if ratio < upper:
+        if upper is None or ratio < upper:   # None = +∞ (JSON-safe, see engine_params)
             return round(ratio, 4), label, color, hint
     last = SAFETY_MARGIN_BANDS[-1]
     return round(ratio, 4), last[1], last[2], last[3]
@@ -450,58 +428,97 @@ def run(date: str | None = None) -> DistributionResult:
     stock_map = {s["ticker"]: s for s in snap.get("stocks", [])}
 
     raw = _load_raw_sell_data(date)
-    buy_list  = raw["buy_list"]
-    sell_list = raw["sell_list"]
-    mfb       = raw["main_force_buy"]
-    mfs       = raw["main_force_sell"]
+    result = consistency_for_universe(
+        stock_map,
+        buy_list=raw["buy_list"],
+        sell_list=raw["sell_list"],
+        main_force_buy=raw["main_force_buy"],
+        main_force_sell=raw["main_force_sell"],
+    )
+    return DistributionResult(date=date, universe_count=result["universe_count"],
+                              entries=result["entries"])
 
-    # Universe = union of everything that appears in any of the four rankings
-    # plus whatever the canonical snapshot already tracks (so cost/price are
-    # available wherever possible).
+
+def _build_distribution_entry(
+    ticker: str,
+    stock: dict,
+    buy_list: list[dict],
+    sell_list: list[dict],
+    main_force_buy: list[dict],
+    main_force_sell: list[dict],
+) -> DistributionEntry:
+    """Build one DistributionEntry from the day's raw rankings + canonical stock.
+
+    Pure — no file I/O. Single source of truth for the per-ticker consistency
+    computation, shared by distribution.run() (render-time, reads archive) and
+    the 1.9.0 ingest pipeline (lands obs_dist_consistency from adapter raw).
+    """
+    name = stock.get("name") or _name_from_rows(
+        ticker, (buy_list, sell_list, main_force_buy, main_force_sell))
+
+    f_status, f_strong, f_detail = _side_status(
+        ticker, buy_list, sell_list, "buyVol", "sellVol", "外資")
+    m_status, m_strong, m_detail = _side_status(
+        ticker, main_force_buy, main_force_sell, "buyVol", "sellVol", "主力")
+
+    c_score, c_reason = _score_consistency(f_status, f_strong, m_status, m_strong)
+    c_grade, c_color = _consistency_grade(c_score)
+
+    current_price   = stock.get("current_price")
+    main_force_cost = stock.get("main_force_cost")
+    margin, s_label, s_color, s_hint = _safety_margin(current_price, main_force_cost)
+
+    action, action_detail = _suggest_action(c_grade, s_label)
+    flagged, flag_reason = _should_flag(c_grade, margin)
+
+    return DistributionEntry(
+        ticker=ticker, name=name,
+        foreign_status=f_status, foreign_detail=f_detail,
+        main_status=m_status, main_detail=m_detail,
+        consistency_score=c_score, consistency_grade=c_grade,
+        consistency_color=c_color, consistency_reason=c_reason,
+        current_price=current_price, main_force_cost=main_force_cost,
+        safety_margin=margin, safety_label=s_label,
+        safety_color=s_color, safety_hint=s_hint,
+        suggested_action=action, suggested_detail=action_detail,
+        flagged_for_removal=flagged, flag_reason=flag_reason,
+    )
+
+
+def consistency_for_universe(
+    stock_map: dict[str, dict],
+    buy_list: list[dict],
+    sell_list: list[dict],
+    main_force_buy: list[dict],
+    main_force_sell: list[dict],
+) -> dict[str, Any]:
+    """Compute distribution entries for the whole universe, in memory.
+
+    Universe = union of everything in any of the four rankings plus whatever
+    the canonical snapshot already tracks (so cost/price are available where
+    possible). Returns {"universe_count": int, "entries": [sorted],
+    "by_ticker": {ticker: DistributionEntry}}.
+    """
     universe: set[str] = set(stock_map.keys())
-    for rows in (buy_list, sell_list, mfb, mfs):
+    for rows in (buy_list, sell_list, main_force_buy, main_force_sell):
         universe.update(str(r.get("code", "")).strip() for r in rows if r.get("code"))
     universe.discard("")
 
     entries: list[DistributionEntry] = []
     for ticker in sorted(universe):
-        stock = stock_map.get(ticker, {})
-        name  = stock.get("name") or _name_from_rows(ticker, (buy_list, sell_list, mfb, mfs))
-
-        f_status, f_strong, f_detail = _side_status(
-            ticker, buy_list, sell_list, "buyVol", "sellVol", "外資")
-        m_status, m_strong, m_detail = _side_status(
-            ticker, mfb, mfs, "buyVol", "sellVol", "主力")
-
-        score = _score_consistency(f_status, f_strong, m_status, m_strong)
-        c_score, c_reason = score
-        c_grade, c_color = _consistency_grade(c_score)
-
-        current_price   = stock.get("current_price")
-        main_force_cost = stock.get("main_force_cost")
-        margin, s_label, s_color, s_hint = _safety_margin(current_price, main_force_cost)
-
-        action, action_detail = _suggest_action(c_grade, s_label)
-        flagged, flag_reason = _should_flag(c_grade, margin)
-
-        entries.append(DistributionEntry(
-            ticker=ticker, name=name,
-            foreign_status=f_status, foreign_detail=f_detail,
-            main_status=m_status, main_detail=m_detail,
-            consistency_score=c_score, consistency_grade=c_grade,
-            consistency_color=c_color, consistency_reason=c_reason,
-            current_price=current_price, main_force_cost=main_force_cost,
-            safety_margin=margin, safety_label=s_label,
-            safety_color=s_color, safety_hint=s_hint,
-            suggested_action=action, suggested_detail=action_detail,
-            flagged_for_removal=flagged, flag_reason=flag_reason,
-        ))
+        entries.append(_build_distribution_entry(
+            ticker, stock_map.get(ticker, {}),
+            buy_list, sell_list, main_force_buy, main_force_sell))
 
     # Sort: strongest distribution signal first (most negative consistency,
     # then highest safety margin) — surfaces the riskiest names at the top.
     entries.sort(key=lambda e: (e.consistency_score, -(e.safety_margin or 0)))
 
-    return DistributionResult(date=date, universe_count=len(universe), entries=entries)
+    return {
+        "universe_count": len(universe),
+        "entries": entries,
+        "by_ticker": {e.ticker: e for e in entries},
+    }
 
 
 def _name_from_rows(ticker: str, row_groups: tuple[list[dict], ...]) -> str:

@@ -176,6 +176,36 @@ def _window_sum(values: list[Any]) -> int:
     return int(sum(v for v in values if v is not None))
 
 
+# Participant fields for sync_streak (1.9.0, NOTES #35) — mirrors
+# core/resonance.py _PARTICIPANTS exactly so sync_streak == resonance_streak
+# (bit-identical two-track consistency; resonance dissolves in Phase 3).
+_SYNC_PARTICIPANT_FIELDS = ("main_force_buy", "fii_net_buy", "dealer_net_buy")
+
+
+def _sync_level(rec: dict[str, Any] | None) -> int:
+    """How many of the 3 participants are net-positive today (0–3).
+    Absent record → 0 (breaks the streak, same as resonance)."""
+    if rec is None:
+        return 0
+    level = 0
+    for f in _SYNC_PARTICIPANT_FIELDS:
+        v = rec.get(f)
+        if v is not None and v > 0:
+            level += 1
+    return level
+
+
+def _sync_streak_from_window(seq_windowed: list[dict[str, Any] | None]) -> int:
+    """Consecutive trailing snapshots with participant sync level ≥ 2."""
+    streak = 0
+    for rec in reversed(seq_windowed):
+        if _sync_level(rec) >= 2:
+            streak += 1
+        else:
+            break
+    return streak
+
+
 def temporal_enrich(
     ticker: str,
     prior_snap_objects: list[dict[str, Any]] | None,
@@ -239,9 +269,18 @@ def temporal_enrich(
     positive_days = _positive_count_in_window(mf_window)
     net_accum = _window_sum(mf_window)
 
+    # ─── sync_streak (1.9.0, P2-W3, NOTES #35) — owner = temporal_enrich ──────
+    # 參與者同向連續數：每日「同向共振等級」= 三方參與者(主力/外資/投信)淨買 > 0
+    # 的家數;sync_streak = 尾部連續 level ≥ 2 的天數。這是 resonance 引擎
+    # resonance_streak 的等值時序(NOTES #35「resonance 遷移後解散為一欄時序」),
+    # 落地為 O 欄後 resonance 引擎(render-time、不落快照)於 Phase 3 解散。
+    # 缺日(seq_windowed 的 None)視為 level 0 → 中斷連續(與 resonance 一致)。
+    sync_streak = _sync_streak_from_window(seq_windowed)
+
     return {
         "velocity_3d":                 av["velocity_3d"],
         "acceleration":                av["acceleration"],
+        "sync_streak":                 sync_streak,
         # === 1.8.0:三個明確命名的衍生欄位(取代舊 main_force_consecutive_days)===
         "main_force_strict_streak_days":      strict_streak,
         "main_force_positive_days_in_window": positive_days,

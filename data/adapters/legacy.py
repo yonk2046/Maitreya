@@ -432,6 +432,14 @@ def adapt_legacy(
     sell_raw = {
         "fii_sell_raw":        today.get("sellList", []) or [],       # 外資賣超原始榜（Fubon ZGK_D topSell）
         "main_force_sell_raw": today.get("mainForceSell", []) or [],  # 主力賣超原始榜（Fubon ZGK_F topSell）
+        # Buy-side rankings — passed through so the 1.9.0 ingest pipeline can
+        # land obs_dist_consistency in memory (distribution needs both買/賣
+        # sides for 一致性 scoring). These are NOT written to the snapshot as
+        # top-level fields (ingest only stores fii_sell_raw/main_force_sell_raw);
+        # they feed distribution.consistency_for_universe() at landing time,
+        # matching distribution.run()'s archive-read path (same today.json bytes).
+        "buy_list":            today.get("buyList", []) or [],        # 外資買超原始榜（Fubon ZGK_D topBuy）
+        "main_force_buy_raw":  today.get("mainForceBuy", []) or [],   # 主力買超原始榜（Fubon ZGK_F topBuy）
     }
 
     # --- Provenance ---

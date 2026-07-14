@@ -276,9 +276,16 @@ def test_i_columns_and_obs_landing_land():
     for rec in snap["stocks"]:
         assert "trust_net_buy" in rec and "prop_net_buy" in rec
         assert rec["trust_net_buy"] == rec["dealer_net_buy"]   # 正名同值雙寫
-    # W2:O 欄尚未落地(空掛點不寫欄)
+    # W3:per-ticker O 欄已落地(obs_landing=True)。sm 六欄 + chip + sync_streak
+    # 每檔必有;golden/dist 依當日資格可為 null 但欄位須存在。
     for rec in snap["stocks"]:
-        assert not [k for k in rec if k.startswith("obs_")]
+        for f in ("obs_sm_state", "obs_sm_transition_risk", "obs_sm_days_in_state",
+                  "obs_sm_state_entered", "obs_sm_structure_unstable",
+                  "obs_sm_risk_factors", "obs_chip_grade", "sync_streak",
+                  "obs_golden_tier", "obs_golden_conviction", "obs_golden_gates_passed",
+                  "obs_golden_near_miss", "obs_dist_consistency"):
+            assert f in rec, f"W3 O 欄缺席: {f}"
+        assert rec["obs_sm_days_in_state"] >= 1
 
 
 def test_obs_landing_false_still_skips_o_and_writes_flag():

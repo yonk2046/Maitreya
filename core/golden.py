@@ -447,19 +447,28 @@ def _latest_sector_rank(snapshots: list[dict]) -> list[str]:
 
 # ── Main public API ───────────────────────────────────────────────────────────
 
-def run(snapshots: list[dict]) -> GoldenResult:
+def run(snapshots: list[dict], sm_states: dict | None = None) -> GoldenResult:
     """
     Run the full Golden Layer v2 over all snapshots.
     Returns a GoldenResult with tickers ranked by conviction within each tier.
+
+    sm_states: optional pre-computed {ticker: TickerState} from
+        state_machine.run_all(). When the 1.9.0 pipeline已在 golden 之前落地
+        obs_sm_state（呼叫順序 sm → golden，P2 §2c），it passes the SAME
+        sm_states here so golden **改讀已落地 sm、不重跑 state_machine**（治
+        NOTES #30 雙真相病 — golden.py 內部 sm_run_all 是唯一的重算來源）。
+        None（viewer/CLI 舊路徑）→ 內部自行 run_all，行為 bit-identical。
     """
     if not snapshots:
         return GoldenResult(date="—", snapshot_count=0)
 
     date = snapshots[-1].get("date", "?")
 
-    # Run both upstream engines
+    # Run both upstream engines. sm_states is read from the pipeline's already-
+    # landed state (no re-compute) when provided — see docstring / NOTES #30.
     funnel_result: FunnelResult = funnel_run(snapshots)
-    sm_states = sm_run_all(snapshots)
+    if sm_states is None:
+        sm_states = sm_run_all(snapshots)
 
     # Build quick funnel lookup: ticker → CandidateRecord
     funnel_map = {}

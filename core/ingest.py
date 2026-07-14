@@ -377,6 +377,11 @@ def ingest(
         rec["volume_ratio"]                = _te["volume_ratio"]
         rec["volume_increasing_streak"]    = _te["volume_increasing_streak"]
         rec["main_force_volume_trend"]     = _te["main_force_volume_trend"]
+        # sync_streak — 1.9.0 (P2-W3, NOTES #35) O 欄,owner=temporal_enrich。
+        # 只在正常 pipeline(obs_landing=True)落地;backfill 模式(obs_landing=False,
+        # 只寫 I)不寫任何 O 欄(D-7「空掛點不寫欄」)。
+        if obs_landing:
+            rec["sync_streak"] = _te["sync_streak"]
 
         stocks.append(rec)
 
@@ -395,9 +400,35 @@ def ingest(
     # 裁定「空掛點不寫欄」:掛點未接引擎前不得寫任何 obs_* 欄(schema additive 容忍缺欄)。
     # obs_landing=False(W6 backfill)整段跳過:只保留 I 欄、不落任何 O。
     if obs_landing:
-        # W3/W4 插入點 —— 見 P2-single-bump-design §2c 呼叫順序。
-        # (W2:空掛點,不寫 obs_* 欄。)
-        pass
+        # W3(本包)per-ticker O 落地 —— sm→golden→chip→dist(design §2c)。
+        # market grain(breadth/regime/temperature)屬 W4,此處仍為空掛點。
+        #
+        # 建「provisional 當日快照」= prior_snap_objects + 本日已組裝的 stocks,
+        # 作為引擎的 20 日歷史窗尾端。引擎讀此 window(prior 皆已落地磁碟快照,
+        # 混合 epoch 由 core.history_view 統一缺欄語意);sm 先算,golden 讀已落地
+        # sm_states 不重跑(#30)。days_in_state 依 as-was 落地序列(C10 bootstrap)。
+        from core import obs_landing as _obs_landing
+
+        provisional = {
+            "schema_version": SCHEMA_VERSION,
+            "date":           date,
+            "obs_landing":    True,
+            "stocks":         stocks,
+        }
+        window = list(prior_snap_objects or []) + [provisional]
+        _sr = adapter_output.get("sell_raw", {}) or {}
+        dist_raw = {
+            "buy_list":        _sr.get("buy_list", []) or [],
+            "sell_list":       _sr.get("fii_sell_raw", []) or [],
+            "main_force_buy":  _sr.get("main_force_buy_raw", []) or [],
+            "main_force_sell": _sr.get("main_force_sell_raw", []) or [],
+        }
+        per_ticker_obs = _obs_landing.compute_per_ticker_obs(
+            window, list(prior_snap_objects or []), dist_raw=dist_raw)
+        for rec in stocks:
+            obs = per_ticker_obs.get(rec["ticker"])
+            if obs:
+                rec.update(obs)
 
     # config_snapshot — 1.9.0 (P2 §4) 雙來源:yaml(scd.example.yaml 生效值)+
     #   engine_params(存活引擎判斷門檻/權重/TIER_A 名單的確定性快照)。兩者皆凍結、

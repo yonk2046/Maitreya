@@ -184,6 +184,46 @@ MC_W3_SOLID_MIN_ABSENCE   = 2     # W3 缺席 ≥ 此才算 solid(可併紅,mark
 # ── 雙錨主力成本背離門檻(來源 market_context.py:822)─────────────────────────
 MC_COST_DIVERGENCE_PCT = 5.0  # 近/episode 錨背離 > 此 % → ⚠ 成本背離(market_context.py:822)
 
+# ═══════════════════════════════════════════════════════════════════════════
+# DISTRIBUTION — core/distribution.py(obs_dist_consistency,NOTES #38)
+# ═══════════════════════════════════════════════════════════════════════════
+# 1.9.0(P2-W3):obs_dist_consistency 落地為 canonical O 欄(唯一賣方證據源)。
+# 賣方一致性/安全邊際/自動過濾的判斷門檻改一個值即無痕改變歷史賣方判斷,故隨
+# obs 落地一併外置入 config_snapshot(C11,任務#5「safety band 參數入 engine_params」)。
+# 值一個都不改,僅搬家(對齊 chip_score/golden 的 config 化先例)。
+# 註:安全邊際最後一段上界原為 float("inf");canonical hash 拒 Inf(allow_nan=False),
+#     故以 None 表「無上界」,distribution._safety_margin 視 None 為 +∞(行為 bit-identical)。
+DIST_CONSISTENCY_CONFIG: dict = {
+    "strong_rank_max":  15,      # 前 15 名視為強力訊號(distribution.py:107)
+    "strong_vol_min":   8000,    # 買/賣超 > 8,000 張視為強力訊號(distribution.py:108)
+    "scores": {
+        "both_strong_buy":   (+5, "最高共振"),
+        "both_buy":          (+3, "一般共振"),
+        "foreign_lead":      (+3, "外資主導"),
+        "main_lead":         (+3, "主力主導"),
+        "either_sell":       (-3, "扣分"),
+        "both_sell":         (-5, "強烈賣超"),
+        "neutral":           ( 0, "中性 / 分歧"),
+    },
+}
+
+DIST_GRADE_BANDS = [
+    (4,   "強", "#52B788"),   # green
+    (1,   "中", "#D4A84B"),   # yellow/gold
+    (-99, "弱", "#E05C7A"),   # red — catches everything ≤ 0
+]
+
+DIST_SAFETY_MARGIN_BANDS = [
+    # (upper_bound_exclusive | None=+∞, label, color, hint)
+    (1.03, "綠", "#52B788", "安全，可積極布局"),
+    (1.08, "黃", "#D4A84B", "中等，小心 / 分批"),
+    (1.15, "橙", "#C47A5A", "偏高，建議減碼"),
+    (None, "紅", "#E05C7A", "高風險，強烈建議減碼或移除"),
+]
+
+DIST_AUTO_FILTER_MARGIN_MIN  = 1.12   # 安全邊際 > 此 且 一致性弱 → flagged_for_removal
+DIST_AUTO_FILTER_CONSISTENCY = "弱"   # 觸發自動過濾的一致性等級
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # as_config_dict — 判斷參數的確定性序列化(P2-W2:config_snapshot 雙來源之一)
