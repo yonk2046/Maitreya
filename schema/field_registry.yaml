@@ -26,7 +26,7 @@
 # status：
 #   active            = 現行快照真的有此欄（含 P3a abstain 佔位）
 #   deprecated-pending = 殭屍欄，replay 生命週期內續存、不擴不消費，major(2.0)移除
-#   planned           = 17 欄核准清單（NOTES #54），尚未落地，1.9.0 才落
+#   planned           = 核准待落地欄（P2 前為 22 欄清單；1.9.0 已全數落地轉 active，現為空集）
 # =============================================================================
 
 meta:
@@ -56,16 +56,23 @@ meta:
       trust_net_buy、prop_net_buy、fii_sell_raw、main_force_sell_raw。這 4 個是
       raw I 態 adapter staging 欄，與上面「18 欄」核准落地清單（NOTES #54，皆 O
       態判斷欄）屬不同批次，故 counts.planned_fields 維持 18（該計數專指憲法 §4
-      表）——本檔 planned_fields 區塊實際條目數＝18+4=22。data/adapters/legacy.py
-      已輸出 trust_net_buy/prop_net_buy/sell_raw，core/ingest.py 尚未消費（零快照
-      內容變更，見 docs/migration/P1-worm-backfill-report.md）。
+      表）——本檔 planned_fields 區塊實際條目數曾為 18+4=22。
+      【P2 收尾更新（2026-07-15 W7）】22 欄已於 1.9.0 全數落地轉 active
+      （W1 宣告→W2 I 欄→W3 per-ticker O→W4 market O），core/ingest.py 已消費
+      adapter staging 值；歷史 I 欄回填至 2026-05-26（obs_landing=false，W6）。
+      落地驗收見 docs/migration/P2-acceptance-report.md。
     - >
       Phase 1 第 1 線（判斷參數 config 化，NOTES #33/#47）：存活引擎 golden /
       state_machine / chip_score / market_context 的判斷門檻、conviction 權重與
       TIER_A 名單已外置至 core/engine_params.py（零環境依賴的純 Python config，
       值不變輸出 bit-identical，見 tests/test_config_extraction.py）。
-      config_snapshot 入 canonical hash 隨 1.9.0（Phase 2），本輪僅參數外置、
-      未做 hash 綁定。
+      config_snapshot 入 canonical hash 隨 1.9.0（Phase 2），該輪僅參數外置、
+      未做 hash 綁定。【P2 收尾更新（2026-07-15 W7）】hash 綁定已於 P2-W2 落地：
+      config_snapshot={yaml, engine_params} 雙來源、config_hash 覆蓋兩處
+      （C11 測試 test_config_hash_covers_engine_params/_covers_yaml）。
+    - >
+      P2-W7 收尾核實（2026-07-15）：counts 24/87/0 與本檔條目實數、schema
+      宣告、最新快照（2026-07-14, schema 1.9.0）CI 對拍三方一致；planned 殘留 0。
 
 # =============================================================================
 # A. 頂層 snapshot 欄位（grain=date，一快照一筆）

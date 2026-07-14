@@ -403,36 +403,47 @@ obs_*（fii 依賴部分誠實 abstain/降級），早晨 supersede 補完時重
 
 ## 8. 驗收清單（bump 當日完整步驟 / 供 fable review 檢查點）
 
+> **勾選紀錄**：P2-W7 整合驗收（2026-07-15）逐項執行，證據與抽查表見
+> `docs/migration/P2-acceptance-report.md`。⚠ 項＝有條件通過，詳報告「發現」節。
+
 ### 8a. 落地前（前置閘門，缺一不 bump）
-- [ ] Phase 1 五線全綠：門檻 config 化（engine_params.py 就位）、母體修正（market_pulse per-date 歸檔）、
+- [x] Phase 1 五線全綠：門檻 config 化（engine_params.py 就位）、母體修正（market_pulse per-date 歸檔）、
       adapter staging（trust/prop/賣方 raw 已輸出）、replay 契約化（replay_contract.py）、version-pin 設計。
-- [ ] `data/market_pulse/<date>.json` 對目標交易日存在且 breadth 解析成功（errors 空）。
-- [ ] `make test` 全綠（以執行當日 main 實際通過數為基線，不得少）。
-- [ ] `make verify-all-replay` 0 fail（**先記錄執行前 full/legacy 計數當基線**；絕對數字隨資料修正
+- [x] `data/market_pulse/<date>.json` 對目標交易日存在且 breadth 解析成功（errors 空）。
+      （7/13 ✅；7/14 檔存在但 breadth error → §6a 誠實 null 落地，KD-1，非 gate 失敗）
+- [x] `make test` 全綠（以執行當日 main 實際通過數為基線，不得少）。（W7 親跑 390 passed + 1 skipped）
+- [x] `make verify-all-replay` 0 fail（**先記錄執行前 full/legacy 計數當基線**；絕對數字隨資料修正
       演進——2026-07-11 handoff#2 重建 cascade 後約 6 full + 36 legacy / 42，以當日實跑為準）。
+      （W7 親跑：33 full + 11 legacy / 44、0 failure、2 attested）
 
 ### 8b. bump 當日（實作 agent 執行順序）
-1. [ ] schema：canonical_schema.json 顯式宣告 22 欄型別（§1）；`SCHEMA_VERSION` 1.8.1→1.9.0；
-       registry 22 planned→active、寫 landing_version 落地紀錄；scd.example.yaml meta.schema_version 同步。
-2. [ ] ingest：引擎計算移入（§2）、config_snapshot 雙來源結構（§4）、config_hash 覆蓋新結構。
-3. [ ] golden 改讀已落地 obs_sm_state（不重跑 sm，§2c/W3）；temperature 搬家＋改讀 obs_sm_transition_risk（§6b）。
-4. [ ] 跑 1.9.0 首個 production 日：`run_pipeline --date <D> --check-replay` → **replay ✅ PASS**
-       （h1==h2 byte-identical）→ ledger append 一筆 passed=true（§5b）。
-5. [ ] I 欄回填（backfill 模式，§7c-A）：2026-05-26 → 1.9.0 前一日，每日 supersede；抽驗一日
+1. [x] schema：canonical_schema.json 顯式宣告 22 欄型別（§1）；`SCHEMA_VERSION` 1.8.1→1.9.0；
+       registry 22 planned→active、寫 landing_version 落地紀錄；scd.example.yaml meta.schema_version 同步。（W1）
+2. [x] ingest：引擎計算移入（§2）、config_snapshot 雙來源結構（§4）、config_hash 覆蓋新結構。（W2/W3）
+3. [x] golden 改讀已落地 obs_sm_state（不重跑 sm，§2c/W3）；temperature 搬家＋改讀 obs_sm_transition_risk（§6b）。（W3/W4）
+4. [x] 跑 1.9.0 首個 production 日：`run_pipeline --date <D> --check-replay` → **replay ✅ PASS**
+       （h1==h2 byte-identical）→ ledger append 一筆 passed=true（§5b）。（7/13 `e17edf1e…`、7/14 `bfaf9375…` 皆 attested）
+5. [x] I 欄回填（backfill 模式，§7c-A）：2026-05-26 → 1.9.0 前一日，每日 supersede；抽驗一日
        `dealer_net_buy == trust_net_buy`（雙寫）、`prop_net_buy` 非 None（有 T86 日）、無 obs_* 欄
-       且 `obs_landing: false`。
+       且 `obs_landing: false`。（W6：31 天回填＋05-27 誠實跳過；W7 抽驗 4 日全過）
 
 ### 8c. 落地後（bump 完成的核對）
-- [ ] **當日 1.9.0 快照含全部 22 欄**且值與（尚未薄化的）viewer render-time 顯示**一致**——逐欄對照：
+- [⚠] **當日 1.9.0 快照含全部 22 欄**且值與（尚未薄化的）viewer render-time 顯示**一致**——逐欄對照：
       obs_golden_tier == cockpit golden 名單 tier、obs_sm_state == cockpit 狀態、obs_chip_grade ==
       cockpit 籌碼評級、obs_market_breadth == market_pulse 母體、obs_market_temperature == cockpit 溫度。
-- [ ] **replay 對 1.9.0 快照達 L3「可重算」**（same-machine check-replay 綠；ledger 記錄）。
-- [ ] `make verify-all-replay` 仍 0 fail（1.9.0 快照走 full-replay-clean、既往走 legacy-epoch-clean）。
-- [ ] **C11 測試**：改 engine_params.py 任一值＋改 scd.example.yaml 任一值 → config_hash 變、canonical
-      hash 變（`test_config_extraction.py` 擴充涵蓋雙來源）。
-- [ ] **fii_pending 交互**（若首日 partial）：partial 落 obs_*、supersede 補完後 obs_* 重算為 complete 版。
-- [ ] **fable review 檢查點**：22 欄型別/grain/owner 對齊 registry；O/I 態分離無誤裝；C10 回填邊界
+      （22 欄全在 ✅；golden 名單成員＋tier 全一致 ✅；breadth==母體逐值一致 ✅。**同窗口下全欄 0 diff**；
+      cockpit 實際顯示因餵全檔案窗＋溫度/regime tab 仍走判死引擎而對窗口敏感欄分歧——發現 F-1，
+      Phase 3 薄化對象，非落地值錯誤。詳驗收報告 §3/§5）
+- [x] **replay 對 1.9.0 快照達 L3「可重算」**（same-machine check-replay 綠；ledger 記錄）。
+- [x] `make verify-all-replay` 仍 0 fail（1.9.0 快照走 full-replay-clean、既往走 legacy-epoch-clean）。
+- [x] **C11 測試**：改 engine_params.py 任一值＋改 scd.example.yaml 任一值 → config_hash 變、canonical
+      hash 變（`test_config_extraction.py` 擴充涵蓋雙來源）。（test_config_hash_covers_engine_params/
+      _covers_yaml 綠＋W7 in-memory 親測）
+- [x] **fii_pending 交互**（若首日 partial）：partial 落 obs_*、supersede 補完後 obs_* 重算為 complete 版。
+      （首日非 partial → 條件未觸發；等價真實樣本：7/14 GHA partial→Mac complete supersede，兩版留痕）
+- [x] **fable review 檢查點**：22 欄型別/grain/owner 對齊 registry；O/I 態分離無誤裝；C10 回填邊界
       （I 回填、O 不回填、obs_landing 旗標）；config_snapshot 雙來源；ledger 非 SoR（不被消費）。
+      （fable 不可用，依 playbook Review 機制執行；W7 全卡重跑紀錄見驗收報告 §4）
 
 ---
 

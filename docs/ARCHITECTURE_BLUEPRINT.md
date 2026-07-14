@@ -225,6 +225,7 @@
   version-pinned replay 是唯一的新機制設計（其餘都是搬家）。此二項先做 spike。
 
 ### Phase 2 — 唯一一次 minor bump（1.9.0）
+> **狀態：✅ 完成（2026-07-15 P2-W7 驗收，`docs/migration/P2-acceptance-report.md`）。**
 - **目的**：17 欄一次落地；引擎計算移入 pipeline、封印前寫入。
 - **依賴**：Phase 1 全部完成（缺一項就是落地退化分或不可見參數）。
 - **交付**：schema 1.9.0；17 欄逐日落地；temporal_state／market_regime stub 標 deprecated；epoch 語意照 S06。
