@@ -38,7 +38,6 @@ from core.narrative_engine import generate as _narrative_generate
 from core.market_context import (
     accumulation_velocity,
     sponsorship_persistence,
-    regime_shift,
     failed_breakout_memory,
     leadership_rotation,
     full_ticker_context,
@@ -432,6 +431,56 @@ def _load_market_pulse() -> dict:
         except Exception:
             pass
     return {}
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def _load_tdcc_file(fname: str) -> dict:
+    """讀單一 data/tdcc/YYYYMMDD.json 週快取(fetch_daily 每日維護)。
+    interim:viewer 直讀原始快取,正式落地待 2.0 schema(Q5.1 放行,Yonki 2026-07-15)。"""
+    import json as _json
+    path = _AI_STOCK / "data" / "tdcc" / fname
+    try:
+        return _json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _tdcc_lookup(ticker: str, on_or_before: str) -> dict | None:
+    """取 tdcc_date ≤ on_or_before(YYYY-MM-DD)的最近一週該股 TDCC 原始值。
+    回傳 {week:'MM/DD', large_holder_400_pct, large_holder_1000_pct,
+    shareholder_count, delta_1000(前一週千張大戶 pt 差,無前週為 None)};缺料回 None。
+    時間旅行安全:選過去日期時只用該日以前的週檔。"""
+    tdcc_dir = _AI_STOCK / "data" / "tdcc"
+    try:
+        fnames = sorted(
+            f.name for f in tdcc_dir.iterdir()
+            if f.suffix == ".json" and len(f.stem) == 8 and f.stem.isdigit()
+        )
+    except OSError:
+        return None
+    cutoff = (on_or_before or "").replace("-", "") or "99999999"
+    usable = [f for f in fnames if f[:8] <= cutoff]
+    if not usable:
+        return None
+    cur = _load_tdcc_file(usable[-1])
+    rec = (cur.get("stocks") or {}).get(ticker)
+    if not rec:
+        return None
+    d = cur.get("tdcc_date", usable[-1][:8])
+    out = {
+        "week": f"{d[4:6]}/{d[6:8]}",
+        "large_holder_400_pct":  rec.get("large_holder_400_pct"),
+        "large_holder_1000_pct": rec.get("large_holder_1000_pct"),
+        "shareholder_count":     rec.get("shareholder_count"),
+        "delta_1000": None,
+    }
+    if len(usable) >= 2:
+        prev_rec = (_load_tdcc_file(usable[-2]).get("stocks") or {}).get(ticker)
+        if prev_rec and rec.get("large_holder_1000_pct") is not None \
+                and prev_rec.get("large_holder_1000_pct") is not None:
+            out["delta_1000"] = round(
+                rec["large_holder_1000_pct"] - prev_rec["large_holder_1000_pct"], 2)
+    return out
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -2063,8 +2112,17 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
         else:
             items.append(("—", "主力成本支撐", "無主力成本資料", None))
 
-        # 5. Concentration (data unavailable in current pipeline)
-        items.append(("—", "籌碼集中度", "資料待補（大戶持股變化）", None))
+        # 5. Concentration — interim:viewer 直讀 data/tdcc/ 週快取原始值(Q5.1 放行,
+        #    Yonki 2026-07-15),正式落地待 2.0 schema。僅呈現原始值(TDCC 為週頻,標資料週);
+        #    不做通過判定(ok 維持 None,passed/total 語意一個字不動)。
+        _td = _tdcc_lookup(e.ticker, active_date)
+        if _td and _td.get("large_holder_1000_pct") is not None:
+            _d1000 = f"，週變化 {_td['delta_1000']:+.2f}pt" if _td.get("delta_1000") is not None else ""
+            items.append(("—", "籌碼集中度",
+                          f"千張大戶 {_td['large_holder_1000_pct']:.2f}%{_d1000}"
+                          f"（資料週：{_td['week']}）", None))
+        else:
+            items.append(("—", "籌碼集中度", "資料待補（大戶持股變化）", None))
 
         passed = sum(1 for sym, _, _, ok in items if ok is True)
         total  = sum(1 for sym, _, _, ok in items if ok is not None)
@@ -2597,8 +2655,16 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
             else:
                 _ev_row("△", "法人未同步（0/3 方淨買）")
 
-            # 6) TDCC 集中度(永遠未接,顯示一致)
-            _ev_row("—", "TDCC 籌碼集中度未接入")
+            # 6) TDCC 集中度 — interim:viewer 直讀 data/tdcc/ 週快取原始值(Q5.1 放行,
+            #    Yonki 2026-07-15),正式落地待 2.0 schema。TDCC 為週頻,標資料週;僅呈現不判定。
+            _td_ev = _tdcc_lookup(e.ticker, active_date)
+            if _td_ev and _td_ev.get("large_holder_1000_pct") is not None:
+                _d_ev = (f"，週變化 {_td_ev['delta_1000']:+.2f}pt"
+                         if _td_ev.get("delta_1000") is not None else "")
+                _ev_row("—", f"千張大戶 {_td_ev['large_holder_1000_pct']:.2f}%{_d_ev}"
+                             f"（資料週：{_td_ev['week']}）")
+            else:
+                _ev_row("—", "TDCC 籌碼集中度資料待補")
 
             # Build evidence rows HTML
             chip_rows = ""
@@ -2962,6 +3028,16 @@ def _render_score_glossary() -> None:
         )
 
 
+def _strip_score_fragments(reason: str) -> str:
+    """入選理由去分數化(收尾輪,Yonki 2026-07-15):intel 落地 reason 內含
+    「贊助 X%」「信心 Y%」片段——渲染端濾掉,原始片段(連買 N 日等)保留。
+    不改上游 intelligence_delta(sidecar 判死停產在即)。"""
+    import re as _re
+    parts = [p.strip() for p in (reason or "").split("·")]
+    kept = [p for p in parts if p and not _re.match(r"^(贊助|信心)\s*\d+(\.\d+)?\s*%$", p)]
+    return "  ·  ".join(kept)
+
+
 def _render_watch_table(active_date: str, snaps: list[dict]) -> None:
     """精選觀察 — intelligence report watch_list rendered as a sortable table.
 
@@ -2999,7 +3075,7 @@ def _render_watch_table(active_date: str, snaps: list[dict]) -> None:
             "20日回買(日)": rebuy_days,
             "累計(張)": f"{net:+,}",
             "在此狀態(天)": w.days_in_state,
-            "入選理由": w.reason_zh,
+            "入選理由": _strip_score_fragments(w.reason_zh),
         })
     st.dataframe(_pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
@@ -3970,8 +4046,9 @@ def main() -> None:
         # 個股顯微鏡 = 多空體檢(先掃描) → 個股時序(再放大),P3.2 改造
         st.markdown(_SECTION_TITLE.format(label="◈ 多空體檢"), unsafe_allow_html=True)
         st.markdown(_EXPLAIN_DIV.format(
-            text="獨立於黃金引擎的多空證據計分：多頭分＝多頭證據總量，警訊分＝空頭證據總量。"
-                 "先在這裡掃全市場分布，鎖定目標後到下方「個股時序」放大看。"),
+            text="獨立於黃金引擎的全市場掃描，原始觀測值優先、無綜合評分："
+                 "先看泡泡圖分布（轉弱證據 × 連買動能 × 累計買超）鎖定目標，"
+                 "再到下方「個股時序」放大看逐日演化。"),
             unsafe_allow_html=True)
         _render_confidence(snaps_to_date)
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
