@@ -507,6 +507,16 @@ def _stock_net_accumulation(stock: dict) -> int:
     return int(v) if v is not None else 0
 
 
+def _sponsorship(ticker: str, snaps: list[dict]) -> dict:
+    """sponsorship 單一取值來源(漂移第11例收案,Yonki 2026-07-15)。
+    全 viewer render-time 的主力回頭率一律走本函式 → full_ticker_context["sponsorship"]
+    → market_context.sponsorship_persistence,與 golden 引擎 funnel 的 sponsorship_score
+    (funnel.py:460 = 同一 persistence_score)同源,不再各處各算。
+    註:黃金名單/候補的 e.sponsorship_score 與 intel 的 w.sponsorship 皆為上游已落地
+    產物(非 viewer render-time 計算),其計算函式即本函式對齊的 sponsorship_persistence。"""
+    return full_ticker_context(ticker, snaps)["sponsorship"]
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Shared HTML helpers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -684,7 +694,7 @@ def _render_market_pulse_banner() -> None:
 
     st.markdown(
         f'<div style="margin-bottom:4px;font-size:11px;color:#4A5A6A;letter-spacing:.06em;">'
-        f'大盤脈搏  MARKET PULSE &nbsp;·&nbsp; {date} &nbsp;·&nbsp; 更新 {fat}</div>'
+        f'大盤脈搏  MARKET PULSE &nbsp;·&nbsp; 資料日期 {date} &nbsp;·&nbsp; 更新 {fat}</div>'
         f'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;">{cells}</div>',
         unsafe_allow_html=True,
     )
@@ -694,15 +704,50 @@ def _render_market_pulse_banner() -> None:
 # PANEL 1 — Market Regime  市場體制
 # ─────────────────────────────────────────────────────────────────────────────
 
+# temperature_level → 呈現色類別(C12:viewer 單一擁有映射;溫度真值 obs_market_temperature)
+_TEMP_LEVEL_VAL_CLS = {
+    "cool": "val-cyan", "stable": "val-green", "warm": "val-amber",
+    "hot": "val-red", "extreme": "val-red",
+}
+
+
+def _render_regime_alert(snaps: list[dict]) -> None:
+    """⚡警訊 — 體制轉換的低調單行提示(A:從大黃條降級為小字,置於龍頭雷達下、綜述上)。
+    讀當日落地 obs_market_regime.transition_detected/transition_note(B:真值母體)。"""
+    if not snaps:
+        return
+    reg = snaps[-1].get("obs_market_regime")
+    if not reg or not reg.get("transition_detected"):
+        return
+    st.markdown(
+        f'<div style="font-size:12px;color:#D4A84B;margin:2px 0 10px 0;letter-spacing:.02em;">'
+        f'⚡ {reg.get("transition_note", "體制轉換")}</div>',
+        unsafe_allow_html=True,
+    )
+
+
 def _render_regime(snaps: list[dict]) -> None:
     if not snaps:
         st.info("尚無快照資料 No snapshot data available.")
         return
 
-    reg = regime_shift(snaps)
+    # B:改讀當日落地真值(obs_market_regime/breadth/temperature),render-time
+    # regime_shift 的舊廣度(買超榜母體恆≈100%)退場。缺欄(7/13 前舊快照)誠實佔位。
+    snap = snaps[-1]
+    reg  = snap.get("obs_market_regime")
+    brd  = snap.get("obs_market_breadth") or {}
+    tmp  = snap.get("obs_market_temperature") or {}
+
+    if not reg:
+        st.markdown(
+            '<div class="data-gap-notice">該日無落地市場觀測（obs_market_* 欄位缺，'
+            '此日快照早於 2026-07-13 母體修正上線）。</div>',
+            unsafe_allow_html=True,
+        )
+        return
 
     # Colour scheme
-    color = reg["regime_color"]
+    color = reg.get("regime_color", "#6B8EAA")
     bg_map = {
         "#52B788": "#0A1F12",
         "#7EB8D4": "#0A1520",
@@ -716,57 +761,75 @@ def _render_regime(snaps: list[dict]) -> None:
     # Regime banner
     st.markdown(
         f'<div class="regime-banner" style="background:{bg};border-left-color:{color};">'
-        f'<div class="regime-label-zh" style="color:{color};">{reg["regime_label_zh"]}</div>'
-        f'<div class="regime-label-en" style="color:{color};">{reg["regime_label_en"]}</div>'
+        f'<div class="regime-label-zh" style="color:{color};">{reg.get("regime_label_zh","—")}</div>'
+        f'<div class="regime-label-en" style="color:{color};">{reg.get("regime_label_en","")}</div>'
         f'</div>',
         unsafe_allow_html=True,
     )
 
-    if reg["transition_detected"]:
-        st.markdown(
-            f'<div class="regime-transition">⚡ {reg["transition_note"]}</div>',
-            unsafe_allow_html=True,
-        )
+    # Metrics — 廣度(真原始家數) ｜ 均漲 ｜ 風險溫度 ｜ 快照數。廣度趨勢 Trend 已刪(無資訊量)。
+    b_frac = reg.get("latest_breadth")
+    if b_frac is not None:
+        b_pct = b_frac * 100
+        b_cls = "val-green" if b_pct >= 60 else ("val-amber" if b_pct >= 30 else "val-red")
+        adv, dec, unch = brd.get("advancers"), brd.get("decliners"), brd.get("unchanged")
+        if adv is not None and dec is not None:
+            b_sub = f"{adv}漲/{dec}跌/{unch if unch is not None else 0}平"
+        else:
+            b_sub = "全市場漲跌家數"
+        b_val = f"{b_pct:.1f}%"
+    else:
+        b_cls, b_sub, b_val = "val-dim", "該日無落地廣度", "—"
 
-    # Metrics
-    b_pct = reg["latest_breadth"] * 100
-    b_cls = "val-green" if b_pct >= 60 else ("val-amber" if b_pct >= 30 else "val-red")
-    c_val = reg["latest_avg_chg"]
+    c_val = reg.get("latest_avg_chg", 0.0)
     c_cls = "val-green" if c_val > 0 else "val-red"
-    trend_icons = {
-        "rising_fast": "↑↑ 快速上升", "rising": "↑ 上升",
-        "falling_fast": "↓↓ 快速下跌", "falling": "↓ 下跌", "flat": "→ 持平"
-    }
+
+    if tmp:
+        t_cls = _TEMP_LEVEL_VAL_CLS.get(tmp.get("temperature_level"), "val-dim")
+        t_val = tmp.get("temperature_zh", "—")
+        t_sub = f"{tmp.get('temperature_level','')} · {int((tmp.get('temperature') or 0) * 100)}%"
+    else:
+        t_cls, t_val, t_sub = "val-dim", "—", "該日無落地溫度"
+
     _metric_strip([
-        ("廣度 Breadth", f"{b_pct:.1f}%",      "買超股佔比", b_cls),
-        ("均漲 Avg Chg", f"{c_val:+.2f}%",      "全宇宙均值", c_cls),
-        ("廣度趨勢 Trend", trend_icons.get(reg["breadth_trend"], reg["breadth_trend"]), "近3日走勢", "val-cyan"),
-        ("快照數 Dates",  str(len(reg["dates"])), "歷史紀錄",   "val-dim"),
+        ("廣度 Breadth", b_val,           b_sub,         b_cls),
+        ("均漲 Avg Chg", f"{c_val:+.2f}%", "全宇宙均值",   c_cls),
+        ("風險溫度 Risk Temp", t_val,       t_sub,         t_cls),
+        ("快照數 Dates",  str(len(reg.get("dates", []))), "歷史紀錄", "val-dim"),
     ])
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Breadth + AvgChg chart
-    if len(reg["dates"]) >= 2:
+    # 廣度歷史圖 + 均漲：改用落地序列。breadth_series 僅含有 market_pulse 的日期
+    # (breadth_dates);avg_chg_series 覆蓋全窗(dates)。誠實各用各的 x 軸。
+    b_dates  = reg.get("breadth_dates", [])
+    b_series = reg.get("breadth_series", [])
+    a_dates  = reg.get("dates", [])
+    a_series = reg.get("avg_chg_series", [])
+    v_series = reg.get("vol_series", [])
+    if len(a_dates) >= 2:
         col1, col2 = st.columns(2)
         with col1:
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=reg["dates"], y=[v * 100 for v in reg["breadth_series"]],
-                mode="lines+markers", name="廣度%",
-                line=dict(color="#7EB8D4", width=2.5),
-                marker=dict(size=6),
-                fill="tozeroy", fillcolor="rgba(126,184,212,0.08)",
-            ))
-            fig.add_hline(y=50, line_dash="dot", line_color="#2A3A4A", line_width=1)
-            fig.update_layout(**_plotly_layout("主力廣度 Breadth %", 240))
-            fig.update_yaxes(ticksuffix="%", range=[0, 105])
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+            if len(b_series) >= 2:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=b_dates, y=[v * 100 for v in b_series],
+                    mode="lines+markers", name="廣度%",
+                    line=dict(color="#7EB8D4", width=2.5),
+                    marker=dict(size=6),
+                    fill="tozeroy", fillcolor="rgba(126,184,212,0.08)",
+                ))
+                fig.add_hline(y=50, line_dash="dot", line_color="#2A3A4A", line_width=1)
+                fig.update_layout(**_plotly_layout("全市場廣度 Breadth %（落地真值）", 240))
+                fig.update_yaxes(ticksuffix="%", range=[0, 105])
+                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+            else:
+                st.caption("廣度歷史需 ≥2 個有落地母體的交易日（market_pulse 上線後累積中）")
         with col2:
-            colors = [("#52B788" if v >= 0 else "#E05C7A") for v in reg["avg_chg_series"]]
+            colors = [("#52B788" if v >= 0 else "#E05C7A") for v in a_series]
             fig2 = go.Figure()
             fig2.add_trace(go.Bar(
-                x=reg["dates"], y=reg["avg_chg_series"],
+                x=a_dates, y=a_series,
                 marker_color=colors, name="均漲%",
             ))
             fig2.add_hline(y=0, line_color="#3A4A5A", line_width=1)
@@ -774,17 +837,26 @@ def _render_regime(snaps: list[dict]) -> None:
             fig2.update_yaxes(ticksuffix="%")
             st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
 
-        # History table
+        # 歷史體制紀錄表：以落地廣度序列(breadth_dates)為主，avg_chg/vol 依日期對齊。
         st.markdown("<br>", unsafe_allow_html=True)
-        _section_header("📋", "歷史體制紀錄", "Regime History", len(reg["dates"]))
+        _section_header("📋", "歷史體制紀錄", "Regime History", len(b_dates))
+        _achg_by_date = dict(zip(a_dates, a_series))
+        _vol_by_date  = dict(zip(a_dates, v_series))
         rows = []
-        for i, d in enumerate(reg["dates"]):
-            b = reg["breadth_series"][i] * 100
-            c = reg["avg_chg_series"][i]
-            v = reg["vol_series"][i]
-            rows.append({"日期 Date": d, "廣度% Breadth": f"{b:.1f}%",
-                         "均漲% Avg Chg": f"{c:+.2f}%", "量能指數 Vol": f"{v:.2f}×"})
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        for i, d in enumerate(b_dates):
+            b = b_series[i] * 100
+            c = _achg_by_date.get(d)
+            v = _vol_by_date.get(d)
+            rows.append({
+                "日期 Date": d,
+                "廣度% Breadth": f"{b:.1f}%",
+                "均漲% Avg Chg": f"{c:+.2f}%" if c is not None else "—",
+                "量能指數 Vol": f"{v:.2f}×" if v is not None else "—",
+            })
+        if rows:
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        else:
+            st.caption("尚無落地廣度序列可製表（market_pulse 上線後累積中）")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -961,14 +1033,8 @@ def _render_heat_radar(snaps: list[dict]) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _render_watchlist_radar(snaps: list[dict]) -> None:
-    _section_header("🎯", "龍頭雷達", "Tech Leaders Radar", len(RADAR_TICKERS))
-    st.markdown(
-        '<div class="data-gap-notice" style="background:#0F1820;border-left-color:#7EB8D4;color:#7EB8D4;">'
-        '台積電 · 鴻海 · 聯發科 · 台達電 · 廣達 — 每日必抓分點，無論是否在三榜。'
-        ' Core tech leaders tracked daily regardless of cross-signal status.</div>',
-        unsafe_allow_html=True,
-    )
-
+    # A(Yonki 2026-07-15):刪 _section_header 與說明段,只留 5 張卡(標題由 main 的
+    # _SECTION_TITLE 統一提供,與其餘環境層區塊一致)。
     # Latest snapshot
     latest_snap = snaps[-1] if snaps else {}
     latest_stocks = {s["ticker"]: s for s in latest_snap.get("stocks", [])}
@@ -1134,8 +1200,7 @@ def _strengthening_rows(key: str, snaps: list[dict]) -> list[dict]:
         streak = _stock_streak(stock)
         if streak < 2:
             continue
-        ctx  = full_ticker_context(ticker, snaps)
-        spon = ctx["sponsorship"]
+        spon = _sponsorship(ticker, snaps)   # D1:sponsorship 單一取值來源(漂移第11例收案)
         name  = stock.get("name") or _short_name(ticker)
         price = stock.get("current_price")
         chg   = stock.get("change_pct")
@@ -1158,7 +1223,7 @@ def _strengthening_rows(key: str, snaps: list[dict]) -> list[dict]:
             "窗口買(日)": _stock_buy_days_in_window_or_none(stock),  # 1.7.0 缺欄位顯示「—」
             "累計(張)": net,
             "速度(張/日)": round(vel) if vel is not None else None,
-            "主力回頭率": _lvl_sponsor(spon_score, spon_days),
+            "20日回買": _rebuy_days_label(spon_score, spon_days),  # C:原始日數,取代高/中/低
             "成本": f"NT${cost:,.2f}" if cost else "—",
             "Tier A": "★" if ticker in TIER_A else "",
             "_mom": mom_rank,
@@ -1402,93 +1467,10 @@ def _render_failed_breakouts(snaps: list[dict]) -> None:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PANEL 5 — Persistent Accumulation  持續吸籌
+# D4(Yonki 2026-07-15):_render_persistent_accumulation 死碼刪除(無任何 tab 佈線呼叫,
+# 刪前已 grep 確認無呼叫者)。持續吸籌資訊由「轉強訊號」的「只看持續吸籌」勾選與
+# 「精選觀察」涵蓋。
 # ─────────────────────────────────────────────────────────────────────────────
-
-def _render_persistent_accumulation(snaps: list[dict]) -> None:
-    if not snaps:
-        st.info("無快照資料")
-        return
-
-    all_tickers: set[str] = set()
-    for snap in snaps:
-        for s in snap.get("stocks", []):
-            all_tickers.add(s.get("ticker", ""))
-    all_tickers.discard("")
-
-    # 1.8.0:用 snapshot 的 main_force_positive_days_in_window 取代
-    # full_ticker_context 重算的 buy_days;sponsorship 仍走 ctx
-    latest_for_persist = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
-    candidates = []
-    for ticker in sorted(all_tickers):
-        ctx  = full_ticker_context(ticker, snaps)
-        spon = ctx["sponsorship"]
-        stk_for_count = latest_for_persist.get(ticker, {})
-        buy_days = _stock_buy_days_in_window(stk_for_count)
-        if spon.get("persistence_score", 0) >= 0.35 and buy_days >= 2:
-            candidates.append((ticker, ctx))
-
-    candidates.sort(key=lambda x: (
-        -x[1]["sponsorship"]["persistence_score"],
-        -_stock_net_accumulation(latest_for_persist.get(x[0], {})),
-    ))
-
-    _section_header("◉", "持續吸籌", "Persistent Accumulation", len(candidates))
-
-    if not candidates:
-        st.markdown(
-            '<div class="data-gap-notice">分點資料尚不完整，持續吸籌分析需要多日分點記錄。'
-            ' Branch data coverage building up.</div>',
-            unsafe_allow_html=True,
-        )
-        return
-
-    latest_stocks = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
-    latest_date = snaps[-1].get("date", "?")
-    first_seen, last_seen = _presence_dates(snaps)
-
-    rows_pa = []
-    for ticker, ctx in candidates:
-        spon  = ctx["sponsorship"]
-        # 1.8.0:vel/accel/net_cumulative/buy_days 都從 snapshot 直接讀
-        stock = latest_stocks.get(ticker, {})
-        name  = stock.get("name") or _short_name(ticker)
-        cost  = stock.get("main_force_cost")
-        vel   = stock.get("velocity_3d")
-        accel = stock.get("acceleration")
-        mom_txt, mom_rank = _momentum_glyph(vel, accel)
-        fresh_txt, fresh_rank = _freshness_label(ticker, first_seen, last_seen, latest_date)
-        rows_pa.append({
-            "資料": fresh_txt,
-            "代號": ticker,
-            "名稱": name,
-            "動能": mom_txt,
-            "累計(張)": _stock_net_accumulation(stock),
-            "買超(日)": _stock_buy_days_in_window_or_none(stock),  # 1.7.0 缺欄位顯示「—」
-            "主力分點": spon.get("top_persistent_broker") or "—",
-            "分點(日)": spon.get("top_broker_days") or 0,
-            "成本": f"NT${cost:,.2f}" if cost else "—",
-            "Tier A": "★" if ticker in TIER_A else "",
-            "_mom": mom_rank,
-            "_fresh": fresh_rank,
-        })
-
-    import pandas as _pd
-    df_pa = (
-        _pd.DataFrame(rows_pa)
-        .sort_values(["_mom", "_fresh", "累計(張)"], ascending=[True, True, False])
-        .drop(columns=["_mom", "_fresh"])
-    )
-    st.caption("排序：動能方向 → 資料新鮮度 → 累計買超 ｜ 贊助分已移除（全名單同值無鑑別度），明細請見個股展開")
-    st.dataframe(
-        _style_signal_df(
-            df_pa,
-            color_cols=[],
-            text_cols=["動能", "資料"],
-            fmt={"累計(張)": "{:+,.0f}", "買超(日)": "{:d}/20", "分點(日)": "{:d} 日"},
-        ),
-        use_container_width=True,
-        hide_index=True,
-    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1649,8 +1631,7 @@ def _render_temporal_chains(snaps: list[dict]) -> None:
         # 1.8.0:streak / net_accumulation 從 snapshot 讀;sponsorship 仍走 ctx
         latest_snap = snaps[-1] if snaps else {}
         stock_latest = next((s for s in latest_snap.get("stocks", []) if s.get("ticker") == ticker), {})
-        ctx = full_ticker_context(ticker, snaps)
-        spon = ctx["sponsorship"]
+        spon = _sponsorship(ticker, snaps)   # D1:sponsorship 單一取值來源(漂移第11例收案)
 
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("連買天數 Strict",  f"{_stock_streak(stock_latest)}日",
@@ -1797,17 +1778,17 @@ def _render_narrative_bullets(report: dict) -> None:
 def _render_narrative_themes(report: dict) -> None:
     # ── Section B: Key Themes  (3 columns) ───────────────────────────────
     _section_header("🔑", "主題觀察", "Key Themes")
+    # D3(Yonki 2026-07-15):刪「板塊輪動」卡——與下方「資金輪動」區重複判斷,留其餘主題。
     st.markdown(_EXPLAIN_DIV.format(
-        text="從近幾日快照歸納的三個市場主題：板塊輪動（錢在換場子嗎）、資金方向（整體進或出）、"
-             "強弱對比（誰在領漲誰在破位）。"),
+        text="從近幾日快照歸納的市場主題：資金方向（整體進或出）、強弱對比（誰在領漲誰在破位）。"
+             "（板塊輪動請看下方「資金輪動」區。）"),
         unsafe_allow_html=True)
     themes = report.get("key_themes", {})
     theme_defs = [
-        ("sector_rotation",      "⟳", "板塊輪動", "Sector Rotation"),
         ("capital_flow",         "◉", "資金方向", "Capital Flow"),
         ("strength_vs_weakness", "↕", "強弱對比", "Strength vs Weakness"),
     ]
-    cols = st.columns(3, gap="small")
+    cols = st.columns(2, gap="small")
     for col, (key, icon, zh_label, en_label) in zip(cols, theme_defs):
         t = themes.get(key, {})
         with col:
@@ -1828,12 +1809,14 @@ def _render_narrative_themes(report: dict) -> None:
 
 def _render_narrative_watchpoints(report: dict) -> None:
     # ── Section C: Notable Entities ──────────────────────────────────────
+    # D2(Yonki 2026-07-15):刪「可能假突破」欄——出場警示的 failed_breakouts 是唯一 SoT,
+    # 此處重複判斷退場。三欄改兩欄。
     st.markdown(_EXPLAIN_DIV.format(
-        text="持續出現＝在每日買超榜反覆現身的個股（主力沒走）；重要轉換＝首次上榜或消失後重現；"
-             "可能假突破＝放量急漲後連續回落，籌碼沒跟上價格。"),
+        text="持續出現＝在每日買超榜反覆現身的個股（主力沒走）；重要轉換＝首次上榜或消失後重現。"
+             "（假突破訊號請看「🔻 出場警示」分頁，該處為唯一資料來源。）"),
         unsafe_allow_html=True)
     ent = report.get("notable_entities", {})
-    col_left, col_mid, col_right = st.columns(3, gap="small")
+    col_left, col_mid = st.columns(2, gap="small")
 
     # Persistent tickers
     with col_left:
@@ -1878,38 +1861,6 @@ def _render_narrative_watchpoints(report: dict) -> None:
                 f'</div>'
                 f'<div style="font-size:12px;color:#8B949E;margin-top:6px;">{e.get("date","")}</div>'
                 f'<div style="font-size:12px;color:#6B8EAA;margin-top:4px;font-style:italic;line-height:1.4;">'
-                f'{e.get("note_en","")}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-
-    # False breakouts
-    with col_right:
-        fbs = ent.get("possible_false_breakouts", [])
-        _section_header("⚠", "可能假突破", "Possible False Breakouts")
-        if not fbs:
-            st.markdown(
-                '<div class="data-gap-notice" style="background:#0F1E17;border-color:#2E6B4A;color:#52B788;">'
-                '目前未偵測到假突破訊號</div>',
-                unsafe_allow_html=True,
-            )
-        for e in fbs:
-            bchg = e.get("breakout_chg", 0)
-            vrat = e.get("vol_ratio", 0)
-            ret  = e.get("retreat_days", 0)
-            st.markdown(
-                f'<div class="stock-card" style="border-color:#5A1A28;">'
-                f'<div style="display:flex;align-items:center;justify-content:space-between;">'
-                f'<span><span class="stock-ticker" style="color:#E05C7A;">{e["ticker"]}</span>'
-                f'<span class="stock-name">{_short_name(e["ticker"])}</span></span>'
-                f'<span class="signal-tag red">假突破</span>'
-                f'</div>'
-                f'<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">'
-                f'<span class="signal-tag">突破 +{bchg:.1f}%</span>'
-                f'<span class="signal-tag">量比 {vrat:.1f}×</span>'
-                f'<span class="signal-tag warn">回落 {ret}日</span>'
-                f'</div>'
-                f'<div style="font-size:12px;color:#6B8EAA;margin-top:6px;font-style:italic;line-height:1.4;">'
                 f'{e.get("note_en","")}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
@@ -2976,6 +2927,14 @@ def _lvl_sponsor(score, days) -> str:
     return _lvl(score, 0.7, 0.4)
 
 
+def _rebuy_days_label(score, days) -> str:
+    """C(Yonki 2026-07-15):主力回頭率去分數化——換算為原始日數「20日回買 X 日」
+    (回頭率×20,0.7×20=14日)。分點樣本 <3 天 → 樣本不足(假訊號防呆)。"""
+    if not days or days < 3:
+        return "樣本不足"
+    return f"{round((score or 0) * 20)} 日"
+
+
 def _render_score_glossary() -> None:
     """📖 邏輯說明 — 折疊區(P2.9:無粗體、灰字、無 code block —
     fenced block 會觸發 Streamlit SyntaxHighlighter 動態載入,雲端曾 TypeError)。"""
@@ -3003,32 +2962,45 @@ def _render_score_glossary() -> None:
         )
 
 
-def _render_watch_table(active_date: str) -> None:
-    """精選觀察 — intelligence report watch_list rendered as a sortable table."""
+def _render_watch_table(active_date: str, snaps: list[dict]) -> None:
+    """精選觀察 — intelligence report watch_list rendered as a sortable table.
+
+    C(Yonki 2026-07-15)去分數化:刪「多頭分/警訊分/主力回頭率(高/中/低)」三欄,
+    改原始數據——連買日數、20 日窗口回買日數(回頭率×20 換算)、累計買超張數;
+    #排名 按累計買超張數排。"""
     report = _intel_load(active_date) if active_date else None
     _section_header("◉", "精選觀察", "Top Watch (next 3–5 sessions)",
                     len(report.watch_list) if report else 0)
     st.markdown(_EXPLAIN_DIV.format(
-        text="狀態機已達 吸籌中/轉強/已確認 的股票，依「狀態層級＋主力回頭率＋連買＋多頭分」加權排序取前 8。"
-             "多頭分/警訊分是獨立於黃金名單的另一套多空證據計分——兩邊互相對照用。"
-             "只有 10 秒的話，看這張表就夠。"),
+        text="狀態機已達 吸籌中/轉強/已確認 的股票。原始數據優先：連買日數、20 日窗口回買日數、"
+             "累計買超張數，依累計買超張數排名。「20日回買」＝主力回頭率換算的原始日數（回頭率×20 日；"
+             "同一家分點回頭買越頻繁，日數越高）。只有 10 秒的話，看這張表就夠。"),
         unsafe_allow_html=True)
     if not report or not report.watch_list:
         st.markdown('<div class="data-gap-notice">無觀察名單資料（今日情報尚未生成）</div>',
                     unsafe_allow_html=True)
         return
+    latest_stocks = {s["ticker"]: s for s in (snaps[-1].get("stocks", []) if snaps else [])}
     import pandas as _pd
-    rows = [{
-        "代號": w.ticker,
-        "名稱": w.name,
-        "狀態": w.sm_state_zh,
-        "連買(日)": w.streak,
-        "主力回頭率": _lvl(w.sponsorship, 0.7, 0.4),
-        "多頭分": _lvl(w.confidence, 0.6, 0.4),
-        "警訊分": _lvl_risk(w.risk_score),
-        "在此狀態(天)": w.days_in_state,
-        "入選理由": w.reason_zh,
-    } for w in report.watch_list]
+    tmp = []
+    for w in report.watch_list:
+        net = _stock_net_accumulation(latest_stocks.get(w.ticker, {}))
+        rebuy_days = round((w.sponsorship or 0) * 20)   # 回頭率原始日數(0.7×20=14日)
+        tmp.append((net, rebuy_days, w))
+    tmp.sort(key=lambda t: -t[0])   # 按累計買超張數排
+    rows = []
+    for rank, (net, rebuy_days, w) in enumerate(tmp, 1):
+        rows.append({
+            "#排名": rank,
+            "代號": w.ticker,
+            "名稱": w.name,
+            "狀態": w.sm_state_zh,
+            "連買(日)": w.streak,
+            "20日回買(日)": rebuy_days,
+            "累計(張)": f"{net:+,}",
+            "在此狀態(天)": w.days_in_state,
+            "入選理由": w.reason_zh,
+        })
     st.dataframe(_pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
@@ -3129,11 +3101,12 @@ def _render_confidence(snaps: list[dict]) -> None:
     with st.spinner("計算多空體檢… computing profiles…"):
         result = _run_confidence(key, snaps)
 
-    temp  = result.market_temperature
     # profiles is a dict; use the pre-sorted lists
     profs = result.ideal + result.watch + result.deteriorating + result.weak
 
-    # ── Temperature banner ────────────────────────────────────────────────
+    # ── Temperature banner ── C(Yonki 2026-07-15):改讀當日落地 obs_market_temperature
+    #    (與市場體制區同源);缺欄(舊快照)誠實佔位,不 fallback 回已判死的 confidence 引擎。
+    obs_temp = (snaps[-1].get("obs_market_temperature") if snaps else None) or {}
     temp_color_map = {
         "cool":    ("#7EB8D4", "#0A1520", "冷靜"),
         "stable":  ("#52B788", "#0A1F12", "穩定"),
@@ -3141,28 +3114,36 @@ def _render_confidence(snaps: list[dict]) -> None:
         "hot":     ("#E05C7A", "#1F0A10", "過熱"),
         "extreme": ("#FF6B9D", "#2A0818", "極端"),
     }
-    tc, tbg, tzh = temp_color_map.get(temp.temperature_level, ("#8B949E","#111820","—"))
-    t_pct = int(temp.temperature * 100)
-
-    st.markdown(
-        f'<div class="temp-strip" style="background:{tbg};border-left-color:{tc};">'
-        f'<div style="display:flex;align-items:center;justify-content:space-between;">'
-        f'<div>'
-        f'<div style="font-size:11px;color:#6B8EAA;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">市場風險溫度 MARKET RISK TEMPERATURE</div>'
-        f'<div style="font-size:28px;font-weight:800;color:{tc};line-height:1.2;">{tzh} · {temp.temperature_level.upper()}</div>'
-        f'<div style="font-size:13px;color:#8B949E;margin-top:4px;">{temp.temperature_zh}</div>'
-        f'</div>'
-        f'<div style="text-align:right;">'
-        f'<div style="font-size:36px;font-weight:800;color:{tc};">{t_pct}%</div>'
-        f'<div style="font-size:11px;color:#6B8EAA;">溫度指數</div>'
-        f'</div>'
-        f'</div>'
-        f'<div style="margin-top:12px;background:#1A2030;border-radius:6px;height:8px;overflow:hidden;">'
-        f'<div style="width:{t_pct}%;height:100%;background:{tc};border-radius:6px;"></div>'
-        f'</div>'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
+    if obs_temp:
+        t_level = obs_temp.get("temperature_level", "")
+        tc, tbg, _tzh = temp_color_map.get(t_level, ("#8B949E", "#111820", "—"))
+        tzh = obs_temp.get("temperature_zh", _tzh)
+        t_pct = int((obs_temp.get("temperature") or 0) * 100)
+        st.markdown(
+            f'<div class="temp-strip" style="background:{tbg};border-left-color:{tc};">'
+            f'<div style="display:flex;align-items:center;justify-content:space-between;">'
+            f'<div>'
+            f'<div style="font-size:11px;color:#6B8EAA;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">市場風險溫度 MARKET RISK TEMPERATURE</div>'
+            f'<div style="font-size:28px;font-weight:800;color:{tc};line-height:1.2;">{tzh} · {t_level.upper()}</div>'
+            f'<div style="font-size:13px;color:#8B949E;margin-top:4px;">{obs_temp.get("temperature_zh","")}</div>'
+            f'</div>'
+            f'<div style="text-align:right;">'
+            f'<div style="font-size:36px;font-weight:800;color:{tc};">{t_pct}%</div>'
+            f'<div style="font-size:11px;color:#6B8EAA;">溫度指數</div>'
+            f'</div>'
+            f'</div>'
+            f'<div style="margin-top:12px;background:#1A2030;border-radius:6px;height:8px;overflow:hidden;">'
+            f'<div style="width:{t_pct}%;height:100%;background:{tc};border-radius:6px;"></div>'
+            f'</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            '<div class="data-gap-notice">該日無落地市場溫度（obs_market_temperature 欄缺，'
+            '此日快照早於 2026-07-13 母體修正上線）。</div>',
+            unsafe_allow_html=True,
+        )
 
     # ── 數字條已刪(P3.2:與下方表格重複);溫度橫幅補說明 ─────────────────────
     st.markdown(_EXPLAIN_DIV.format(
@@ -3171,88 +3152,80 @@ def _render_confidence(snaps: list[dict]) -> None:
         unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── 信心 × 風險 × 籌碼 三維泡泡圖 (Yonki 確認偏好此版, 2026-06-18) ────────
-    #   X = 風險 (log scale, 避免擠角落)   Y = 信心   泡泡大小 = 淨累計買超
-    #   顏色 = 引擎型態 (來自 core resonance, viewer 不做分級)
-    #   PROXY: 信心/風險目前用 core/confidence 的代理值; P3b 評分引擎啟動後
-    #   只需把 p.confidence / p.risk_score 換成系統真實欄位, 圖骨架不變。
+    # ── 三維泡泡圖 D5(Yonki 2026-07-15 誠實化):軸全部換落地原始觀測值 ──────────
+    #   X = 轉弱證據(weakening 旗標數 + obs_sm_transition_risk 層級,離散+jitter 防重疊)
+    #   Y = 連買日數(原始)   大小 = 累計淨買張數   顏色 = obs_sm_state 的 SCD_STATUS token
+    #   金框 = 持股。刪 _conf_proxy/_risk_proxy 與「(代理)」警語(不再有代理軸)。
     if profs:
-        _section_header("◉", "多頭 × 警訊 × 籌碼 三維泡泡圖", "Bull × Alert × Flow Bubble Map")
+        _section_header("◉", "轉弱證據 × 連買動能 × 籌碼 泡泡圖", "Weakening × Streak × Flow Bubble Map")
         st.markdown(_EXPLAIN_DIV.format(
-            text="一眼看全市場分布：越靠左上（多頭分高、警訊分低）越理想；泡泡越大＝主力累計買超越多。"
-                 "滑鼠停在泡泡上看個股明細。"),
+            text="全落地原始觀測值：X＝轉弱證據（W1-W5 旗標數＋狀態轉換風險層級，越右越危險），"
+                 "Y＝主力連買日數（越上動能越強），泡泡大小＝20 日累計淨買張數，顏色＝sm 生命週期狀態，"
+                 "金框＝持股中。滑鼠停在泡泡上看原始值（無任何百分比）。"),
             unsafe_allow_html=True)
-        reson_map = _resonance_mod.run_all(snaps)
         latest_ls = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
-        KIND_COLOR = {"dual": "#4A9E6B", "single": "#4A7FC4", "diverge": "#C4544A"}
-        KIND_ZH    = {"dual": "雙/三方共振", "single": "單引擎", "diverge": "法人背離"}
 
-        def _engine_kind(ticker: str) -> str:
-            # Display-only colour bucket from core signals (resonance level +
-            # FII sign). No tier/score/gate logic — same display tier as heat radar.
-            stk = latest_ls.get(ticker, {})
-            fii = stk.get("fii_net_buy")
-            rs  = reson_map.get(ticker)
-            level = rs.resonance_level if rs else 0
-            if fii is not None and fii < 0:
-                return "diverge"
-            if level >= 2:
-                return "dual"
-            return "single"
+        # obs_sm_state → SCD_STATUS token 色(C12:呈現映射 viewer 單一擁有)
+        _SM_TOKEN = {
+            "strengthening": "#52B788",  # green 轉強
+            "confirmed":     "#EBC92F",  # gold  成熟確認
+            "accumulating":  "#7EB8D4",  # blue  吸籌
+            "decelerating":  "#E8A93C",  # amber 減速
+            "distributing":  "#E4626F",  # red   疑似出貨
+            "failed":        "#E4626F",  # red
+            "exited":        "#8B949E",  # neutral 已退出
+        }
+        _SM_ZH = {
+            "strengthening": "轉強中", "confirmed": "成熟確認", "accumulating": "吸籌中",
+            "decelerating": "減速中", "distributing": "疑似出貨", "failed": "訊號失敗",
+            "exited": "已退出",
+        }
+        _RISK_RANK = {"low": 0, "medium": 1, "elevated": 2, "critical": 3}
 
-        # ── P3a DISPLAY-ONLY proxies (same tier as heat radar; NOT scoring) ──
-        # Core risk_score piles ~35% of names at exactly 0 → they overlap on the
-        # log axis into one blob. These spread the cloud using the demo's chip
-        # proxy. Swap to the real confidence/risk fields when P3b activates; the
-        # axes/skeleton stay the same.
-        def _risk_proxy(stk: dict) -> float:
-            # 追高風險: 當日漲幅 + 距主力成本距離 (越追高越右). Distinct non-zero
-            # values so the log axis can separate names instead of stacking at 0.
-            chg  = stk.get("change_pct") or 0
-            price, cost = stk.get("current_price"), stk.get("main_force_cost")
-            cdist = abs((price - cost) / cost * 100) if (price and cost) else 0
-            return max(4.0, min(100.0, 4 + max(0.0, chg) * 1.8 + cdist * 1.2))
+        # 持股集合(金框);holdings.json 目前可能為空。
+        try:
+            _hold = json.loads((_AI_STOCK / "data" / "holdings.json").read_text(encoding="utf-8"))
+            held = {h.get("ticker") for h in _hold.get("holdings", [])}
+        except Exception:
+            held = set()
 
-        def _conf_proxy(stk: dict, rs) -> float:
-            # 雙引擎強度: 共振層級 + 外資同向 + 流量規模.
-            fii   = stk.get("fii_net_buy") or 0
-            net   = (stk.get("weakening") or {}).get("net_cumulative") or 0
-            level = rs.resonance_level if rs else 0
-            align = 12 if fii > 0 else (-12 if fii < 0 else 0)
-            flow_b = min(25.0, (abs(net) ** 0.5) / 30)
-            return max(2.0, min(100.0, 30 + level * 15 + align + flow_b))
+        # flow 宇宙:20 日累計淨買 ≠ 0,最大者優先,取前 30(顯示用,非評分)
+        flow = sorted(
+            [p for p in profs if _stock_net_accumulation(latest_ls.get(p.ticker, {}))],
+            key=lambda p: abs(_stock_net_accumulation(latest_ls.get(p.ticker, {}))),
+            reverse=True,
+        )[:30] or profs[:30]
 
-        # Plot the main-force-flow universe (net cumulative ≠ 0), largest first,
-        # capped for readability — mirrors the demo's "主力流向" set, not all 117 profiles.
-        def _net_of(p):
-            return (latest_ls.get(p.ticker, {}).get("weakening") or {}).get("net_cumulative") or 0
-        flow = sorted([p for p in profs if _net_of(p)], key=lambda p: abs(_net_of(p)), reverse=True)[:30] or profs[:30]
-
-        xs, ys, labels, sizes, colors, hover = [], [], [], [], [], []
+        import random as _rnd
+        _rnd.seed(42)  # jitter 確定性:同一輸入 → 同一圖
+        xs, ys, sizes, colors, line_w, line_c, labels, hover = [], [], [], [], [], [], [], []
         for p in flow:
-            stk   = latest_ls.get(p.ticker, {})
-            rs    = reson_map.get(p.ticker)
-            net   = (stk.get("weakening") or {}).get("net_cumulative") or 0
-            price = stk.get("current_price")
-            chg   = stk.get("change_pct")
-            cost  = stk.get("main_force_cost")
-            dist  = ((price - cost) / cost * 100) if (price and cost) else None
-            kind  = _engine_kind(p.ticker)
-            risk_pct = _risk_proxy(stk)
-            conf_pct = _conf_proxy(stk, rs)
-            xs.append(risk_pct)
-            ys.append(conf_pct)
-            sizes.append(14 + (abs(net) ** 0.5) / 20)         # demo radius formula
-            colors.append(KIND_COLOR[kind])
+            stk    = latest_ls.get(p.ticker, {})
+            flags  = (stk.get("weakening") or {}).get("flags", [])
+            risk_lv = _RISK_RANK.get(stk.get("obs_sm_transition_risk"), 0)
+            x_pos  = len(flags) + risk_lv + _rnd.uniform(-0.15, 0.15)
+            streak = _stock_streak(stk)
+            net    = _stock_net_accumulation(stk)
+            sm     = stk.get("obs_sm_state") or "exited"
+            price  = stk.get("current_price")
+            chg    = stk.get("change_pct")
+            is_held = p.ticker in held
+            flag_codes = "、".join(f'{f.get("code","")}{f.get("zh","")}' for f in flags) if flags else "無"
+            xs.append(x_pos)
+            ys.append(streak)
+            sizes.append(14 + (abs(net) ** 0.5) / 20)
+            colors.append(_SM_TOKEN.get(sm, "#8B949E"))
+            line_w.append(3 if is_held else 1.5)
+            line_c.append("#EBC92F" if is_held else _SM_TOKEN.get(sm, "#8B949E"))
             labels.append(stk.get("name") or p.ticker)
             hover.append(
                 f"<b>{p.ticker} {p.name}</b><br>"
                 f"現價 {('NT$%.2f' % price) if price else '—'} "
                 f"({('%+.2f%%' % chg) if chg is not None else '—'})<br>"
-                f"淨累計 {net:+,} 張<br>"
-                f"距主力成本 {('%+.1f%%' % dist) if dist is not None else '—'}<br>"
-                f"多頭分(代理) {conf_pct:.0f}　警訊分(代理) {risk_pct:.0f}<br>"
-                f"型態 {KIND_ZH[kind]}"
+                f"連買 {streak} 日<br>"
+                f"累計淨買 {net:+,} 張<br>"
+                f"狀態 {_SM_ZH.get(sm, sm)}<br>"
+                f"轉弱旗標 {flag_codes}（轉換風險 {stk.get('obs_sm_transition_risk','—')}）"
             )
 
         fig = go.Figure()
@@ -3260,33 +3233,26 @@ def _render_confidence(snaps: list[dict]) -> None:
             x=xs, y=ys, mode="markers+text",
             text=labels, textposition="middle center",
             textfont=dict(size=9, color="#E8E4D8"),
-            marker=dict(size=sizes, color=colors, opacity=0.45,
-                        line=dict(width=1.5, color=colors), sizemode="diameter"),
+            marker=dict(size=sizes, color=colors, opacity=0.5,
+                        line=dict(width=line_w, color=line_c), sizemode="diameter"),
             hovertext=hover, hoverinfo="text",
         ))
-        # 理想區 (左上: 高信心 · 低風險)
-        fig.add_shape(type="rect", x0=4, x1=12, y0=55, y1=100, layer="below",
-                      fillcolor="rgba(201,151,58,0.06)", line=dict(width=0))
-        fig.add_annotation(x=4, y=99, text="★ 理想區（多頭高·警訊低）", showarrow=False,
-                           xanchor="left", yanchor="top",
-                           font=dict(size=11, color="rgba(201,151,58,0.7)"))
-        # 50% 多頭分隔線
-        fig.add_hline(y=50, line_dash="dot", line_color="#2A3A4A", line_width=1)
-
-        layout = _plotly_layout("多頭 × 警訊 × 籌碼 三維泡泡圖", 460)
-        layout["xaxis"].update(dict(title="警訊分（代理 · 對數刻度）→", type="log",
-                                    range=[0.60206, 2.0],
-                                    tickvals=[5, 10, 20, 40, 80],
-                                    ticktext=["5%", "10%", "20%", "40%", "80%"]))
-        layout["yaxis"].update(dict(title="多頭分 ↑", range=[0, 105]))
+        _max_x = max(xs, default=4)
+        layout = _plotly_layout("轉弱證據 × 連買動能 × 籌碼 泡泡圖", 460)
+        layout["xaxis"].update(dict(title="轉弱證據 →", range=[-0.6, max(4.0, _max_x + 0.7)], dtick=1))
+        layout["yaxis"].update(dict(title="← 連買動能", rangemode="tozero"))
         fig.update_layout(**layout)
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         st.markdown(
             '<div style="font-size:11px;color:#7A8070;margin-top:-6px;line-height:1.7;">'
-            '<span style="color:#4A9E6B;">●</span> 雙/三方共振　'
-            '<span style="color:#4A7FC4;">●</span> 單引擎　'
-            '<span style="color:#C4544A;">●</span> 法人背離　·　泡泡大小＝淨累計買超張數<br>'
-            '⚠ P3a 代理值：多頭分/警訊分在圖上為籌碼代理計算；評分引擎正式啟動後改用系統真實欄位，圖骨架不變。'
+            '顏色＝sm 狀態：'
+            '<span style="color:#52B788;">●</span>轉強　'
+            '<span style="color:#EBC92F;">●</span>成熟確認　'
+            '<span style="color:#7EB8D4;">●</span>吸籌　'
+            '<span style="color:#E8A93C;">●</span>減速　'
+            '<span style="color:#E4626F;">●</span>出貨/失敗　'
+            '<span style="color:#8B949E;">●</span>已退出'
+            '　·　泡泡大小＝累計淨買張數　·　金框＝持股中'
             '</div>',
             unsafe_allow_html=True,
         )
@@ -3298,22 +3264,13 @@ def _render_confidence(snaps: list[dict]) -> None:
 
     _section_header("☑", "全市場體檢表", "All Profiles", len(profs))
     st.markdown(_EXPLAIN_DIV.format(
-        text="評級：🟢理想＝多頭分高＋警訊分低｜🟡中性＝多頭中等＋警訊低｜🟠留意＝警訊偏高｜"
-             "🔴轉弱＝多頭崩、警訊竄升。排序：理想在前。搜尋用表格右上角 🔍。"),
+        text="原始數據優先：sm 狀態（白話生命週期）、連買日數、20 日窗口累計買超張數、"
+             "轉弱旗標（W1-W5，無則空）。多頭分/警訊分（高/中/低）已去分數化移除。"
+             "排序：狀態較強者在前。搜尋用表格右上角 🔍。"),
         unsafe_allow_html=True)
 
     mid_low   = [p for p in result.profiles.values() if p.profile_code == "mid_low"]
     watch_all = result.watch + result.deteriorating + result.weak
-    _grade_of = {}
-    for p in result.ideal:
-        _grade_of[p.ticker] = "🟢理想"
-    for p in mid_low:
-        _grade_of.setdefault(p.ticker, "🟡中性")
-    for p in result.watch:
-        _grade_of.setdefault(p.ticker, "🟠留意")
-    for p in result.deteriorating + result.weak:
-        _grade_of.setdefault(p.ticker, "🔴轉弱")
-
     ordered = result.ideal + mid_low + [p for p in watch_all if p.ticker not in
                                         {q.ticker for q in result.ideal} | {q.ticker for q in mid_low}]
     import pandas as _pd
@@ -3322,17 +3279,17 @@ def _render_confidence(snaps: list[dict]) -> None:
         stock = latest_stocks_ls.get(p.ticker, {})
         price = stock.get("current_price")
         chg   = stock.get("change_pct")
+        flags = (stock.get("weakening") or {}).get("flags", [])
+        flag_str = "、".join(f'{f.get("code","")}{f.get("zh","")}' for f in flags) if flags else ""
         prof_rows.append({
-            "評級": _grade_of.get(p.ticker, "—"),
             "代號": p.ticker,
             "名稱": p.name,
             "現價": f"NT${price:,.2f}" if price else "—",
             "漲跌": f"{chg:+.2f}%" if chg is not None else "—",
-            "多頭分": _lvl(p.confidence, 0.6, 0.4),
-            "警訊分": _lvl_risk(p.risk_score),
+            "sm 狀態": p.sm_state_zh,
             "連買(日)": p.streak,
-            "狀態": p.sm_state_zh,
-            "風險描述": p.risk_zh,
+            "窗口買超(張)": f"{_stock_net_accumulation(stock):+,}",
+            "轉弱旗標": flag_str,
         })
     if prof_rows:
         st.dataframe(_pd.DataFrame(prof_rows), use_container_width=True, hide_index=True,
@@ -3367,21 +3324,28 @@ def _event_card(e: DailyEvent, card_cls: str) -> str:
     )
 
 
-def _delta_table(changes: list[BiggestChange], pct_format: bool = True) -> str:
+def _delta_table(changes: list[BiggestChange], mode: str = "pct") -> str:
+    """mode: 'pct'（0-1→%）｜ 'raw'（原始張數）｜ 'days'（回頭率 0-1 換算 20 日回買日數）。
+    C(Yonki 2026-07-15):回頭率Δ 改 'days' 顯示日數變化,不再顯 %。"""
     if not changes:
         return '<div class="data-gap-notice">無顯著變化</div>'
     rows = ""
     for c in changes:
         color = "#52B788" if c.direction == "up" else "#E05C7A"
         arrow = "↑" if c.direction == "up" else "↓"
-        if pct_format:
-            fv = f"{c.from_value:.0%}"
-            tv = f"{c.to_value:.0%}"
-            dv = f"{c.delta:+.0%}"
-        else:
+        if mode == "days":
+            f_d, t_d = round((c.from_value or 0) * 20), round((c.to_value or 0) * 20)
+            fv = f"{f_d}日"
+            tv = f"{t_d}日"
+            dv = f"{t_d - f_d:+d}日"
+        elif mode == "raw":
             fv = f"{c.from_value:+,.0f}"
             tv = f"{c.to_value:+,.0f}"
             dv = f"{c.delta:+,.0f}"
+        else:  # pct
+            fv = f"{c.from_value:.0%}"
+            tv = f"{c.to_value:.0%}"
+            dv = f"{c.delta:+.0%}"
         rows += (
             f'<div class="delta-row">'
             f'<span class="delta-ticker">{c.ticker}</span>'
@@ -3390,6 +3354,39 @@ def _delta_table(changes: list[BiggestChange], pct_format: bool = True) -> str:
             f'<span class="delta-arrow">→</span>'
             f'<span class="delta-to" style="color:{color};">{tv}</span>'
             f'<span class="delta-change" style="color:{color};">{arrow} {dv}</span>'
+            f'</div>'
+        )
+    return rows
+
+
+def _optimism_table(changes: list[BiggestChange], latest_map: dict, prev_map: dict) -> str:
+    """C(Yonki 2026-07-15):「樂觀分數」欄——內部仍按 confidenceΔ 排序（排名合法），
+    但每列版面顯示該股「最主要變化」的原始值（連買日數差 或 累計張數差，取幅度大者），
+    完整明細（連買/累計/速度）放 HTML title hover tooltip。不顯示任何 %。"""
+    if not changes:
+        return '<div class="data-gap-notice">無顯著變化</div>'
+    rows = ""
+    for c in changes:
+        now  = latest_map.get(c.ticker, {})
+        prev = prev_map.get(c.ticker, {})
+        s_now, s_prev = _stock_streak(now), _stock_streak(prev)
+        n_now, n_prev = _stock_net_accumulation(now), _stock_net_accumulation(prev)
+        d_streak, d_net = s_now - s_prev, n_now - n_prev
+        if d_streak != 0:
+            main = f"連買 {d_streak:+d}日"
+        elif d_net != 0:
+            main = f"累計 {d_net:+,}張"
+        else:
+            main = "—"
+        color = "#52B788" if c.direction == "up" else "#E05C7A"
+        vel = now.get("velocity_3d")
+        tip = (f"連買 {s_prev}→{s_now}日 ｜ 累計 {n_prev:+,}→{n_now:+,}張"
+               + (f" ｜ 速度 {round(vel):+,}張/日" if vel is not None else ""))
+        rows += (
+            f'<div class="delta-row" title="{tip}">'
+            f'<span class="delta-ticker">{c.ticker}</span>'
+            f'<span class="delta-name">{c.name}</span>'
+            f'<span class="delta-to" style="color:{color};">{main}</span>'
             f'</div>'
         )
     return rows
@@ -3431,8 +3428,14 @@ def _render_intelligence(active_date: str, snaps: list[dict], part: str = "story
             text=f"把今天所有變化濃縮成幾句事實陳述（生成 {report.generated_at} · {prev_str}）。"
                  "量化明細在「⭐ 進場機會→今日變化」與「🔻 出場警示→風險警報」。"),
             unsafe_allow_html=True)
-        if report.market_story:
-            for s in report.market_story:
+        # A(Yonki 2026-07-15):渲染端過濾「市場廣度」與「風險溫度」兩類 bullet——真值
+        # 已由市場體制區呈現;不改上游 intelligence_delta(sidecar 判死停產在即)。
+        _story = [
+            s for s in (report.market_story or [])
+            if not (s.startswith("市場廣度") or "風險溫度" in s)
+        ]
+        if _story:
+            for s in _story:
                 st.markdown(f'<div class="intel-story-item">• {s}</div>', unsafe_allow_html=True)
         else:
             st.markdown('<div class="data-gap-notice">無市場故事資料</div>', unsafe_allow_html=True)
@@ -3442,31 +3445,33 @@ def _render_intelligence(active_date: str, snaps: list[dict], part: str = "story
     if part == "changes":
         _section_header("△", "最大變化排行", "Biggest Changes (last 24h)")
         st.markdown(_EXPLAIN_DIV.format(
-            text="三個核心指標 24 小時變化最大的股票——和下方轉強全表交叉比對用。"
-                 "主力回頭率＝同一家分點回頭買的頻率；速度＝近 3 日平均買超張數/日；"
-                 "多頭分＝連買/回頭率/動能/黃金身分的加權綜合分。"),
+            text="原始數據優先：20 日回買日數變化、主力速度（張/日）變化、以及「樂觀分數」欄"
+                 "（內部按綜合多頭證據排序，版面顯示各股最主要的原始變化——連買日數或累計張數；"
+                 "滑鼠停在該列看完整明細）。不顯示任何百分比。"),
             unsafe_allow_html=True)
+        _latest_map = {s["ticker"]: s for s in (snaps[-1].get("stocks", []) if snaps else [])}
+        _prev_map   = {s["ticker"]: s for s in (snaps[-2].get("stocks", []) if len(snaps) >= 2 else [])}
         col_s, col_v, col_c = st.columns(3, gap="small")
         with col_s:
             st.markdown(
                 '<div style="font-size:11px;color:#6B8EAA;text-transform:uppercase;'
-                'letter-spacing:.08em;margin-bottom:8px;">主力回頭率 Δ</div>',
+                'letter-spacing:.08em;margin-bottom:8px;">20日回買 Δ (日)</div>',
                 unsafe_allow_html=True)
-            st.markdown(_delta_table(report.biggest_sponsorship_changes, pct_format=True),
+            st.markdown(_delta_table(report.biggest_sponsorship_changes, mode="days"),
                         unsafe_allow_html=True)
         with col_v:
             st.markdown(
                 '<div style="font-size:11px;color:#6B8EAA;text-transform:uppercase;'
                 'letter-spacing:.08em;margin-bottom:8px;">速度 Velocity Δ (張/日)</div>',
                 unsafe_allow_html=True)
-            st.markdown(_delta_table(report.biggest_velocity_changes, pct_format=False),
+            st.markdown(_delta_table(report.biggest_velocity_changes, mode="raw"),
                         unsafe_allow_html=True)
         with col_c:
             st.markdown(
                 '<div style="font-size:11px;color:#6B8EAA;text-transform:uppercase;'
-                'letter-spacing:.08em;margin-bottom:8px;">多頭分 Δ</div>',
+                'letter-spacing:.08em;margin-bottom:8px;">樂觀分數（主要變化）</div>',
                 unsafe_allow_html=True)
-            st.markdown(_delta_table(report.biggest_confidence_changes, pct_format=True),
+            st.markdown(_optimism_table(report.biggest_confidence_changes, _latest_map, _prev_map),
                         unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
@@ -3918,7 +3923,7 @@ def main() -> None:
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
         _render_strengthening(snaps_to_date)
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
-        _render_watch_table(active_date)
+        _render_watch_table(active_date, snaps_to_date)
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
         _render_intelligence(active_date, snaps_to_date, part="changes")
 
@@ -3933,10 +3938,9 @@ def main() -> None:
         _render_failed_breakouts(snaps_to_date)
 
     with tab_market:
-        # 市場敘事 = 今日綜述(P3.2 歸位,開頁第一眼) + 環境層,順序 Yonki 定案:
-        # 綜述 → 體制 → 龍頭雷達 → 主題觀察 → 資金輪動(含族群走勢) → 熱度 → 三觀察點
-        _render_intelligence(active_date, snaps_to_date, part="story")
-        st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        # 市場敘事(A, Yonki 2026-07-15 定案順序):
+        # 市場體制(頂) → 龍頭雷達 → ⚡警訊(小字) → 今日綜述 → 主題觀察
+        # → 資金輪動(含族群走勢) → 熱度 → 三觀察點
         st.markdown(_SECTION_TITLE.format(label="📊 市場體制"), unsafe_allow_html=True)
         st.markdown(_EXPLAIN_DIV.format(
             text="用全市場廣度（幾 % 股票在漲）、平均漲跌、量能綜合判定今天屬於哪種環境"
@@ -3944,7 +3948,11 @@ def main() -> None:
             unsafe_allow_html=True)
         _render_regime(snaps_to_date)
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        st.markdown(_SECTION_TITLE.format(label="🎯 龍頭雷達"), unsafe_allow_html=True)
         _render_watchlist_radar(snaps_to_date)
+        _render_regime_alert(snaps_to_date)
+        st.markdown(_SECTION_HR, unsafe_allow_html=True)
+        _render_intelligence(active_date, snaps_to_date, part="story")
         st.markdown(_SECTION_HR, unsafe_allow_html=True)
         _render_narrative(snaps_to_date, part="themes")
         st.markdown(_SECTION_HR, unsafe_allow_html=True)

@@ -171,7 +171,11 @@ MC_REGIME_RETREAT_CHG         = -2.0  # 全面撤退:avg_chg <(market_context.py
 MC_REGIME_WAITING_BREADTH     = 0.35  # 資金觀望:breadth <(market_context.py:407)
 
 # ── 市場體制轉換偵測(來源 market_context.py:419)─────────────────────────────
-MC_TRANSITION_BREADTH_DELTA = 0.25  # |Δbreadth| ≥ 此 → 體制轉換(market_context.py:419)
+# 2026-07-15 母體修正後重標(Yonki 核准):舊值 0.25 是按買超榜母體(breadth 恆≈100%,
+# Δ 幾乎不動)調的;obs_market_regime 改讀真全市場廣度(twse_listed)後,Δbreadth 語意
+# 變成「真實漲跌家數占比的日變動」。真值量級參考:7/13→7/14 為 33%→19%(14 個百分點,
+# 屬大變動)。故按新母體改標 0.10(≈10 個百分點觸發)。上線初期觀察是否過敏,過敏再調高。
+MC_TRANSITION_BREADTH_DELTA = 0.10  # |Δbreadth| ≥ 此 → 體制轉換(market_context.py:419)
 MC_TRANSITION_CHG_DELTA     = 3.0   # |Δavg_chg| ≥ 此 → 體制轉換(market_context.py:419)
 
 # ── 轉弱/出貨偵測門檻(來源 market_context.py:651-653, 694, 772)───────────────
