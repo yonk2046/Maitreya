@@ -9,6 +9,7 @@ Run:
 """
 from __future__ import annotations
 
+import datetime as dt
 import json
 import pathlib
 import subprocess
@@ -116,9 +117,11 @@ def test_verify_failure_returns_2(tmp_logs_dir):
 def test_fetch_failure_returns_3_and_no_pipeline_run(tmp_logs_dir, monkeypatch):
     """If fetch fails, pipeline + verify must NOT be attempted."""
     monkeypatch.setattr(daily, "UPSTREAM_FETCH", pathlib.Path(__file__))  # any existing file
-    # Remote-first gate is orthogonal to what this test verifies; simulate an
-    # inconclusive remote check (offline) so it fails open to the normal
-    # local fetch path instead of intercepting the generic subprocess.run mock.
+    # Intraday + remote-first guards are orthogonal to what this test verifies
+    # (and the intraday guard reads the real clock, which would make this test
+    # flaky depending on wall-clock time); bypass both so the generic
+    # subprocess.run mock is what actually gets exercised.
+    monkeypatch.setattr(daily, "_intraday_guard", lambda **kw: False)
     monkeypatch.setattr(daily, "_git_fetch_origin", lambda: False)
     calls: list[list[str]] = []
 
@@ -192,9 +195,11 @@ def test_missing_upstream_fetch_when_not_skipped_logs_skip_and_continues(tmp_log
     fetcher hasn't been installed yet.
     """
     monkeypatch.setattr(daily, "UPSTREAM_FETCH", pathlib.Path("/definitely/not/a/real/path.py"))
-    # Remote-first gate is orthogonal to what this test verifies; simulate an
-    # inconclusive remote check (offline) so it fails open to the normal
-    # local fetch path instead of intercepting the generic subprocess.run mock.
+    # Intraday + remote-first guards are orthogonal to what this test verifies
+    # (and the intraday guard reads the real clock, which would make this test
+    # flaky depending on wall-clock time); bypass both so the generic
+    # subprocess.run mock is what actually gets exercised.
+    monkeypatch.setattr(daily, "_intraday_guard", lambda **kw: False)
     monkeypatch.setattr(daily, "_git_fetch_origin", lambda: False)
     with patch.object(subprocess, "run", return_value=_FakeProc(0, "", "")):
         rc = daily.run(date="2026-05-25", skip_fetch=False)
@@ -300,6 +305,9 @@ def test_run_exits_clean_when_remote_already_ahead(tmp_logs_dir, monkeypatch):
     """Full daily.run() integration: remote already has the target date's
     report → exit 0, orchestrator_end status is skip_remote_ahead, and the
     fetch/pipeline/verify subprocess steps must never be invoked."""
+    # Intraday guard reads the real clock; bypass it so this test's outcome
+    # (skip_remote_ahead) doesn't depend on wall-clock time.
+    monkeypatch.setattr(daily, "_intraday_guard", lambda **kw: False)
     monkeypatch.setattr(daily, "_git_fetch_origin", lambda: True)
     monkeypatch.setattr(daily, "_remote_has_report", lambda date: True)
     monkeypatch.setattr(daily, "_git_pull_ff_only", lambda: True)
@@ -318,3 +326,83 @@ def test_run_exits_clean_when_remote_already_ahead(tmp_logs_dir, monkeypatch):
     log = _read_log("2026-07-14", tmp_logs_dir)
     assert log[-1]["step"] == "orchestrator_end"
     assert log[-1]["status"] == "skip_remote_ahead"
+
+
+# ---------------------------------------------------------------------------
+# Intraday guard (盤中不抓取) — GHA cron 延遲誤點防護,2026-07-15 修法
+# ---------------------------------------------------------------------------
+
+def _taipei(hour: int, minute: int) -> dt.datetime:
+    return dt.datetime(2026, 7, 15, hour, minute, tzinfo=daily._TAIPEI_TZ)
+
+
+def test_intraday_guard_disposition_pure_matrix():
+    """Pure decision table — no clock, no I/O."""
+    # Just before the window opens → proceed.
+    assert daily._intraday_guard_disposition(_taipei(8, 59), force_local=False) == "proceed"
+    # Window opens at 09:00 → skip.
+    assert daily._intraday_guard_disposition(_taipei(9, 0), force_local=False) == "skip"
+    # Still mid-session at 13:59 → skip.
+    assert daily._intraday_guard_disposition(_taipei(13, 59), force_local=False) == "skip"
+    # Window closes at 14:00 → proceed.
+    assert daily._intraday_guard_disposition(_taipei(14, 0), force_local=False) == "proceed"
+    # force_local always wins, even squarely mid-session.
+    assert daily._intraday_guard_disposition(_taipei(11, 30), force_local=True) == "bypassed"
+
+
+def test_intraday_guard_skips_mid_session(monkeypatch):
+    """Clock lands inside 09:00-14:00 Taipei → guard returns True (abort)."""
+    monkeypatch.setattr(daily, "_now_taipei", lambda: _taipei(11, 30))
+
+    log_lines: list[dict] = []
+    skip = daily._intraday_guard(force_local=False, log_lines=log_lines)
+
+    assert skip is True
+    statuses = [r["status"] for r in log_lines if r["step"] == "intraday_guard"]
+    assert statuses == ["skip"]
+
+
+def test_intraday_guard_proceeds_after_close(monkeypatch):
+    """Clock outside the intraday window → guard returns False (proceed)."""
+    monkeypatch.setattr(daily, "_now_taipei", lambda: _taipei(18, 0))
+
+    log_lines: list[dict] = []
+    skip = daily._intraday_guard(force_local=False, log_lines=log_lines)
+
+    assert skip is False
+    statuses = [r["status"] for r in log_lines if r["step"] == "intraday_guard"]
+    assert statuses == ["proceed"]
+
+
+def test_intraday_guard_force_local_bypasses(monkeypatch):
+    """--force-local bypasses the intraday guard even squarely mid-session."""
+    monkeypatch.setattr(daily, "_now_taipei", lambda: _taipei(11, 30))
+
+    log_lines: list[dict] = []
+    skip = daily._intraday_guard(force_local=True, log_lines=log_lines)
+
+    assert skip is False
+    statuses = [r["status"] for r in log_lines if r["step"] == "intraday_guard"]
+    assert statuses == ["bypassed"]
+
+
+def test_run_exits_clean_when_intraday(tmp_logs_dir, monkeypatch):
+    """Full daily.run() integration: mid-session clock → exit 0,
+    orchestrator_end status is skip_intraday, and no subprocess step
+    (fetch/pipeline/verify) is ever invoked."""
+    monkeypatch.setattr(daily, "_intraday_guard", lambda **kw: True)
+
+    calls: list[list[str]] = []
+
+    def fake_run(argv, **kw):
+        calls.append(argv)
+        return _FakeProc(0, "ok", "")
+
+    with patch.object(subprocess, "run", side_effect=fake_run):
+        rc = daily.run(date="2026-07-15", skip_fetch=False)
+
+    assert rc == 0
+    assert calls == []
+    log = _read_log("2026-07-15", tmp_logs_dir)
+    assert log[-1]["step"] == "orchestrator_end"
+    assert log[-1]["status"] == "skip_intraday"

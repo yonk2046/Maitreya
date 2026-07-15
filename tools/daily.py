@@ -37,6 +37,7 @@ import subprocess
 import sys
 import urllib.request
 from typing import Any
+from zoneinfo import ZoneInfo
 
 _HERE = pathlib.Path(__file__).resolve().parent      # Ai stock/tools/
 _AI_STOCK = _HERE.parent                              # Ai stock/
@@ -327,6 +328,71 @@ def _git_pull_ff_only() -> bool:
     return proc.returncode == 0
 
 
+_TAIPEI_TZ = ZoneInfo("Asia/Taipei")
+
+
+def _now_taipei() -> dt.datetime:
+    """Current wall-clock time in Taipei. Never trust the runner's own local
+    tz (GHA runners are UTC) — always resolve explicitly via zoneinfo."""
+    return dt.datetime.now(_TAIPEI_TZ)
+
+
+def _intraday_guard_disposition(now_taipei: dt.datetime, *, force_local: bool) -> str:
+    """Pure decision — testable without touching the clock or the network.
+
+    GHA's 08:35 cron chronically fires 3-4h late (a cron-job.org / Actions
+    scheduling delay, not a config bug), landing the run at 11:30-12:40
+    Taipei — squarely mid-session. TWSE has not published closing data at
+    that point, so every such trigger fetches intraday garbage (root cause
+    of the 2026-07-14 breadth incident). This guard refuses to fetch at all
+    while Taipei is inside its trading session.
+
+    Returns:
+      'bypassed' — force_local given, guard skipped by request (manual
+                   intraday debugging).
+      'skip'     — now_taipei falls inside 09:00-14:00 Taipei; abort clean.
+      'proceed'  — outside the intraday window, safe to fetch.
+    """
+    if force_local:
+        return "bypassed"
+    t = now_taipei.time()
+    if dt.time(9, 0) <= t < dt.time(14, 0):
+        return "skip"
+    return "proceed"
+
+
+def _intraday_guard(*, force_local: bool, log_lines: list[dict[str, Any]]) -> bool:
+    """Runs the intraday guard (+ log/print side effects). Returns True iff
+    the caller should abort immediately — a delayed cron landed mid-session
+    and TWSE has no data to give us yet."""
+    now_taipei = _now_taipei()
+    disposition = _intraday_guard_disposition(now_taipei, force_local=force_local)
+
+    if disposition == "bypassed":
+        log_lines.append({
+            "step": "intraday_guard", "status": "bypassed",
+            "reason": "--force-local given — intraday guard skipped by request",
+            "taipei_time": now_taipei.isoformat(),
+        })
+        return False
+
+    if disposition == "skip":
+        log_lines.append({
+            "step": "intraday_guard", "status": "skip",
+            "reason": "台北盤中(09:00-14:00)不抓取——收盤資料未發布,任何此時段觸發皆為排程延遲誤點",
+            "taipei_time": now_taipei.isoformat(),
+        })
+        print(f"[intraday-guard] 台北時間 {now_taipei.isoformat()} 落在盤中(09:00-14:00),"
+              "中止抓取(GHA cron 延遲誤點防護)", file=sys.stderr)
+        return True
+
+    log_lines.append({
+        "step": "intraday_guard", "status": "proceed",
+        "taipei_time": now_taipei.isoformat(),
+    })
+    return False
+
+
 def _remote_first_disposition(*, force_local: bool, fetch_ok: bool, remote_has_snapshot: bool) -> str:
     """Pure decision — testable without touching git/network.
 
@@ -512,6 +578,19 @@ def run(
         "requested_date": date,
         "pid":  os.getpid(),
     }]
+
+    # ----- Intraday guard (盤中不抓取) -----
+    # Runs BEFORE anything else that could fetch (remote-first's git fetch,
+    # then TWSE itself). GHA's 08:35 cron chronically lands 3-4h late —
+    # 11:30-12:40 Taipei, mid-session — where TWSE has no closing data yet
+    # (root cause of the 2026-07-14 breadth incident). Skipped only when
+    # skip_fetch is already set (deliberate re-do off an existing local
+    # data/today.json, not a live fetch this guard needs to protect).
+    if not skip_fetch:
+        candidate_date = date or dt.date.today().isoformat()
+        if _intraday_guard(force_local=force_local, log_lines=log_lines):
+            _finalize(log_lines, "skip_intraday", candidate_date)
+            return 0
 
     # ----- Remote-first guard (雲端優先,地端備用) -----
     # Runs BEFORE the (expensive, and the actual source of the 7/14 dual-

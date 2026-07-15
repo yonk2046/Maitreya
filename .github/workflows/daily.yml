@@ -4,11 +4,14 @@ name: Maitreya Daily Pipeline
 # workflow runs one hour later and SKIPS itself when the primary already
 # committed today's snapshot — the two pipelines no longer race on main.
 # 2026-07-03: the guard now applies to ALL triggers (schedule + dispatch).
-# A cron-job.org trigger fires workflow_dispatch daily at ~19:05; without
+# A cron-job.org trigger fires workflow_dispatch daily at ~18:05; without
 # the guard it re-ran the full pipeline even when a snapshot was already
 # published (supersede churn / half-baked data-only commits).
 on:
   schedule:
+    # cron-job.org 08:35/18:05 為主力觸發;本檔下方兩條 cron 為延遲備援。
+    # 盤中誤點(GHA cron 慣性延遲 3-4 小時落在台北 09:00-14:00)由
+    # tools/daily.py 的 intraday_guard 擋下。
     - cron: '0 12 * * 1-5'   # 20:00 Asia/Taipei (primary runs 19:00)
     # 2026-07-06: T+1 morning catch-up (08:35 Taipei, Tue-Sat covers Mon-Fri
     # sessions). HiNetCDN 307-blocks *same-day* T86 for datacenter IPs even
