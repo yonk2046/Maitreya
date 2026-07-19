@@ -360,3 +360,47 @@ def test_archive_error_not_overwritten_by_another_error(tmp_path, monkeypatch):
     fmp.fetch_and_write(dry_run=False, date_str="2026-07-14", out_path=out_path, archive_dir=archive_dir)
 
     assert archive_path.read_text(encoding="utf-8") == first_error_content
+
+
+# ── TAIFEX CSV fallback honours --date (歷史回補不吃 now()) — 2026-07-16/17 事故 ──
+# 根因:_fetch_*_futures_html 的 fallback 寫死 qdate = now(),忽略傳入日期 →
+# 歷史回補靜默抓成「今天」的期貨/三大法人資料。修法:_html 版吃 date_str。
+
+def _capture_csv_url(monkeypatch):
+    """Monkeypatch _get_csv to record the URL(s) it is asked to fetch, and
+    return empty rows so the caller falls through to its 'not found' branch."""
+    seen: list[str] = []
+
+    def fake_get_csv(url, timeout=15):
+        seen.append(url)
+        return []
+
+    monkeypatch.setattr(fmp, "_get_csv", fake_get_csv)
+    return seen
+
+
+def test_tx_futures_html_fallback_uses_passed_date_not_now(monkeypatch):
+    seen = _capture_csv_url(monkeypatch)
+    fmp._fetch_tx_futures_html("2026-07-16")
+    assert seen, "expected _get_csv to be called"
+    assert all("2026/07/16" in u for u in seen)
+    today = fmp.datetime.now(fmp.TW_TZ).strftime("%Y/%m/%d")
+    if today != "2026/07/16":
+        assert not any(today in u for u in seen)
+
+
+def test_institutional_futures_html_fallback_uses_passed_date_not_now(monkeypatch):
+    seen = _capture_csv_url(monkeypatch)
+    fmp._fetch_institutional_futures_html("2026-07-16")
+    assert seen, "expected _get_csv to be called"
+    assert all("2026/07/16" in u for u in seen)
+    today = fmp.datetime.now(fmp.TW_TZ).strftime("%Y/%m/%d")
+    if today != "2026/07/16":
+        assert not any(today in u for u in seen)
+
+
+def test_html_fallback_none_date_keeps_now_behaviour(monkeypatch):
+    seen = _capture_csv_url(monkeypatch)
+    fmp._fetch_tx_futures_html(None)
+    today = fmp.datetime.now(fmp.TW_TZ).strftime("%Y/%m/%d")
+    assert seen and all(today in u for u in seen)

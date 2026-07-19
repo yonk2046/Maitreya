@@ -476,13 +476,17 @@ def _get_csv(url: str, timeout: int = 15) -> list[list[str]]:
     return rows
 
 
-def _fetch_tx_futures_html() -> dict[str, Any]:
+def _fetch_tx_futures_html(date_str: str | None = None) -> dict[str, Any]:
     """CSV fallback: download TX daily data from TAIFEX CSV endpoint.
 
     TAIFEX CSV column order (typical):
       交易日期,商品名稱,到期月份(週別),開盤價,最高價,最低價,收盤價,漲跌價,漲跌%,成交量,結算價,未平倉口數
+
+    date_str (YYYY-MM-DD / YYYYMMDD) targets a specific trading day; None keeps
+    the legacy now() behaviour. Without this the fallback silently fetched
+    *today's* futures during a historical back-fill (2026-07-16/17 事故根因).
     """
-    qdate = datetime.now(TW_TZ).strftime("%Y/%m/%d")
+    qdate = _taifex_date(date_str)
     csv_rows: list = []
     for cid in ("TX", "TXF", ""):
         suffix = f"&commodity_id={cid}" if cid else ""
@@ -566,7 +570,7 @@ def _fetch_tx_futures(date_str: str | None = None) -> dict[str, Any]:
 
     # Final fallback: HTML scrape
     if not data:
-        return _fetch_tx_futures_html()
+        return _fetch_tx_futures_html(date_str)
 
     # Find TX records (商品代碼 = TX, 近月)
     tx_rows = [
@@ -608,7 +612,7 @@ def _fetch_tx_futures(date_str: str | None = None) -> dict[str, Any]:
 
 # ── TAIFEX — 三大法人台指期未平倉 ────────────────────────────────────────────
 
-def _fetch_institutional_futures_html() -> dict[str, Any]:
+def _fetch_institutional_futures_html(date_str: str | None = None) -> dict[str, Any]:
     """CSV fallback: download 三大法人台指期未平倉 from TAIFEX CSV endpoint.
 
     CSV columns (typical):
@@ -616,8 +620,12 @@ def _fetch_institutional_futures_html() -> dict[str, Any]:
       空方交易口數,空方交易契約金額(百萬元),多空淨額交易口數,多空淨額交易契約金額(百萬元),
       多方未平倉口數,多方未平倉契約金額(百萬元),空方未平倉口數,空方未平倉契約金額(百萬元),
       多空淨額未平倉口數,多空淨額未平倉契約金額(百萬元)
+
+    date_str (YYYY-MM-DD / YYYYMMDD) targets a specific trading day; None keeps
+    the legacy now() behaviour. Without this the fallback silently fetched
+    *today's* 三大法人 positions during a historical back-fill (2026-07-16/17 事故根因).
     """
-    qdate = datetime.now(TW_TZ).strftime("%Y/%m/%d")
+    qdate = _taifex_date(date_str)
     url = (
         f"https://www.taifex.com.tw/cht/3/futContractsDateDown"
         f"?queryStartDate={qdate}&queryEndDate={qdate}&commodity_id=TX"
@@ -698,7 +706,7 @@ def _fetch_institutional_futures(date_str: str | None = None) -> dict[str, Any]:
 
     # Final fallback: HTML scrape
     if not data:
-        return _fetch_institutional_futures_html()
+        return _fetch_institutional_futures_html(date_str)
 
     # Filter to 台指期 (TX) 未平倉
     tx_rows = [
