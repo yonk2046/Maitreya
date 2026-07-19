@@ -136,6 +136,19 @@ h1, h2, h3, h4 { font-family: 'SF Pro Display','Helvetica Neue',sans-serif !impo
 .scd-pill.scd-neutral { color:var(--scd-neutral); border-color:#8B949E55; }
 .scd-star { color:var(--scd-gold);font-weight:700; }
 
+/* ── P4.1 密度表 Density tables — 四訊號區塊統一設計(Yonki 2026-07-15)
+   小字表頭 · ~30px 行高 · SCD 色點 · 標籤小膠囊 · 原始值無綜合分數 ── */
+.dt-table { width:100%;border-collapse:collapse;margin:2px 0 6px 0; }
+.dt-table th { font-size:10px !important;color:#6B8EAA;text-transform:uppercase;letter-spacing:.06em;text-align:left;padding:4px 10px;border-bottom:1px solid #253A52;font-weight:700;white-space:nowrap; }
+.dt-table td { font-size:13px !important;color:#CDD5E0;padding:4px 10px;border-bottom:1px solid #1A2030;line-height:1.5;vertical-align:middle;height:30px; }
+.dt-table tr:hover td { background:#131B26; }
+.dt-ticker { color:#7EB8D4;font-weight:700;font-family:'SF Mono','Fira Code',monospace; }
+.dt-name  { color:#8B949E;font-size:12px !important; }
+.dt-num   { font-family:monospace; }
+.dt-note  { font-size:10px !important;color:#4A6A8A;text-align:right;margin:0 0 2px 0; }
+.dt-empty { font-size:12px !important;color:#52B788;margin:4px 0 8px 0; }
+.scd-pill.dt-sm { font-size:11px !important;padding:1px 8px;gap:5px;margin:1px 3px 1px 0; }
+
 /* ── Regime banner ── */
 .regime-banner {
     border-radius: 12px;
@@ -591,6 +604,37 @@ def _metric_strip(metrics: list[tuple[str, str, str, str]]) -> None:
     st.markdown(f'<div class="metric-strip">{cells}</div>', unsafe_allow_html=True)
 
 
+def _density_table(headers: list[str], rows: list[str], sort_note: str = "",
+                   max_rows: int = 10) -> None:
+    """P4.1 密度表(Yonki 2026-07-15,四訊號區塊統一):小字表頭、~30px 行高、
+    SCD 色點/小膠囊、原始值。rows 為 <tr>…</tr> HTML 字串;預設最多 max_rows 列,
+    超過收 st.expander「展開全部 (N)」。sort_note 顯示於表頭右側小字(排序鍵標註)。"""
+    head = "".join(f"<th>{h}</th>" for h in headers)
+
+    def _tbl(rs: list[str]) -> str:
+        return (f'<table class="dt-table"><thead><tr>{head}</tr></thead>'
+                f'<tbody>{"".join(rs)}</tbody></table>')
+
+    if sort_note:
+        st.markdown(f'<div class="dt-note">{sort_note}</div>', unsafe_allow_html=True)
+    st.markdown(_tbl(rows[:max_rows]), unsafe_allow_html=True)
+    if len(rows) > max_rows:
+        with st.expander(f"展開全部 ({len(rows)})"):
+            st.markdown(_tbl(rows[max_rows:]), unsafe_allow_html=True)
+
+
+def _dt_empty(text: str) -> None:
+    """密度表空狀態:綠字小 caption 一行帶過,不畫空表格。"""
+    st.markdown(f'<div class="dt-empty">{text}</div>', unsafe_allow_html=True)
+
+
+def _dt_pill(cls: str, text: str, title: str = "") -> str:
+    """小膠囊(密度表尺寸):cls ∈ scd-gold/green/amber/blue/red/neutral。"""
+    t = f' title="{title}"' if title else ""
+    return (f'<span class="scd-pill {cls} dt-sm"{t}>'
+            f'<span class="scd-dot {cls}"></span>{text}</span>')
+
+
 def _chg_cls(chg: float | None) -> str:
     if chg is None:
         return "chg-flat"
@@ -945,56 +989,22 @@ def _heat_score(streak: int, fii, conf_tier: str, weak_sev: str) -> int:
     return s
 
 
-def _heat_bar(score: int) -> str:
-    """Inline HTML progress bar, colour-coded by score tier."""
-    pct = max(0, min(100, int(score / 65 * 100)))
-    if score >= 40:   color = "#52B788"   # green
-    elif score >= 20: color = "#D4A84B"   # amber
-    elif score >= 5:  color = "#7EB8D4"   # blue-grey
-    else:             color = "#4A5A6A"   # dim
-    return (
-        f'<div style="display:flex;align-items:center;gap:6px;">'
-        f'<div style="flex:1;height:6px;border-radius:3px;background:#1E2A3A;">'
-        f'<div style="width:{pct}%;height:100%;border-radius:3px;background:{color};"></div>'
-        f'</div>'
-        f'<span style="font-size:11px;color:{color};font-weight:700;min-width:22px;">{score}</span>'
-        f'</div>'
-    )
-
-
-def _heat_obs_tags(streak: int, fii, conf_tier: str, weak: dict) -> str:
-    """Build inline observation tag HTML — positive signals + blockers."""
-    tags = []
-    # Positive
-    if streak >= 3:
-        tags.append(f'<span class="signal-tag">連買{streak}日</span>')
-    elif streak >= 1:
-        tags.append(f'<span class="signal-tag" style="color:#7EB8D4;">{streak}日</span>')
-    if fii is not None and fii > 0:
-        tags.append('<span class="signal-tag">外資同向</span>')
-    if conf_tier == "FULL":
-        tags.append('<span class="signal-tag">資料完整</span>')
-    # Concerns
-    if fii is not None and fii < 0:
-        tags.append('<span class="signal-tag warn">外資反向</span>')
-    if conf_tier == "SKELETON":
-        tags.append('<span class="signal-tag warn">資料偏薄</span>')
-    sev = weak.get("severity", "none")
-    if sev != "none":
-        label = weak.get("label_zh", "轉弱")
-        flag_codes = "+".join(f["code"] for f in weak.get("flags", []))
-        tags.append(
-            f'<span class="signal-tag red" title="{flag_codes}">'
-            f'🔻 {label}</span>'
-        )
-    return "".join(tags)
+def _heat_level(score: int) -> tuple[str, str]:
+    """熱度分 → (SCD 色類別, 中文級別)。切點沿用舊 _heat_bar 色階(40/20/5)。"""
+    if score >= 40:
+        return "scd-green", "高"
+    if score >= 20:
+        return "scd-amber", "中"
+    if score >= 5:
+        return "scd-blue", "低"
+    return "scd-neutral", "冷"
 
 
 def _render_heat_radar(snaps: list[dict]) -> None:
     """P3: additive heat-score ranking for all tracked stocks.
 
-    Reads only from the latest snapshot + prior snap context.
-    Display-only — zero impact on composite_score / tier / gates.
+    P4.1(Yonki 2026-07-15):卡片牆 → 密度表(代號｜名稱｜熱度色點+級別｜連買｜
+    外資方向｜觀察標籤小膠囊)。Display-only — zero impact on composite/tier/gates。
     """
     if not snaps:
         return
@@ -1009,13 +1019,10 @@ def _render_heat_radar(snaps: list[dict]) -> None:
         "📡", "全市場熱度觀察", "Heat Radar — All Tracked Stocks",
         len(latest_stocks),
     )
-    st.markdown(
-        '<div class="data-gap-notice" style="background:#0F1408;border-left-color:#52B788;color:#8B9E8A;">'
-        '熱度分 = 連買積分 + 外資對齊 + 資料品質 − 轉弱扣分。'
-        ' <b>純觀察層</b>，不影響黃金名單評分 / 閘門 / Tier。'
-        ' P3b 啟動後方顯示正式評分。</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(_EXPLAIN_DIV.format(
+        text="熱度＝連買積分＋外資對齊＋資料品質－轉弱扣分的觀察級別。"
+             "純觀察層，不影響黃金名單評分／閘門／Tier。"),
+        unsafe_allow_html=True)
 
     # Build rows
     rows = []
@@ -1027,54 +1034,52 @@ def _render_heat_radar(snaps: list[dict]) -> None:
         weak   = stock.get("weakening", {})
         sev    = weak.get("severity", "none")
         score  = _heat_score(streak, fii, tier, sev)
-        price  = stock.get("current_price")
-        chg    = stock.get("change_pct")
         name   = stock.get("name", "") or _short_name(ticker)
         rows.append({
-            "ticker": ticker,
-            "name":   name,
-            "score":  score,
-            "streak": streak,
-            "fii":    fii,
-            "tier":   tier,
-            "weak":   weak,
-            "sev":    sev,
-            "price":  price,
-            "chg":    chg,
+            "ticker": ticker, "name": name, "score": score,
+            "streak": streak, "fii": fii, "tier": tier, "weak": weak,
         })
 
     rows.sort(key=lambda r: (-r["score"], -r["streak"]))
 
-    # Render cards in 2 columns
-    col_a, col_b = st.columns(2)
-    for i, r in enumerate(rows):
-        col = col_a if i % 2 == 0 else col_b
-        price_str = f"NT${r['price']:,.2f}" if r["price"] else "—"
-        chg_str   = f"{r['chg']:+.2f}%" if r["chg"] is not None else "—"
-        chg_cls   = _chg_cls(r["chg"])
-        bar_html  = _heat_bar(r["score"])
-        obs_html  = _heat_obs_tags(r["streak"], r["fii"], r["tier"], r["weak"])
-        rank_str  = f"#{i+1}"
+    html_rows = []
+    for r in rows:
+        lvl_cls, lvl_zh = _heat_level(r["score"])
+        heat_cell = f'<span class="scd-dot {lvl_cls}"></span> {lvl_zh}'
+        fii = r["fii"]
+        if fii is None:
+            fii_cell = '<span style="color:#4A5A6A;">—</span>'
+        elif fii > 0:
+            fii_cell = '<span style="color:#52B788;">同向</span>'
+        elif fii < 0:
+            fii_cell = '<span style="color:#E05C7A;">反向</span>'
+        else:
+            fii_cell = '<span style="color:#4A5A6A;">持平</span>'
+        tags = []
+        if r["tier"] == "FULL":
+            tags.append(_dt_pill("scd-blue", "資料完整"))
+        elif r["tier"] == "SKELETON":
+            tags.append(_dt_pill("scd-amber", "資料偏薄"))
+        weak = r["weak"]
+        if weak.get("severity", "none") != "none":
+            flag_codes = "+".join(f["code"] for f in weak.get("flags", []))
+            tags.append(_dt_pill("scd-red", f'🔻 {weak.get("label_zh", "轉弱")}', title=flag_codes))
+        html_rows.append(
+            f'<tr><td class="dt-ticker">{r["ticker"]}</td>'
+            f'<td class="dt-name">{r["name"]}</td>'
+            f'<td>{heat_cell}</td>'
+            f'<td class="dt-num">{r["streak"]}</td>'
+            f'<td>{fii_cell}</td>'
+            f'<td>{"".join(tags)}</td></tr>'
+        )
 
-        with col:
-            st.markdown(
-                f'<div class="watch-card" style="padding:10px 14px;">'
-                f'<div style="display:flex;justify-content:space-between;align-items:center;">'
-                f'<div>'
-                f'<span style="font-size:11px;color:#4A6A8A;margin-right:4px;">{rank_str}</span>'
-                f'<span class="stock-ticker">{r["ticker"]}</span>'
-                f'<span class="stock-name">{r["name"]}</span>'
-                f'</div>'
-                f'<div style="text-align:right;">'
-                f'<span class="stock-price">{price_str}</span>&nbsp;'
-                f'<span class="{chg_cls}" style="font-size:12px;">{chg_str}</span>'
-                f'</div>'
-                f'</div>'
-                f'<div style="margin:6px 0 4px 0;">{bar_html}</div>'
-                f'<div style="margin-top:4px;">{obs_html}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
+    if not html_rows:
+        _dt_empty("今日無追蹤標的 ✓")
+        return
+    _density_table(
+        ["代號", "名稱", "熱度", "連買(日)", "外資", "觀察標籤"],
+        html_rows, sort_note="熱度排序",
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1336,10 +1341,20 @@ def _render_strengthening(snaps: list[dict]) -> None:
 # PANEL 3b — Weakening / Distribution Signals  轉弱出貨
 # ─────────────────────────────────────────────────────────────────────────────
 
-_SEV_STYLE = {
-    "red":    ("#E05C7A", "🔴"),
-    "orange": ("#E8A33D", "🟠"),
-    "yellow": ("#D4C95A", "🟡"),
+# W1–W5 旗標定義(密度表 hover title 用;文案沿用原 gc-tooltip 圖例字典)
+_W_FLAG_DEFS = {
+    "W1": "W1 動能衰竭 — 連買≥3日但速度轉負、買量遞減",
+    "W2": "W2 雙引擎分歧 — 主力買超但外資賣超達主力買量30%",
+    "W3": "W3 主力消失 — 曾連買≥3日，從買超榜缺席（≠賣出；缺席1日可能只是輪動，缺席≥2日才可合成紅燈）",
+    "W4": "W4 散戶接盤 — 券商家數差轉正，或價跌融資增≥3日/10日",
+    "W5": "W5 分點賣壓 — 分點總賣>總買，或前三買點邊買邊倒（賣出自身買量≥60%）",
+}
+
+# severity → (SCD 色類別, 高/中/低)。C12 呈現映射 viewer 單一擁有。
+_SEV_DT = {
+    "red":    ("scd-red",     "高"),
+    "orange": ("scd-amber",   "中"),
+    "yellow": ("scd-neutral", "低"),
 }
 
 
@@ -1374,79 +1389,42 @@ def _render_weakening(snaps: list[dict]) -> None:
 
     _section_header("🔻", "轉弱出貨", "Weakening / Distribution", len(results))
 
-    # W1–W5 flag legend (hover ⓘ, same pattern as the 量能比 tooltip)
-    st.markdown(
-        '<div style="margin:-6px 0 10px 2px;font-size:12px;color:#8B949E;">'
-        '五旗標偵測'
-        '<div class="gc-tooltip-wrap">'
-        '<span class="gc-tooltip-icon">ⓘ</span>'
-        '<div class="gc-tooltip" style="white-space:normal;width:340px;">'
-        '<b>W1 動能衰竭</b> — 連買≥3日但速度轉負、買量遞減<br>'
-        '<b>W2 雙引擎分歧</b> — 主力買超但外資賣超達主力買量30%<br>'
-        '<b>W3 主力消失</b> — 曾連買≥3日，從買超榜缺席（≠賣出；缺席1日可能只是輪動，缺席≥2日才可合成紅燈）<br>'
-        '<b>W4 散戶接盤</b> — 券商家數差轉正，或價跌融資增≥3日/10日<br>'
-        '<b>W5 分點賣壓</b> — 分點總賣&gt;總買，或前三買點邊買邊倒（賣出自身買量≥60%）<br>'
-        '<span style="color:#D4A84B;">嚴重度：紅 = 實錘W3+佐證 或 ≥3旗標；橙 = 2旗標 或 W3單獨；黃 = 1旗標</span>'
-        '</div></div></div>',
-        unsafe_allow_html=True,
-    )
-
-    n_red = sum(1 for r in results if r["severity"] == "red")
-    n_org = sum(1 for r in results if r["severity"] == "orange")
-    n_yel = sum(1 for r in results if r["severity"] == "yellow")
-    st.caption(
-        f"🔴 出貨確認 {n_red} ｜ 🟠 轉弱 {n_org} ｜ 🟡 失速 {n_yel} ｜ "
-        "規則：紅 = 主力消失+佐證 或 ≥3旗標；橙 = 2旗標；黃 = 1旗標。"
-        "缺席 >3 個快照的標的自動移出（陳舊訊號）。"
-    )
-
     if not results:
-        st.markdown(
-            '<div class="data-gap-notice" style="border-left-color:#52B788;background:#0A1F12;color:#52B788;">'
-            '✓ 目前追蹤範圍內無轉弱訊號。 No weakening signals detected.</div>',
-            unsafe_allow_html=True,
-        )
+        _dt_empty("今日無轉弱訊號 ✓")
         return
 
+    # P4.1(Yonki 2026-07-15):警示卡牆 → 密度表。旗標膠囊 hover title 顯示定義全文。
     latest_stocks = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
-
+    html_rows = []
     for w in results:
         ticker = w["ticker"]
         stock  = latest_stocks.get(ticker, {})
         name   = stock.get("name") or _short_name(ticker)
-        color, dot = _SEV_STYLE[w["severity"]]
-
-        price = stock.get("current_price")
-        chg   = stock.get("change_pct")
-        price_str = f"NT${price:,.2f}" if price else "—"
-        chg_str   = f"{chg:+.2f}%" if chg is not None else "—"
-        chg_cls   = _chg_cls(chg)
-
-        flag_tags = "".join(
-            f'<span class="signal-tag warn" title="{f["detail"]}">{f["code"]} {f["zh"]}</span>'
+        sev_cls, sev_zh = _SEV_DT.get(w["severity"], ("scd-neutral", "低"))
+        sev_cell = (f'<span title="{w.get("label_zh", "")}">'
+                    f'<span class="scd-dot {sev_cls}"></span> {sev_zh}</span>')
+        net = w.get("net_cumulative", 0) or 0
+        net_color = "#E05C7A" if net < 0 else "#52B788"
+        pills = "".join(
+            _dt_pill("scd-amber", f'{f["code"]} {f["zh"]}',
+                     title=_W_FLAG_DEFS.get(f["code"], f.get("detail", "")))
             for f in w["flags"]
         )
-        detail_line = " ｜ ".join(f["detail"] for f in w["flags"])
-
-        absent_note = ""
-        if not w["present_latest"]:
-            absent_note = (f'<span class="signal-tag red">缺席 {w["snaps_since_seen"]} 個快照</span>')
-
-        st.markdown(
-            f'<div class="stock-card" style="border-left: 3px solid {color};">'
-            f'<div class="stock-card-header">'
-            f'<div><span class="stock-ticker">{ticker}</span>'
-            f'<span class="stock-name">{name}</span>&nbsp;'
-            f'<span style="color:{color};font-weight:700;">{dot} {w["label_zh"]}</span></div>'
-            f'<div><span class="stock-price">{price_str}</span>&nbsp;'
-            f'<span class="{chg_cls}">{chg_str}</span></div>'
-            f'</div>'
-            f'<span class="signal-tag">窗口累計 {w["net_cumulative"]:+,} 張</span>'
-            f'{flag_tags}{absent_note}'
-            f'<div style="margin-top:6px;font-size:12.5px;color:#8B93A3;">{detail_line}</div>'
-            f'</div>',
-            unsafe_allow_html=True,
+        if not w.get("present_latest", True):
+            pills += _dt_pill("scd-neutral", f'缺席 {w.get("snaps_since_seen", "?")} 快照',
+                              title="缺席 >3 個快照的標的自動移出（陳舊訊號）")
+        html_rows.append(
+            f'<tr><td class="dt-ticker">{ticker}</td>'
+            f'<td class="dt-name">{name}</td>'
+            f'<td>{sev_cell}</td>'
+            f'<td class="dt-num" style="color:{net_color};">{net:+,}</td>'
+            f'<td>{pills}</td></tr>'
         )
+
+    _density_table(
+        ["代號", "名稱", "嚴重度", "窗口累計(張)", "轉弱旗標"],
+        html_rows, sort_note="嚴重度排序 · 旗標滑鼠停留看定義",
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1474,44 +1452,37 @@ def _render_failed_breakouts(snaps: list[dict]) -> None:
     _section_header("⚠", "假突破警報", "Failed Breakout Warnings", len(warnings))
 
     if not warnings:
-        st.markdown(
-            '<div class="data-gap-notice" style="border-left-color:#52B788;background:#0A1F12;color:#52B788;">'
-            '✓ 目前追蹤範圍內無明顯假突破跡象。 No failed breakout signals detected.</div>',
-            unsafe_allow_html=True,
-        )
+        _dt_empty("今日無假突破 ✓")
         return
 
+    # P4.1(Yonki 2026-07-15):警報卡 → 密度表,回落天數排序。
     latest_stocks = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
+    warnings.sort(key=lambda tc: -(tc[1]["failed_breakout"].get("retreat_days") or 0))
 
+    html_rows = []
     for ticker, ctx in warnings:
         fb    = ctx["failed_breakout"]
         stock = latest_stocks.get(ticker, {})
-        meta  = TIER_A.get(ticker, {})
         name  = stock.get("name") or _short_name(ticker)
-
-        price = stock.get("current_price")
-        chg   = stock.get("change_pct")
-        price_str = f"NT${price:,.2f}" if price else "—"
-        chg_str   = f"{chg:+.2f}%" if chg is not None else "—"
-        chg_cls   = _chg_cls(chg)
-
-        risk_cls = "signal-tag red" if "高風險" in fb["label_zh"] else "signal-tag warn"
-
-        st.markdown(
-            f'<div class="stock-card" style="border-left: 3px solid #E05C7A;">'
-            f'<div class="stock-card-header">'
-            f'<div><span class="stock-ticker">{ticker}</span>'
-            f'<span class="stock-name">{name}</span></div>'
-            f'<div><span class="stock-price">{price_str}</span>&nbsp;'
-            f'<span class="{chg_cls}">{chg_str}</span></div>'
-            f'</div>'
-            f'<span class="{risk_cls}">{fb["label_zh"]}</span>'
-            f'<span class="signal-tag">突破日 {fb["breakout_date"]} +{fb["breakout_chg"]:.1f}%</span>'
-            f'<span class="signal-tag warn">量比 {fb["vol_ratio"]:.1f}×</span>'
-            f'<span class="signal-tag warn">退卻 {fb["retreat_days"]} 日</span>'
-            f'</div>',
-            unsafe_allow_html=True,
+        bdate = str(fb.get("breakout_date", ""))
+        bdate_s = bdate[5:].replace("-", "/") if len(bdate) >= 10 else bdate
+        high_risk = "高風險" in fb.get("label_zh", "")
+        sev_cls = "scd-red" if high_risk else "scd-amber"
+        retreat_cell = (f'<span title="{fb.get("label_zh", "")}">'
+                        f'<span class="scd-dot {sev_cls}"></span> {fb["retreat_days"]} 日</span>')
+        html_rows.append(
+            f'<tr><td class="dt-ticker">{ticker}</td>'
+            f'<td class="dt-name">{name}</td>'
+            f'<td class="dt-num">{bdate_s}</td>'
+            f'<td class="dt-num" style="color:#52B788;">+{fb["breakout_chg"]:.1f}%</td>'
+            f'<td class="dt-num">{fb["vol_ratio"]:.1f}×</td>'
+            f'<td>{retreat_cell}</td></tr>'
         )
+
+    _density_table(
+        ["代號", "名稱", "突破日", "當日", "量比", "回落"],
+        html_rows, sort_note="回落天數排序 · 回落欄滑鼠停留看風險級別",
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1781,7 +1752,8 @@ def _render_narrative(snaps: list[dict], part: str = "all") -> None:
     if part in ("all", "themes"):
         _render_narrative_bullets_and_themes(report, include_bullets=(part == "all"))
     if part in ("all", "watchpoints"):
-        _render_narrative_watchpoints(report)
+        # n_dates = 敘事窗口日數(持續出現表把覆蓋率%換算回原始出現日數用)
+        _render_narrative_watchpoints(report, n_dates=len(snaps))
 
 
 def _render_narrative_bullets_and_themes(report: dict, include_bullets: bool) -> None:
@@ -1856,7 +1828,7 @@ def _render_narrative_themes(report: dict) -> None:
     st.markdown('<div style="margin:28px 0 0 0;"></div>', unsafe_allow_html=True)
 
 
-def _render_narrative_watchpoints(report: dict) -> None:
+def _render_narrative_watchpoints(report: dict, n_dates: int = 10) -> None:
     # ── Section C: Notable Entities ──────────────────────────────────────
     # D2(Yonki 2026-07-15):刪「可能假突破」欄——出場警示的 failed_breakouts 是唯一 SoT,
     # 此處重複判斷退場。三欄改兩欄。
@@ -1867,28 +1839,32 @@ def _render_narrative_watchpoints(report: dict) -> None:
     ent = report.get("notable_entities", {})
     col_left, col_mid = st.columns(2, gap="small")
 
-    # Persistent tickers
+    # Persistent tickers — P4.1(Yonki 2026-07-15):長條列 → 密度表。
+    # 覆蓋率%換算回原始出現日數(X / N 日),窗口 N = 敘事實際窗口(n_dates)。
     with col_left:
         pers = ent.get("persistent_tickers", [])
         _section_header("◈", "持續出現個股", "Persistent Tickers")
         if not pers:
-            st.markdown('<div class="data-gap-notice">無符合資料</div>', unsafe_allow_html=True)
-        for e in pers:
-            streak = e.get("current_streak", 0)
-            cov    = e.get("coverage_pct", 0)
-            sc = "streak-active" if streak >= 3 else ("streak-warn" if streak >= 1 else "streak-none")
-            st.markdown(
-                f'<div class="stock-card">'
-                f'<span class="stock-ticker">{e["ticker"]}</span>'
-                f'<span class="stock-name">{_short_name(e["ticker"])}</span>'
-                f'<div style="margin-top:6px;">'
-                f'<span class="radar-streak {sc}">連續在榜{streak}日</span>'
-                f'<span class="signal-tag" style="margin-left:6px;">覆蓋率 {cov:.0f}%</span>'
-                f'</div>'
-                f'<div style="font-size:12px;color:#6B8EAA;margin-top:6px;font-style:italic;">'
-                f'{e.get("note_en","")}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
+            _dt_empty("無持續出現個股")
+        else:
+            win = max(1, n_dates)
+            html_rows = []
+            for e in pers:
+                streak = e.get("current_streak", 0)
+                days   = round((e.get("coverage_pct", 0) / 100) * win)
+                # 最近動向:note_zh 去掉「名稱（代號）：覆蓋率 X%，」前綴,縮成一句
+                note = (e.get("note_zh") or "").split("，", 1)[-1].rstrip("。") or "—"
+                s_cls = "scd-green" if streak >= 3 else ("scd-blue" if streak >= 1 else "scd-neutral")
+                html_rows.append(
+                    f'<tr><td class="dt-ticker">{e["ticker"]}</td>'
+                    f'<td class="dt-name">{_short_name(e["ticker"])}</td>'
+                    f'<td><span class="scd-dot {s_cls}"></span> <span class="dt-num">{streak}</span></td>'
+                    f'<td class="dt-num">{days} / {win} 日</td>'
+                    f'<td class="dt-name">{note}</td></tr>'
+                )
+            _density_table(
+                ["代號", "名稱", "連續在榜(日)", "窗口出現", "最近動向"],
+                html_rows, sort_note="持續度排序",
             )
 
     # Strongest transitions
