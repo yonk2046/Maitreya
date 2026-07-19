@@ -27,6 +27,12 @@ jobs:
         id: check
         run: |
           TODAY=$(date +%F)
+          # GHA 慣性延遲可能把 21:30 的班拖過午夜 —— 凌晨 6 點前醒來
+          # 一律查「昨晚」該出的快照,否則整晚白站崗。
+          if [ "$(date +%H)" -lt 6 ]; then
+            TODAY=$(date -d yesterday +%F)
+            echo "Fired after midnight — checking previous session ${TODAY} instead."
+          fi
           echo "today=${TODAY}" >> "$GITHUB_OUTPUT"
           if [ -f "reports/${TODAY}.json" ]; then
             echo "reports/${TODAY}.json is on origin/main — fresh. ✓"
