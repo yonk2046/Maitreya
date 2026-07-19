@@ -1,0 +1,71 @@
+name: Snapshot Freshness Canary
+# 鮮度哨兵 (2026-07-20, 7/16-7/17 靜默失敗兩天後立案)。
+# 唯一職責:週間晚上確認「開盤日的快照當晚有出現在 origin/main」。
+# 不跑 pipeline、不寫 data/reports —— 純觀察。任何一層排程
+# (cron-job.org / GHA 備援 / 本機 launchd) 掛掉,最終症狀都是
+# 快照缺席,這裡一網打盡:開 issue 指派 + 工作流亮紅。
+# 交易日判定重用 tools/daily.py 的 _trading_day_oracle(fail-closed:
+# 假日與網路不明都安靜結束,寧可漏叫不誤叫)。
+on:
+  schedule:
+    - cron: '30 13 * * 1-5'   # 21:30 Asia/Taipei(GHA 慣性延遲最壞 ~午夜,仍在當晚)
+  workflow_dispatch:          # cron-job.org 可另掛此 dispatch 求準時(可選)
+env:
+  TZ: Asia/Taipei
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 1
+      - name: Check today's snapshot freshness
+        id: check
+        run: |
+          TODAY=$(date +%F)
+          echo "today=${TODAY}" >> "$GITHUB_OUTPUT"
+          if [ -f "reports/${TODAY}.json" ]; then
+            echo "reports/${TODAY}.json is on origin/main — fresh. ✓"
+            echo "alarm=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "No snapshot for ${TODAY} — asking trading-day oracle..."
+          set +e
+          python3 -c "
+          import sys
+          from tools.daily import _trading_day_oracle
+          is_open, reason = _trading_day_oracle('${TODAY}')
+          print(f'oracle: is_open={is_open} — {reason}')
+          sys.exit(10 if is_open else 0)
+          "
+          RC=$?
+          set -e
+          if [ "$RC" = "10" ]; then
+            echo "Trading session confirmed but snapshot missing — ALARM."
+            echo "alarm=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No trading session today (or indeterminate, fail-closed) — quiet exit."
+            echo "alarm=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Raise alarm issue
+        if: steps.check.outputs.alarm == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TODAY="${{ steps.check.outputs.today }}"
+          TITLE="🚨 ${TODAY} 快照缺席 — 當日 pipeline 全層失敗"
+          EXISTING=$(gh issue list --state open --search "${TODAY} 快照缺席 in:title" --json number --jq length)
+          if [ "$EXISTING" = "0" ]; then
+            gh issue create \
+              --title "$TITLE" \
+              --assignee yonk2046 \
+              --body "$(printf '鮮度哨兵於 %s 確認:今天是交易日,但 reports/%s.json 尚未出現在 origin/main。\n\n三層排程(cron-job.org 18:05 / GHA 20:00 備援 / 本機 launchd 19:00)當晚全部未能落地快照。\n\n查證起點:\n- Actions 頁最近的 Maitreya Daily Pipeline 執行紀錄(fetch/pipeline/verify 哪一步紅)\n- cron-job.org 兩個 job 的執行歷史(HTTP 狀態;401=PAT 過期)\n- 本機 reports/_daily_logs/%s.log\n\n隔日早班(08:35)通常會自動補建;此 issue 的意義是當晚就知道,而不是像 7/16-7/17 那樣兩天後才發現。' "$(date '+%H:%M')" "$TODAY" "$TODAY")"
+            echo "Alarm issue created."
+          else
+            echo "Alarm issue for ${TODAY} already open — not duplicating."
+          fi
+          exit 1   # 亮紅讓 Actions 列表一眼可見
