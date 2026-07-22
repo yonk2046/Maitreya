@@ -272,12 +272,16 @@ snapshot_fields:
     status: active
 
   - name: rankings
-    semantic: "分層名單（golden/watch/neutral/ignored + sort_keys_used）"
+    semantic: >
+      分層名單（golden/watch/neutral/ignored + sort_keys_used）；P3a 全 abstain
+      恆空、含 "P3a abstained" 佔位，非「系統無推薦」——實際推薦在 per-stock
+      obs_golden_action_group/obs_golden_tier（viewer 聚合呈現）。外部審計誤報
+      收案 #1（2026-07-23）。
     state: O
     grain: date
     replay: epoch-scoped-O
     owner: Golden
-    status: active
+    status: deprecated-pending   # 外部審計誤報收案：viewer 聚合已改讀 per-stock obs_golden_*；不停寫、major(2.0) 移除，循 temporal_state 先例
 
   - name: audit_log
     semantic: "事件流水（ELIMINATED/LOOKBACK_VERIFIED/... lineage）"
@@ -381,7 +385,7 @@ record_fields:
   - {name: obs_golden_tier,         semantic: "黃金層資格 tier",           state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
   - {name: obs_golden_conviction,   semantic: "黃金層 conviction 強度",     state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
   - {name: obs_golden_action_group, semantic: "進場行動群組（5%鐵則+weakening）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
-  - {name: obs_golden_gates_passed, semantic: "通過的資格閘門",            state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
+  - {name: obs_golden_gates_passed, semantic: "通過的資格閘門；三分支設計(core/obs_landing.py:75-109,NOTES #26)：過五關→滿 gates；差一關→gates+near_miss；空 {} 是**已評估、差≥2關**，非「未評估」——外部審計誤報收案#3(2026-07-23)", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
   - {name: obs_golden_tier_caps,    semantic: "tier 上限（fii_alignment cap 等）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
   - {name: obs_golden_near_miss,    semantic: "差一步清單（含 missed_gate，不落 tier）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Golden, status: active, landed_version: "1.9.0"}
   # state machine 六欄（NOTES #30；days_in_state/state_entered 依 as-was 落地序列，C10 bootstrap 首日=1）
@@ -396,7 +400,7 @@ record_fields:
   # temporal（NOTES #35）
   - {name: sync_streak,             semantic: "參與者同向連續數（候選終名 derived_participant_sync_streak）", state: O, grain: ticker, replay: epoch-scoped-O, owner: temporal_enrich, status: active, landed_version: "1.9.0", alias: derived_participant_sync_streak}
   # distribution（NOTES #38）
-  - {name: obs_dist_consistency,    semantic: "賣方一致性（唯一賣方證據源；不在賣方榜→null）", state: O, grain: ticker, replay: epoch-scoped-O, owner: Distribution, status: active, landed_version: "1.9.0"}
+  - {name: obs_dist_consistency,    semantic: "賣方一致性（唯一賣方證據源；不在賣方榜→null）；RC-8 資格/行動分離(NOTES #38,core/obs_landing.py:139)：與 obs_golden_action_group 兩鏡頭正交，executable 與此弱/觀察並存非矛盾、不做仲裁塌縮——外部審計誤報收案#2(2026-07-23)", state: O, grain: ticker, replay: epoch-scoped-O, owner: Distribution, status: active, landed_version: "1.9.0"}
 
   # ── 時序記憶（殭屍欄）(O, StateMachine) ───────────────────────────────────
   - {name: temporal_state,   semantic: "per-stock 時序記憶 stub（prior_tier/velocity/trend...）；零引擎消費殭屍欄，不填不擴（NOTES #31）；概念後繼=obs_sm_state（非 alias，不雙寫）", state: O, grain: ticker, replay: epoch-scoped-O, owner: StateMachine, status: deprecated-pending}
