@@ -1,8 +1,11 @@
 """Daily data orchestrator for SCD Engine.
 
 Usage:
-  python3 tools/fetch_daily.py           — full fetch, writes data/today.json
-  python3 tools/fetch_daily.py --dry-run — print plan only, no writes
+  python3 tools/fetch_daily.py                    — full fetch, writes data/today.json
+  python3 tools/fetch_daily.py --dry-run           — print plan only, no writes
+  python3 tools/fetch_daily.py --date 2026-05-25   — target a specific trading day
+                                                      (historical/backfill re-fetch;
+                                                      default = today, unchanged)
 
 Calls: fubon → twse → tdcc → writes data/today.json
 Progress is emitted as JSON lines to stdout for the HTTP server to stream.
@@ -182,9 +185,26 @@ def derive_trading_date(twse_result):
     return d.strftime("%Y-%m-%d")
 
 
-def run(dry_run=False):
+def _resolve_fetch_date(date_str=None):
+    """Resolve the target trading date for this run's market-pulse fetch.
+
+    date_str (YYYY-MM-DD, optional): explicit target day (historical/backfill
+    re-fetch). None keeps the legacy behaviour — today, via datetime.now() —
+    so callers that never pass a date see no change at all.
+    """
+    return date_str if date_str else datetime.now().strftime("%Y-%m-%d")
+
+
+def run(dry_run=False, date_str=None):
+    """Run the full daily fetch pipeline.
+
+    date_str (YYYY-MM-DD, optional): target trading day for the market-pulse
+    fetch below. None keeps the legacy behaviour (today, via datetime.now()).
+    Without this, historical/backfill re-fetches (orchestrator path) silently
+    fetched *today's* market pulse instead of the day being reconstructed.
+    """
     TOTAL_STEPS = 10
-    fetch_date = datetime.now().strftime("%Y-%m-%d")
+    fetch_date = _resolve_fetch_date(date_str)
     today_path = os.path.join(DATA_DIR, "today.json")
 
     emit(0, TOTAL_STEPS, "初始化...", status="running")
@@ -499,6 +519,17 @@ def run(dry_run=False):
     return output
 
 
+def _cli_date_arg(argv):
+    """Extract --date VALUE or --date=VALUE from argv; None if not given."""
+    for i, arg in enumerate(argv):
+        if arg == "--date" and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith("--date="):
+            return arg.split("=", 1)[1]
+    return None
+
+
 if __name__ == "__main__":
     dry_run = "--dry-run" in sys.argv
-    run(dry_run=dry_run)
+    cli_date = _cli_date_arg(sys.argv)
+    run(dry_run=dry_run, date_str=cli_date)

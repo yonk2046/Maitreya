@@ -19,6 +19,8 @@ from tools.fetch_daily import (  # noqa: E402
     MEMORY_ANCHORS,
     build_branch_fetch_list,
     _prior_priority_from_snapshot,
+    _cli_date_arg,
+    _resolve_fetch_date,
 )
 
 TIER_A = ["2330", "2317", "2382", "2454", "2308", "2881", "2882", "2891"]
@@ -73,3 +75,36 @@ def test_prior_snapshot_seed_real_data():
 
 def test_missing_reports_dir_is_safe():
     assert _prior_priority_from_snapshot("/no/such/dir") == ([], [])
+
+
+# ── market_pulse 目標日貫通 — historical backfill 抓錯天 ────────────────────
+# 根因:fetch_daily.py 內呼叫 market_pulse fetch_and_write 時,fetch_date 一律
+# 寫死 datetime.now(),歷史日期重建(orchestrator 路徑)因此靜默抓成「今天」的
+# 大盤脈搏而非目標日。修法(比照 68d832c 對 _fetch_*_futures_html 的模式):
+# run()/_resolve_fetch_date 接受可選 date_str,None 時維持 now() 行為不變。
+
+def test_resolve_fetch_date_uses_explicit_date_not_now():
+    assert _resolve_fetch_date("2026-05-25") == "2026-05-25"
+
+
+def test_resolve_fetch_date_none_keeps_now_behaviour():
+    from datetime import datetime as _dt
+    today = _dt.now().strftime("%Y-%m-%d")
+    assert _resolve_fetch_date(None) == today
+    assert _resolve_fetch_date() == today
+
+
+def test_cli_date_arg_parses_space_separated_form():
+    assert _cli_date_arg(["fetch_daily.py", "--date", "2026-05-25"]) == "2026-05-25"
+
+
+def test_cli_date_arg_parses_equals_form():
+    assert _cli_date_arg(["fetch_daily.py", "--date=2026-05-25"]) == "2026-05-25"
+
+
+def test_cli_date_arg_absent_returns_none():
+    assert _cli_date_arg(["fetch_daily.py", "--dry-run"]) is None
+
+
+def test_cli_date_arg_trailing_flag_with_no_value_returns_none():
+    assert _cli_date_arg(["fetch_daily.py", "--date"]) is None
