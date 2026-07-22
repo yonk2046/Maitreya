@@ -404,3 +404,86 @@ def test_html_fallback_none_date_keeps_now_behaviour(monkeypatch):
     fmp._fetch_tx_futures_html(None)
     today = fmp.datetime.now(fmp.TW_TZ).strftime("%Y/%m/%d")
     assert seen and all(today in u for u in seen)
+
+
+# ── TAIEX MI_INDEX 漲跌符號 — 2026-07-17 事故 ───────────────────────────────
+# 根因:TWSE MI_INDEX 欄位順序是 指數,收盤指數,漲跌(+/-),漲跌點數,漲跌百分比(%)。
+# 「漲跌點數」(row[3]) 是不帶正負號的絕對值,正負號在獨立的 row[2]
+# (HTML 包裹,如 "<p style='color:green'>-</p>")。舊碼直接把 row[3] 當成已簽章
+# 的 change,大跌日因此輸出正值(收盤 42671.27、change_pct=-6.47,
+# 但 change 誤植為 +2953.71,對照 data/market_pulse/2026-07-17.json)。
+
+def _fake_mi_index_ind_response(title, sign_html, mag, pct):
+    return {
+        "stat": "OK",
+        "tables": [{
+            "title": title,
+            "fields": ["指數", "收盤指數", "漲跌(+/-)", "漲跌點數", "漲跌百分比(%)", "特殊處理註記"],
+            "data": [
+                ["發行量加權股價指數", "42,671.27" if mag == "2,953.71" else "22,150.23",
+                 sign_html, mag, pct, ""],
+            ],
+        }],
+    }
+
+
+def _block_taiex_network_and_cache(monkeypatch):
+    """Force the Yahoo step to fail fast (no network in tests) so _fetch_taiex
+    falls through to the MI_INDEX-tables step, and stop it writing to the
+    real data/.taiex_cache.json (data/ is WORM/off-limits for this task)."""
+    monkeypatch.setattr(fmp.time, "sleep", lambda *_: None)
+
+    def _no_network(*a, **k):
+        raise OSError("network disabled in test")
+    monkeypatch.setattr(fmp.urllib.request, "urlopen", _no_network)
+    monkeypatch.setattr(fmp, "_save_taiex_cache", lambda *_a, **_k: None)
+
+
+def test_fetch_taiex_mi_index_down_day_change_matches_change_pct_sign(monkeypatch):
+    _block_taiex_network_and_cache(monkeypatch)
+    monkeypatch.setattr(
+        fmp, "_get_json",
+        lambda *a, **k: _fake_mi_index_ind_response(
+            "115年07月17日 價格指數(臺灣證券交易所)",
+            "<p style ='color:green'>-</p>", "2,953.71", "-6.47",
+        ),
+    )
+    out = fmp._fetch_taiex("20260717")
+    assert out["source"] == "twse-MI_INDEX-tables"
+    assert out["close"] == 42671.27
+    assert out["change_pct"] == -6.47
+    assert out["change"] == -2953.71   # was +2953.71 before the fix
+
+
+def test_fetch_taiex_mi_index_up_day_change_stays_positive(monkeypatch):
+    _block_taiex_network_and_cache(monkeypatch)
+    monkeypatch.setattr(
+        fmp, "_get_json",
+        lambda *a, **k: _fake_mi_index_ind_response(
+            "價格指數(臺灣證券交易所)",
+            "<p style ='color:red'>+</p>", "125.45", "0.57",
+        ),
+    )
+    out = fmp._fetch_taiex("20260601")
+    assert out["close"] == 22150.23
+    assert out["change_pct"] == 0.57
+    assert out["change"] == 125.45
+
+
+def test_fetch_taiex_mi_index_missing_sign_falls_back_to_pct_sign(monkeypatch):
+    """If the +/- column is ever unparseable, still trust the already-signed
+    change_pct column from the same row rather than defaulting positive."""
+    _block_taiex_network_and_cache(monkeypatch)
+
+    def fake_get_json(*a, **k):
+        return {
+            "stat": "OK",
+            "tables": [{
+                "title": "價格指數(臺灣證券交易所)",
+                "fields": ["指數", "收盤指數", "漲跌(+/-)", "漲跌點數", "漲跌百分比(%)", "特殊處理註記"],
+                "data": [["發行量加權股價指數", "42,671.27", "", "2,953.71", "-6.47", ""]],
+            }],
+        }
+    monkeypatch.setattr(fmp, "_get_json", fake_get_json)
+    out = fmp._fetch_taiex("20260717")
+    assert out["change"] == -2953.71

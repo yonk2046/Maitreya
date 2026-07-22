@@ -215,8 +215,26 @@ def _fetch_taiex(date_str: str | None = None) -> dict[str, Any]:
                             try: return float(str(s).replace(",", "").strip())
                             except: return None
                         close = _n(row[1]) if len(row) > 1 else None
-                        change = _n(row[3]) if len(row) > 3 else None
+                        # TWSE MI_INDEX 欄位順序: 指數,收盤指數,漲跌(+/-),漲跌點數,漲跌百分比(%).
+                        # row[2] 是 HTML 包裹的正負號(如 "<p style='color:green'>-</p>"),
+                        # row[3]「漲跌點數」是不帶正負號的絕對值。舊碼直接把 row[3] 當成
+                        # 已簽章的 change,大跌日因此顯示正值(2026-07-17 事故:收盤
+                        # 42671.27、change_pct=-6.47,但 change 誤植為 +2953.71)。
+                        # 修法:把 row[2] 的正負號套到 row[3] 的絕對值上；row[2] 缺失/
+                        # 無法辨識時退回用已簽章的 change_pct 判斷正負(仍是同一列資料)。
+                        change_mag = _n(row[3]) if len(row) > 3 else None
                         change_pct = _n(row[4]) if len(row) > 4 else None
+                        sign_text = _clean_cell(row[2]) if len(row) > 2 else ""
+                        if change_mag is None:
+                            change = None
+                        elif "-" in sign_text:
+                            change = -abs(change_mag)
+                        elif "+" in sign_text:
+                            change = abs(change_mag)
+                        elif change_pct is not None:
+                            change = -abs(change_mag) if change_pct < 0 else abs(change_mag)
+                        else:
+                            change = abs(change_mag)
                         if close and close > 5000:
                             result = {"close": close, "change": change,
                                       "change_pct": change_pct, "volume_b_ntd": None,
