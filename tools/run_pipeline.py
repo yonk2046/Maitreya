@@ -37,6 +37,61 @@ CONFIG_FILE = _AI_STOCK / "config" / "scd.example.yaml"
 INDEX_FILE = REPORTS_DIR / "index.json"
 RAW_ARCHIVE_DIR = REPORTS_DIR / "_raw_archive"
 REPLAY_LEDGER_FILE = REPORTS_DIR / "_replay_ledger.json"
+STRATEGY_TAGS_DIR = REPORTS_DIR / "strategy_tags"
+
+
+def _load_chain_upto(target_date: str) -> list[dict]:
+    """Load every committed real snapshot with date <= target_date (oldest first).
+
+    Mirrors the viewer's full-history golden feed (and the backtest's snaps[:i+1]
+    slice) so the strategy_tags sidecar aligns with what the cockpit renders —
+    the just-written snapshot is already on disk at call time.
+    """
+    import glob, os, re
+    iso = re.compile(r"^\d{4}-\d{2}-\d{2}\.json$")
+    files = [f for f in glob.glob(str(REPORTS_DIR / "*.json"))
+             if iso.match(os.path.basename(f)) and os.path.basename(f)[:10] <= target_date]
+    chain: list[dict] = []
+    for f in sorted(files):
+        try:
+            chain.append(json.loads(pathlib.Path(f).read_text(encoding="utf-8")))
+        except Exception:
+            pass
+    return chain
+
+
+def _write_strategy_tags(target_date: str) -> None:
+    """R1:快照建成後產生 reports/strategy_tags/<date>.json 落地 sidecar。
+
+    決定論、來源=共用 core.strategies.would_enter(與回測同一實作)。此檔不進快照、
+    不動 schema、不 bump minor(單一 bump 紀律);viewer 讀此檔渲染徽章,不新增
+    render-time 引擎 import。Schema 2.0 時遷入快照 obs_*。
+
+    切片=全歷史 ≤ target_date(對齊 viewer 全歷史 golden 與回測 snaps[:i+1])。
+    永不因標示產生失敗而中斷 pipeline —— 快照本身(唯一事實來源)已寫入。
+    """
+    try:
+        from core.strategies import STRATEGY_A, STRATEGY_B, strategy_tags_for_date
+        chain = _load_chain_upto(target_date)
+        strategies = {"A": STRATEGY_A, "B": STRATEGY_B}
+        tags = strategy_tags_for_date(chain, strategies)
+        payload = {
+            "date": target_date,
+            "generated_from": "core.strategies.would_enter (single source of truth)",
+            "strategies": {k: {"name": v.name, "zh": v.zh, "kind": v.kind}
+                           for k, v in strategies.items()},
+            "tags": tags,
+        }
+        STRATEGY_TAGS_DIR.mkdir(parents=True, exist_ok=True)
+        out = STRATEGY_TAGS_DIR / f"{target_date}.json"
+        out.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        print(f"[strategy_tags] wrote strategy_tags/{target_date}.json "
+              f"({len(tags)} tagged tickers)", file=sys.stderr)
+    except Exception as e:  # never block the pipeline on a display sidecar
+        print(f"[strategy_tags] skipped ({type(e).__name__}: {e})", file=sys.stderr)
 
 
 def _now_utc_iso() -> str:
@@ -271,6 +326,10 @@ def run(date: str | None, *, check_replay: bool = False, source: str = "auto") -
     # Update index
     _update_index(out_path, sha, snapshot)
     print(f"[pipeline] updated {INDEX_FILE.name}", file=sys.stderr)
+
+    # R1: strategy-tag sidecar (deterministic, shares would_enter with the
+    # backtest). Written after the snapshot is built — snapshot is untouched.
+    _write_strategy_tags(target_date)
 
     if check_replay:
         # Re-run end-to-end through the SAME adapter, the SAME lookback set,

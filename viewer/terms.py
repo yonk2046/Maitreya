@@ -122,6 +122,22 @@ TERMS: dict[str, Term] = {
         "persistence.coverage_pct", "render-time", "N=實際快照數",
         "在觀察窗內的買超榜出現 X / N 個快照(N＝實際快照數,非固定窗口)。",
     ),
+    # ── 策略標示徽章(Part 1;來源＝reports/strategy_tags sidecar,不算/不裝)──
+    "strat_chip": Term(
+        "strat_chip", "籌碼錨定", "",
+        "strategy_tags.A", "landed", "sidecar",
+        "策略 A 籌碼錨定波段:進黃金名單且現價在主力成本容忍帶內(來源 would_enter)。",
+    ),
+    "strat_momentum": Term(
+        "strat_momentum", "動能延續", "",
+        "strategy_tags.B", "landed", "sidecar",
+        "策略 B 動能延續:連買達門檻、3日速度與加速度皆正、外資同向(來源 would_enter)。",
+    ),
+    "strat_consensus": Term(
+        "strat_consensus", "雙策略共識", "檔",
+        "strategy_tags.consensus", "render-time", "sidecar",
+        "同時符合策略 A 與 B 的標的數(兩套獨立進場邏輯共同指向)。",
+    ),
 }
 
 

@@ -364,6 +364,7 @@ div[data-testid="stExpander"] { border: 1px solid #1F2D3D !important; border-rad
 .gc-badge-strong    { background:#0A1520;color:#7EB8D4;border:1px solid #253A52; }
 .gc-badge-qualified { background:#0A1F12;color:#52B788;border:1px solid #2E6B4A; }
 .gc-badge-new       { background:#160F22;color:#9E8AC8;border:1px solid #4A3880; }
+.gc-strat-badge { display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:800;letter-spacing:.02em;background:#101A22;color:var(--scd-gold,#EBC92F);border:1px solid #EBC92F55;margin-left:4px;cursor:help; }
 .gc-state  { display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;font-weight:600; }
 .gc-price  { margin-left:auto;font-size:15px;font-weight:700;font-family:monospace; }
 /* Row 2: divider */
@@ -447,6 +448,42 @@ def _load_market_pulse() -> dict:
         except Exception:
             pass
     return {}
+
+
+@st.cache_data(ttl=120, show_spinner=False)
+def _strategy_tags_load(date: str) -> dict:
+    """讀 reports/strategy_tags/<date>.json 的 tags(Part 1 sidecar,R1)。
+
+    viewer 只讀落地 sidecar 檔渲染徽章 —— 不新增 core 引擎 import、不算不裝
+    (viewer 三紅線)。回傳 {ticker: {"tags": [...], "rejections": {...}}}。
+    """
+    if not date:
+        return {}
+    p = _AI_STOCK / "reports" / "strategy_tags" / f"{date}.json"
+    if not p.is_file():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8")).get("tags", {})
+    except Exception:
+        return {}
+
+
+@st.cache_data(ttl=120, show_spinner=False)
+def _strategy_health_load() -> dict:
+    """讀四策略 <name>_latest.json 的 summary(策略健康度標頭用)。純讀檔。
+
+    回傳 {strategy_name: summary};summary 可能含 net(成本模型完成後,A2)或
+    只有毛報酬(未扣成本)。呈現由 viewer 決定。
+    """
+    out: dict[str, dict] = {}
+    for name in ("chip_anchored_swing", "momentum_continuation"):
+        p = _AI_STOCK / "reports" / "backtest" / f"{name}_latest.json"
+        if p.is_file():
+            try:
+                out[name] = json.loads(p.read_text(encoding="utf-8")).get("summary", {})
+            except Exception:
+                pass
+    return out
 
 
 @st.cache_data(ttl=600, show_spinner=False)
@@ -1917,6 +1954,55 @@ def _run_sm_all(snaps: list[dict]) -> "dict[str, _sm_mod.TickerState]":
     return _sm_mod.run_all(snaps)
 
 
+def _render_strategy_health(health: dict, a_n: int, b_n: int, consensus_n: int) -> None:
+    """Part 1:策略健康度標頭(誠實性要求)+ 共識計數。
+
+    讓徽章保持『描述性』而非『指示性』:標頭露各策略最新回測報酬與成本檢驗狀態。
+    淨報酬(summary.net,成本模型完成後)優先;未完成前顯示毛報酬並標注「未扣成本」。
+    純呈現 — 讀 _strategy_health_load 的 summary,不算不裝。
+    """
+    _META = [   # (glyph, term-key, strategy_name)
+        ("Ⓐ", "strat_chip", "chip_anchored_swing"),
+        ("Ⓑ", "strat_momentum", "momentum_continuation"),
+    ]
+    rows = []
+    for glyph, tkey, sname in _META:
+        s = health.get(sname, {})
+        net = (s.get("net") or {}).get("avg_return")
+        gross = s.get("avg_return")
+        if net is not None:
+            ret_txt = f"淨 {net*100:+.2f}%"
+            if net >= 0:
+                status, col = "✓ 通過成本檢驗", "#52B788"
+            else:
+                status, col = "⚠️ 研究中(未通過成本檢驗)", "#E8A838"
+        elif gross is not None:
+            ret_txt = f"毛 {gross*100:+.2f}% · 未扣成本"
+            status, col = "研究中(成本模型未完成)", "#7EB8D4"
+        else:
+            ret_txt, status, col = "無回測樣本", "—", "#6B8EAA"
+        rows.append(
+            f'<div style="display:flex;gap:10px;align-items:baseline;padding:2px 0;">'
+            f'<span style="color:var(--scd-gold,#EBC92F);font-weight:800;min-width:110px;">{glyph} {_L(tkey)}</span>'
+            f'<span style="font-family:monospace;color:#CDD5E0;min-width:150px;">{ret_txt}</span>'
+            f'<span style="color:{col};font-weight:600;">{status}</span>'
+            f'</div>'
+        )
+    consensus_line = (
+        f'<div style="margin-top:8px;font-size:13px;color:#9FB2C4;">'
+        f'Ⓐ {a_n} 檔 &nbsp;｜&nbsp; Ⓑ {b_n} 檔 &nbsp;｜&nbsp; '
+        f'{_L("strat_consensus")} <b style="color:var(--scd-gold,#EBC92F);">{consensus_n}</b> 檔</div>'
+    )
+    st.markdown(
+        f'<div style="background:#111820;border:1px solid #1F2D3D;border-left:4px solid #EBC92F;'
+        f'border-radius:10px;padding:12px 16px;margin-bottom:10px;">'
+        f'<div style="font-size:12px;color:#6B8EAA;letter-spacing:.08em;margin-bottom:6px;">'
+        f'策略健康度 STRATEGY HEALTH · 描述性標示,非投資建議</div>'
+        f'{"".join(rows)}{consensus_line}</div>',
+        unsafe_allow_html=True,
+    )
+
+
 def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # noqa: C901  (P3h.5 research UX)
     if not snaps:
         st.info("尚無快照資料 No snapshot data.")
@@ -1931,6 +2017,40 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
     latest_stocks = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
     active_date   = snaps[-1].get("date", "")
     intel         = _intel_load(active_date)  # may be None
+
+    # ── Part 1: strategy tags (Ⓐ 籌碼錨定 / Ⓑ 動能延續) — sidecar, display-only ──
+    # 讀 reports/strategy_tags/<date>.json(R1);決定論、來源＝共用 would_enter。
+    # viewer 只渲染,不算/不裝、不影響 tier/score/gates。
+    strategy_tag_map = _strategy_tags_load(active_date)   # {ticker: {tags, rejections}}
+    _TAG_META = {   # label → (glyph, term-key)
+        "A": ("Ⓐ", "strat_chip"),
+        "B": ("Ⓑ", "strat_momentum"),
+    }
+
+    def _strategy_badges_html(ticker: str) -> str:
+        """卡片策略徽章 HTML(tier 徽章之後、轉弱 pill 之前)。未符合任何策略者回空字串
+        (不顯示灰色空徽章)。滑鼠懸停顯示未取得策略的未通過原因。"""
+        info = strategy_tag_map.get(ticker)
+        if not info or not info.get("tags"):
+            return ""
+        rej = info.get("rejections", {})
+        spans = []
+        for lab in info["tags"]:
+            glyph, tkey = _TAG_META.get(lab, ("", None))
+            name = _L(tkey) if tkey else lab
+            # tooltip: this ticker's rejection reasons for the OTHER strategy
+            other_tips = "；".join(
+                f'{_TAG_META.get(k, ("", None))[0]} ✗ {"、".join(v)}'
+                for k, v in sorted(rej.items()) if v
+            )
+            title = f' title="{other_tips}"' if other_tips else ""
+            spans.append(
+                f'<span class="gc-strat-badge"{title}>{glyph} {name}</span>')
+        return "".join(spans)
+
+    def _tag_count(ticker: str) -> int:
+        info = strategy_tag_map.get(ticker)
+        return len(info["tags"]) if info and info.get("tags") else 0
 
     # Distribution Intelligence Layer (display-only; parallel to Golden, never
     # affects Golden scoring/tiers — see core/distribution.py docstring + the
@@ -2510,7 +2630,9 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
             f'<span class="gc-ticker">{e.ticker}</span>'
             f'<span class="gc-name">{e.name}</span>'
             f'<span class="{badge_cls}">{badge_txt}</span>'
-            f'<span class="gc-state" style="background:{state_col}20;color:{state_col};border:1px solid {state_col}50;">'
+            # Part 1: 策略徽章(tier 徽章之後、轉弱 pill 之前)
+            + _strategy_badges_html(e.ticker)
+            + f'<span class="gc-state" style="background:{state_col}20;color:{state_col};border:1px solid {state_col}50;">'
             f'{e.sm_state_zh}{days_txt}</span>'
             + (f'<span style="margin-left:2px;">{cat_html}</span>' if cat_html else "")
             + f'<span class="gc-price" style="color:{chg_col};">{price_s} <span style="font-size:12px;">{chg_s}</span></span>'
@@ -2752,13 +2874,21 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
             continue
         action_groups[action_of[e.ticker]].append(e)
     for k in action_groups:
-        # Within group: conviction desc; weakening group puts red lights first
+        # Within group (structure unchanged): Part 1 排序 — 雙策略共識置頂 → 單策略
+        # → 無標示,再依既有 conviction;轉弱組仍紅燈優先。策略共識為主鍵,不破壞分組。
         if k == _golden_mod.ACTION_WEAKENING:
-            action_groups[k].sort(key=lambda e: (e.ticker not in _red, -e.conviction))
+            action_groups[k].sort(key=lambda e: (e.ticker not in _red, -_tag_count(e.ticker), -e.conviction))
         else:
-            action_groups[k].sort(key=lambda e: e.conviction, reverse=True)
+            action_groups[k].sort(key=lambda e: (-_tag_count(e.ticker), -e.conviction))
 
     _n_of = {k: len(v) for k, v in action_groups.items()}
+
+    # ── Part 1: strategy health header + consensus counts ────────────────
+    _strat_a_n = sum(1 for e in all_entries if "A" in strategy_tag_map.get(e.ticker, {}).get("tags", []))
+    _strat_b_n = sum(1 for e in all_entries if "B" in strategy_tag_map.get(e.ticker, {}).get("tags", []))
+    _consensus_n = sum(1 for e in all_entries
+                       if {"A", "B"} <= set(strategy_tag_map.get(e.ticker, {}).get("tags", [])))
+    _render_strategy_health(_strategy_health_load(), _strat_a_n, _strat_b_n, _consensus_n)
 
     # ── Summary metric strip — action-first (P2) ─────────────────────────
     _metric_strip([
@@ -3777,6 +3907,36 @@ def _render_backtest(snaps: list[dict]) -> None:
 # Sidebar — control panel, date navigator, dev/audit
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _freshness_status(latest_date: str) -> tuple[str, str, str]:
+    """6.1 資料新鮮度:回 (顯示文字, 顏色, 警示文字或空)。
+
+    以最新快照日到今天的『交易日(週一~週五)』距離衡量。盤後 pipeline 讓最新快照通常
+    是前一交易日 → 0~1 交易日為正常;≥2 視為可能斷更並跳過期警示。純呈現、無外部依賴。
+    """
+    if not latest_date:
+        return "—", "#6B8EAA", ""
+    try:
+        d0 = dt.date.fromisoformat(latest_date)
+    except ValueError:
+        return "—", "#6B8EAA", ""
+    today = dt.date.today()
+    if today <= d0:
+        return "當日最新", "#52B788", ""
+    # count trading days (Mon–Fri) strictly after d0, up to and including today
+    n = 0
+    cur = d0
+    while cur < today:
+        cur += dt.timedelta(days=1)
+        if cur.weekday() < 5:
+            n += 1
+    if n <= 1:
+        return f"距今 {n} 交易日", "#52B788", ""
+    if n == 2:
+        return f"距今 {n} 交易日", "#E8A838", ""
+    return (f"距今 {n} 交易日", "#E4626F",
+            f"最新快照距今 {n} 交易日,可能斷更 — 請查證 pipeline / 資料來源。")
+
+
 def _render_sidebar(snaps: list[dict]) -> str:
     """Render sidebar and return the user-selected active date string (YYYY-MM-DD).
 
@@ -3852,6 +4012,18 @@ def _render_sidebar(snaps: list[dict]) -> str:
             for k, v in stats
         )
         st.markdown(rows_html, unsafe_allow_html=True)
+
+        # ── 6.1 資料新鮮度:距今 N 交易日 + 過期警示 ─────────────────────────
+        fresh_txt, fresh_col, fresh_warn = _freshness_status(latest_date)
+        st.markdown(
+            f'<div class="sidebar-stat-row">'
+            f'<span class="sidebar-stat-key">資料新鮮度</span>'
+            f'<span class="sidebar-stat-val" style="color:{fresh_col};">{fresh_txt}</span>'
+            f'</div>'
+            + (f'<div class="data-gap-notice" style="margin:6px 0 0 0;padding:6px 10px;font-size:12px !important;">'
+               f'⚠️ {fresh_warn}</div>' if fresh_warn else ""),
+            unsafe_allow_html=True,
+        )
         st.caption(f"commit `{_deployed_commit_hash()}`")
 
         st.markdown('<hr class="sidebar-divider">', unsafe_allow_html=True)

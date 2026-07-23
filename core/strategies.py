@@ -105,3 +105,117 @@ STRATEGY_B_V2 = StrategyConfig(
 
 ALL_STRATEGIES = {s.name: s for s in
                   (STRATEGY_B, STRATEGY_A, STRATEGY_B_V2, STRATEGY_A_V2)}
+
+
+# ── Shared entry judgement (single source of truth) ─────────────────────────
+# 治理紅線 5:同一個進場判斷邏輯只能有一份實作。回測引擎(core/paper_trading.py)
+# 與 UI 策略標示(strategy_tags_for_date)必須共用 would_enter — 不得各留一份,
+# 否則標示與回測會漂移。純函數、決定論、零 I/O(golden/temporal 皆吃切片)。
+
+def _rec_for(snap: dict, ticker: str) -> dict | None:
+    for s in snap.get("stocks", []):
+        if s.get("ticker") == ticker:
+            return s
+    return None
+
+
+def would_enter(
+    ticker: str,
+    snapshots: list[dict],
+    strategy: StrategyConfig,
+    golden_result=None,
+) -> tuple[bool, list[str]]:
+    """回傳 (是否符合進場條件, 未通過原因清單)。
+
+    決定論純函數。回測引擎與 UI 標示必須共用此函數(治理紅線 5)。
+
+    snapshots: 只到判斷日為止的時間切片(oldest→newest),防前視偏誤 —— 判斷日
+    = snapshots[-1],temporal 與 golden 都只吃這個切片,不看未來。
+    golden_result: 可選,籌碼型策略共用同一份 golden.run(切片)以省算並與回測對齊;
+    momentum 型忽略此參數。
+    未通過原因(reasons)供 UI tooltip,例如 ["價/本 1.12 超出上限 1.05"]。
+
+    布林值與舊 _momentum_entry_ok / 回測進場閘門逐條等價 —— 進場成立 iff 所有條件
+    通過(reasons 為空)。
+    """
+    if not snapshots:
+        return (False, ["無快照"])
+    decide = snapshots[-1]
+    prior = snapshots[:-1]
+    rec = _rec_for(decide, ticker)
+    if rec is None:
+        return (False, ["判斷日無此標的資料"])
+
+    if strategy.kind == "chip_anchored":
+        from core import golden as _golden   # lazy: heavy funnel/state engine
+        if golden_result is None:
+            golden_result = _golden.run(snapshots)
+        golden_map = {e.ticker: e for e in (golden_result.prime + golden_result.strong)}
+        ge = golden_map.get(ticker)
+        if ge is None:
+            return (False, ["未進黃金名單(閘門未全過)"])
+        anchor = ge.cost_conservative if ge.cost_conservative is not None else ge.main_force_cost
+        price_d = rec.get("current_price")
+        if not anchor or not price_d:
+            return (False, ["缺主力成本錨或現價"])
+        if price_d > anchor * strategy.max_premium_ratio:
+            return (False, [f"價/本 {price_d / anchor:.2f} 超出上限 {strategy.max_premium_ratio:.2f}"])
+        return (True, [])
+
+    # momentum — 逐條對應舊 _momentum_entry_ok
+    from core.market_context import temporal_enrich   # lazy (matches engine import)
+    temporal = temporal_enrich(ticker, prior, rec)
+    reasons: list[str] = []
+    if temporal["main_force_consecutive_days"] < strategy.entry_streak_min:
+        reasons.append(
+            f"連買 {temporal['main_force_consecutive_days']} 日 < 門檻 {strategy.entry_streak_min}")
+    if strategy.require_velocity_positive and not ((temporal["velocity_3d"] or 0) > 0):
+        reasons.append("3日速度未轉正")
+    if strategy.require_acceleration_positive and not ((temporal["acceleration"] or 0) > 0):
+        reasons.append("加速度未轉正")
+    if strategy.require_fii_aligned and not ((rec.get("fii_net_buy") or 0) > 0):
+        reasons.append("外資未同向")
+    return (not reasons, reasons)
+
+
+def strategy_tags_for_date(
+    snapshots: list[dict],
+    strategies: dict[str, StrategyConfig],
+) -> dict[str, dict]:
+    """回傳 {ticker: {"tags": ["A","B"], "rejections": {"A": [...原因]}}}。
+
+    決定論:只吃到判斷日(snapshots[-1])為止的切片。籌碼型策略共用一次
+    golden.run(切片)以省算並確保與回測同名單。只收錄「至少符合一個策略」的標的
+    (未符合任何策略者不列 → 對應 viewer「不顯示灰色空徽章」)。rejections 收錄該
+    標的『未取得』的策略之未通過原因,供 tooltip。
+
+    可擴充:未來加 v3 只需在 strategies dict 新增一筆(例 {"C": chip_anchored_v3}),
+    UI 無需改動。
+    """
+    if not snapshots:
+        return {}
+    decide = snapshots[-1]
+    # 籌碼型策略共用一份 golden.run(切片)。
+    golden_result = None
+    if any(cfg.kind == "chip_anchored" for cfg in strategies.values()):
+        from core import golden as _golden
+        golden_result = _golden.run(snapshots)
+
+    out: dict[str, dict] = {}
+    for rec in decide.get("stocks", []):
+        ticker = rec.get("ticker")
+        if not ticker:
+            continue
+        tags: list[str] = []
+        rejections: dict[str, list[str]] = {}
+        for label in sorted(strategies):
+            cfg = strategies[label]
+            gr = golden_result if cfg.kind == "chip_anchored" else None
+            ok, reasons = would_enter(ticker, snapshots, cfg, golden_result=gr)
+            if ok:
+                tags.append(label)
+            else:
+                rejections[label] = reasons
+        if tags:
+            out[ticker] = {"tags": tags, "rejections": rejections}
+    return out
