@@ -256,6 +256,21 @@ DIST_AUTO_FILTER_CONSISTENCY = "弱"   # 觸發自動過濾的一致性等級
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# BACKTEST — core/paper_trading.py 交易成本 + 資金曲線參數(研究層,不入判斷 hash)
+# ═══════════════════════════════════════════════════════════════════════════
+# 裁定 R2(docs/migration/EXEC-PLAN-backtest-arc-20260723.md):回測成本/資金曲線
+# 是研究層數字,不是存活引擎的判斷門檻/權重/名單——scd.yaml 才是進 config_snapshot
+# 判斷雜湊的正式來源;回測成本混進去會污染判斷 hash。放本檔只為了「可 diff、可審計」
+# (同 C11 精神:改參數是可見動作,不是無痕改變),但**刻意不**登記進 as_config_dict()
+# 的掃描結果 —— 見下方 as_config_dict() 的 `BACKTEST_` 前綴排除。
+BACKTEST_FEE_RATE        = 0.000855     # 券商手續費率(單邊,六折折讓後,清單 2.1)
+BACKTEST_FEE_MIN         = 20.0         # 每筆最低手續費(元)
+BACKTEST_TAX_RATE        = 0.003        # 證交稅(僅賣出,現股,清單 2.1)
+BACKTEST_INITIAL_CAPITAL = 1_000_000.0  # 權益曲線起始資金(元,虛擬記帳,清單 2.2)
+BACKTEST_POSITION_SIZE   = 100_000.0    # 固定部位金額(元)——每 1 個 units 對應此金額
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # as_config_dict — 判斷參數的確定性序列化(P2-W2:config_snapshot 雙來源之一)
 # ═══════════════════════════════════════════════════════════════════════════
 def as_config_dict() -> dict[str, Any]:
@@ -275,11 +290,15 @@ def as_config_dict() -> dict[str, Any]:
 
     收錄準則:module 層級名稱為 public UPPERCASE(全大寫、非 `_` 開頭)者全收,
     含 TIER_A / GOLDEN_* / SM_* / CHIP_SCORE_CONFIG / GRADE_PCT_MAP / MC_*。
+
+    **例外(R2)**:`BACKTEST_*` 不收錄。回測成本/資金曲線是研究層參數,不是存活
+    引擎的判斷門檻——收進來會讓改一個回測手續費率就無痕改變 config_hash,污染
+    與判斷完全無關的雜湊。scd.yaml 仍是判斷雜湊的唯一正式來源。
     """
     g = globals()
     out = {
         name: copy.deepcopy(value)
         for name, value in g.items()
-        if name.isupper() and not name.startswith("_")
+        if name.isupper() and not name.startswith("_") and not name.startswith("BACKTEST_")
     }
     return dict(sorted(out.items()))

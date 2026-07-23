@@ -23,8 +23,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field, asdict
 from typing import Any
 
+from core.engine_params import (
+    BACKTEST_FEE_MIN,
+    BACKTEST_FEE_RATE,
+    BACKTEST_INITIAL_CAPITAL,
+    BACKTEST_POSITION_SIZE,
+    BACKTEST_TAX_RATE,
+)
 from core.market_context import temporal_enrich
-from core.strategies import StrategyConfig
+from core.strategies import StrategyConfig, would_enter
 
 
 # ── Output structures ──────────────────────────────────────────────────────
@@ -87,18 +94,6 @@ def _fill_price(snap: dict, ticker: str) -> float | None:
     return rec.get("open") or rec.get("current_price")
 
 
-def _momentum_entry_ok(cfg: StrategyConfig, temporal: dict, rec: dict) -> bool:
-    if temporal["main_force_consecutive_days"] < cfg.entry_streak_min:
-        return False
-    if cfg.require_velocity_positive and not ((temporal["velocity_3d"] or 0) > 0):
-        return False
-    if cfg.require_acceleration_positive and not ((temporal["acceleration"] or 0) > 0):
-        return False
-    if cfg.require_fii_aligned and not ((rec.get("fii_net_buy") or 0) > 0):
-        return False
-    return True
-
-
 def _weakening_sev(rec: dict) -> str:
     return ((rec or {}).get("weakening") or {}).get("severity", "none")
 
@@ -120,6 +115,9 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
             "settlement uses next-day close as open-price proxy (snapshots carry no open)",
             "fixed 1-unit position; 加碼/減碼 partial sizing deferred",
             "momentum needs fii (from 2026-06-12) + weakening (from 2026-06-15)",
+            "資金曲線(2.2):P&L 於出場日一次性實現,非逐日 mark-to-market"
+            "(快照無未平倉逐日估值);成本模型見 summary.cost_model(R2:參數在"
+            "core/engine_params.py BACKTEST_*,不入 config_hash)",
         ],
     )
     if n < 2 or not strategy.enabled:
@@ -143,8 +141,6 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
     # iterate decision days i = 0..n-2 (fill on i+1)
     for i in range(n - 1):
         decide, fill = snaps[i], snaps[i + 1]
-        prior = snaps[:i]            # strictly-before slice for temporal
-        d_date = dates[i]
 
         # ---- manage open positions (decide on i, execute on i+1) ----
         for ticker in list(open_pos.keys()):
@@ -181,27 +177,20 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
                 del open_pos[ticker]
 
         # ---- new entries (decide on i, execute on i+1) ----
-        golden_map = {}
+        # 進場判斷共用 core.strategies.would_enter — 回測與 UI 標示的單一事實來源
+        # (治理紅線 5)。切片 snaps[:i+1] 防前視;chip 型共用當日 golden.run(gres)。
+        gres = None
         if chip:
             gres = _golden.run(snaps[:i + 1])           # golden list as of day i (no look-ahead)
-            golden_map = {e.ticker: e for e in (gres.prime + gres.strong)}
+        slice_upto = snaps[:i + 1]
 
         for rec in decide.get("stocks", []):
             ticker = rec.get("ticker")
             if not ticker or ticker in open_pos:
                 continue
-            if chip:
-                ge = golden_map.get(ticker)
-                if ge is None:
-                    continue                            # not in 黃金名單 (gate 全過) on day i
-                anchor = ge.cost_conservative if ge.cost_conservative is not None else ge.main_force_cost
-                price_d = rec.get("current_price")
-                if not anchor or not price_d or price_d > anchor * strategy.max_premium_ratio:
-                    continue                            # 現價 > 主力成本 × 1.05 → skip
-            else:
-                temporal = temporal_enrich(ticker, prior, rec)
-                if not _momentum_entry_ok(strategy, temporal, rec):
-                    continue
+            ok, _reasons = would_enter(ticker, slice_upto, strategy, golden_result=gres)
+            if not ok:
+                continue
             fp = _fill_price(fill, ticker)
             if fp is None:
                 continue
@@ -239,29 +228,98 @@ def _close(pos, ticker, decide, fill, fill_price, reason, dates, i) -> Trade:
     )
 
 
+def _net_return_pct(gross_return: float, units: float) -> float:
+    """毛報酬 → 淨報酬(扣雙邊手續費 + 賣出證交稅)。
+
+    2.1 成本模型(R2:參數見 core/engine_params.py BACKTEST_*,研究層,不入
+    config_hash)。部位金額 = BACKTEST_POSITION_SIZE × units(units=1.0 為一個
+    完整部位;v2 加碼/減碼/TP1 的分批 leg 用各自的 units 分數)。
+    """
+    entry_notional = BACKTEST_POSITION_SIZE * units
+    if entry_notional <= 0:
+        return gross_return
+    exit_notional = entry_notional * (1 + gross_return)
+    buy_fee = max(BACKTEST_FEE_RATE * entry_notional, BACKTEST_FEE_MIN)
+    sell_fee = max(BACKTEST_FEE_RATE * exit_notional, BACKTEST_FEE_MIN)
+    sell_tax = BACKTEST_TAX_RATE * exit_notional
+    return gross_return - (buy_fee + sell_fee + sell_tax) / entry_notional
+
+
+def _cost_model_dict() -> dict[str, float]:
+    return {
+        "fee_rate": BACKTEST_FEE_RATE,
+        "fee_min": BACKTEST_FEE_MIN,
+        "tax_rate": BACKTEST_TAX_RATE,
+        "position_size": BACKTEST_POSITION_SIZE,
+        "initial_capital": BACKTEST_INITIAL_CAPITAL,
+    }
+
+
+def _sharpe(rets: list[float], mean: float) -> float | None:
+    # Per-trade Sharpe = mean / sample-stdev of trade returns (risk-free ≈ 0
+    # per trade). NOT annualised. Small-sample → noisy; treat as directional.
+    n = len(rets)
+    if n < 2:
+        return None
+    var = sum((r - mean) ** 2 for r in rets) / (n - 1)
+    sd = var ** 0.5
+    return round(mean / sd, 2) if sd > 0 else None
+
+
+def _equity_curve(trades: list[Trade]) -> tuple[list[dict], float]:
+    """資金曲線(2.2):BACKTEST_INITIAL_CAPITAL 起始,每筆交易以
+    BACKTEST_POSITION_SIZE × units 為部位金額;淨(扣成本)損益在出場日實現。
+
+    真正峰谷回撤(max_drawdown)——與 worst_single_trade(單筆報酬)分開計算,
+    修正舊版「max_drawdown 恰等於某單筆報酬」的語意錯誤(前次分析發現)。
+
+    限制:P&L 於出場日一次性實現,非逐日 mark-to-market(快照無未平倉逐日估值)。
+    """
+    ordered = sorted(trades, key=lambda t: (t.exit_date, t.entry_date))
+    equity = BACKTEST_INITIAL_CAPITAL
+    peak = equity
+    mdd = 0.0
+    curve = [{"date": None, "equity": round(equity, 2), "drawdown": 0.0}]
+    for t in ordered:
+        net = _net_return_pct(t.return_pct, t.units)
+        pnl = BACKTEST_POSITION_SIZE * t.units * net
+        equity += pnl
+        peak = max(peak, equity)
+        dd = (equity - peak) / peak if peak else 0.0
+        mdd = min(mdd, dd)
+        curve.append({"date": t.exit_date, "equity": round(equity, 2), "drawdown": round(dd, 4)})
+    return curve, round(mdd, 4)
+
+
 def _summarize(trades: list[Trade], strategy: StrategyConfig) -> dict[str, Any]:
     if not trades:
-        return {"trades": 0, "win_rate": None, "avg_return": None,
-                "median_return": None, "sharpe_per_trade": None,
-                "avg_holding_days": None, "max_drawdown": None}
+        return {
+            "trades": 0, "win_rate": None, "avg_return": None,
+            "median_return": None, "sharpe_per_trade": None,
+            "avg_holding_days": None, "max_drawdown": None,
+            "worst_single_trade": None,
+            "net": {"win_rate": None, "avg_return": None,
+                    "median_return": None, "sharpe_per_trade": None},
+            "cost_model": _cost_model_dict(),
+            "equity_curve": [],
+        }
     rets = sorted(t.return_pct for t in trades)
     wins = sum(1 for r in rets if r > 0)
     n = len(rets)
     mean = sum(rets) / n
     median = rets[n // 2] if n % 2 else (rets[n // 2 - 1] + rets[n // 2]) / 2
-    # equity-curve max drawdown over sequential trades (entry order)
-    eq, peak, mdd = 1.0, 1.0, 0.0
-    for t in sorted(trades, key=lambda x: x.entry_date):
-        eq *= (1 + t.return_pct)
-        peak = max(peak, eq)
-        mdd = min(mdd, eq / peak - 1)
-    # Per-trade Sharpe = mean / sample-stdev of trade returns (risk-free ≈ 0
-    # per trade). NOT annualised. Small-sample → noisy; treat as directional.
-    sharpe = None
-    if n >= 2:
-        var = sum((r - mean) ** 2 for r in rets) / (n - 1)
-        sd = var ** 0.5
-        sharpe = round(mean / sd, 2) if sd > 0 else None
+    sharpe = _sharpe(rets, mean)
+    worst_single_trade = rets[0]   # 獨立欄位(2.2):最小單筆報酬,與 max_drawdown 分開
+
+    # 2.1 淨報酬(扣成本)統計 — 與毛報酬並列,不取代
+    net_rets = sorted(_net_return_pct(t.return_pct, t.units) for t in trades)
+    n_wins = sum(1 for r in net_rets if r > 0)
+    n_mean = sum(net_rets) / n
+    n_median = net_rets[n // 2] if n % 2 else (net_rets[n // 2 - 1] + net_rets[n // 2]) / 2
+    n_sharpe = _sharpe(net_rets, n_mean)
+
+    equity_curve, mdd = _equity_curve(trades)
+
     return {
         "trades": n,
         "win_rate": round(wins / n, 4),
@@ -269,8 +327,17 @@ def _summarize(trades: list[Trade], strategy: StrategyConfig) -> dict[str, Any]:
         "median_return": round(median, 4),
         "sharpe_per_trade": sharpe,
         "avg_holding_days": round(sum(t.holding_days for t in trades) / n, 2),
-        "max_drawdown": round(mdd, 4),
+        "max_drawdown": mdd,                          # 2.2:真實資金曲線峰谷回撤
+        "worst_single_trade": round(worst_single_trade, 4),
         "exit_reasons": _count_reasons(trades),
+        "net": {
+            "win_rate": round(n_wins / n, 4),
+            "avg_return": round(n_mean, 4),
+            "median_return": round(n_median, 4),
+            "sharpe_per_trade": n_sharpe,
+        },
+        "cost_model": _cost_model_dict(),
+        "equity_curve": equity_curve,
     }
 
 
@@ -418,6 +485,9 @@ def _run_backtest_v2(snaps, dates, strategy, result):
                         pos["last_add_i"] = i
 
         # ---- entries ----
+        # 進場閘門共用 would_enter(治理紅線 5,與 v1/UI 同一實作);chip 型另留
+        # golden_map 只為取 anchor(would_enter 已保證 chip 過閘者 ge 存在)。
+        gres = None
         golden_map = {}
         if chip:
             gres = _golden.run(snaps[:i + 1])
@@ -426,21 +496,13 @@ def _run_backtest_v2(snaps, dates, strategy, result):
             ticker = rec.get("ticker")
             if not ticker or ticker in open_pos:
                 continue
+            ok, _reasons = would_enter(ticker, snaps[:i + 1], strategy, golden_result=gres)
+            if not ok:
+                continue
             anchor = None
             if chip:
                 ge = golden_map.get(ticker)
-                if ge is None:
-                    continue
                 anchor = ge.cost_conservative if ge.cost_conservative is not None else ge.main_force_cost
-                price_d = rec.get("current_price")
-                if not anchor or not price_d or price_d > anchor * strategy.max_premium_ratio:
-                    continue
-            else:
-                te = temporal_enrich(ticker, prior, rec)
-                if not (te["main_force_consecutive_days"] >= strategy.entry_streak_min
-                        and (te["velocity_3d"] or 0) > 0 and (te["acceleration"] or 0) > 0
-                        and (rec.get("fii_net_buy") or 0) > 0):
-                    continue
             fp = _fill_price(fill, ticker)
             if fp is None:
                 continue

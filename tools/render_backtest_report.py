@@ -74,11 +74,26 @@ STRATEGY_DESC = {
 
 
 def _equity_curve(trades: list[dict]) -> list[float]:
+    """Legacy fallback: multiplicative %-curve over entry order (pre-2.2 shape,
+    kept for callers/tests that hand this function bare trade dicts with no
+    engine-produced summary.equity_curve available). Prefer
+    summary["equity_curve"] (real fixed-position currency curve, 2.2) when
+    present — see _real_equity_series() below."""
     eq, out = 1.0, []
     for t in sorted(trades, key=lambda x: x.get("entry_date", "")):
         eq *= (1 + (t.get("return_pct") or 0))
         out.append(round(eq, 4))
     return out
+
+
+def _real_equity_series(summary: dict) -> list[float] | None:
+    """2.2: real fixed-position currency equity curve, if the engine produced
+    one (summary["equity_curve"], from core/paper_trading.py). Returns the
+    equity values only (chart labels use trade index)."""
+    curve = summary.get("equity_curve")
+    if not curve:
+        return None
+    return [round(pt.get("equity", 0), 2) for pt in curve]
 
 
 def _histogram(trades: list[dict]) -> dict:
@@ -100,7 +115,10 @@ def build_html(strategies: list[dict], scans: list[dict]) -> str:
                 "summary": s.get("summary", {}),
                 "limitations": s.get("limitations", []),
                 "trades": s.get("trades", []),
-                "equity": _equity_curve(s.get("trades", [])),
+                # 2.2: real fixed-position currency curve when the engine
+                # produced one; else legacy %-multiplier fallback (old JSONs).
+                "equity": _real_equity_series(s.get("summary", {})) or _equity_curve(s.get("trades", [])),
+                "equity_is_currency": _real_equity_series(s.get("summary", {})) is not None,
                 "hist": _histogram(s.get("trades", [])),
                 "desc": STRATEGY_DESC.get(s.get("strategy")),
             }
@@ -158,8 +176,14 @@ const root=document.getElementById('root');
 const charts=[];
 DATA.strategies.forEach((s,idx)=>{
   const su=s.summary||{};
+  const net=su.net||{};
+  const cm=su.cost_model||{};
   const zh=ZH[s.name]||s.name;
   const sec=document.createElement('div');
+  const costNote=cm.fee_rate!=null
+    ?`成本模型:手續費 ${(cm.fee_rate*100).toFixed(4)}%/筆(最低 $${cm.fee_min}) + 證交稅 ${(cm.tax_rate*100).toFixed(2)}%(賣出) ·`
+     +` 固定部位 $${(cm.position_size||0).toLocaleString()} · 起始資金 $${(cm.initial_capital||0).toLocaleString()}`
+    :'';
   sec.innerHTML=`<h2>${zh}</h2>
    <div class="sub">${(s.date_range||[]).join(' → ')} · ${s.name}</div>
    ${s.desc?`<div class="panel logic">
@@ -170,15 +194,18 @@ DATA.strategies.forEach((s,idx)=>{
    </div>`:''}
    <div class="cards">
      ${kpi('交易數',su.trades??'—')}
-     ${kpi('勝率',fmtPct(su.win_rate),su.win_rate>=0.5?'pos':'neg')}
-     ${kpi('平均報酬',fmtPct(su.avg_return),cls(su.avg_return))}
-     ${kpi('中位數',fmtPct(su.median_return),cls(su.median_return))}
+     ${kpi('勝率(毛)',fmtPct(su.win_rate),su.win_rate>=0.5?'pos':'neg')}
+     ${kpi('平均報酬(毛)',fmtPct(su.avg_return),cls(su.avg_return))}
+     ${kpi('平均報酬(淨)',fmtPct(net.avg_return),cls(net.avg_return))}
+     ${kpi('中位數(毛)',fmtPct(su.median_return),cls(su.median_return))}
      ${kpi('夏普(每筆·參考)',su.sharpe_per_trade==null?'—':su.sharpe_per_trade,su.sharpe_per_trade>1?'pos':'')}
-     ${kpi('最大回撤',fmtPct(su.max_drawdown),'neg')}
+     ${kpi('最大回撤(資金曲線)',fmtPct(su.max_drawdown),'neg')}
+     ${kpi('單筆最差(毛)',fmtPct(su.worst_single_trade),'neg')}
      ${kpi('平均持有',(su.avg_holding_days??'—')+'d')}
    </div>
+   ${costNote?`<div class="note">${costNote}</div>`:''}
    <div class="grid2">
-     <div class="panel"><h3>權益曲線 (累積)</h3><canvas id="eq${idx}"></canvas></div>
+     <div class="panel"><h3>權益曲線${s.equity_is_currency?'(固定部位・淨值)':'(累積倍數・舊版估算)'}</h3><canvas id="eq${idx}"></canvas></div>
      <div class="panel"><h3>報酬分布</h3><canvas id="hi${idx}"></canvas></div>
    </div>
    <div class="grid2">
@@ -190,7 +217,7 @@ DATA.strategies.forEach((s,idx)=>{
   // equity
   new Chart(document.getElementById('eq'+idx),{type:'line',
     data:{labels:s.equity.map((_,i)=>i+1),datasets:[{data:s.equity,borderColor:'#52b788',backgroundColor:'#52b78822',fill:true,tension:.2,pointRadius:0}]},
-    options:opt({y:{ticks:{callback:v=>v.toFixed(2)+'x'}}})});
+    options:opt({y:{ticks:{callback:v=>s.equity_is_currency?('$'+v.toLocaleString()):(v.toFixed(2)+'x')}}})});
   // histogram
   new Chart(document.getElementById('hi'+idx),{type:'bar',
     data:{labels:s.hist.labels,datasets:[{data:s.hist.counts,backgroundColor:s.hist.labels.map(l=>l.includes('-')?'#e05c7a':'#52b788')}]},

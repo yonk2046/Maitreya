@@ -12,17 +12,119 @@
     "median_return": 0.0096,
     "sharpe_per_trade": 0.5,
     "avg_holding_days": 6.5,
-    "max_drawdown": -0.0235,
+    "max_drawdown": -0.0059,
+    "worst_single_trade": -0.0235,
     "exit_reasons": {
       "weakening": 10,
       "fii_reversal": 2,
       "end_of_data": 4
-    }
+    },
+    "net": {
+      "win_rate": 0.625,
+      "avg_return": 0.0343,
+      "median_return": 0.0048,
+      "sharpe_per_trade": 0.44
+    },
+    "cost_model": {
+      "fee_rate": 0.000855,
+      "fee_min": 20.0,
+      "tax_rate": 0.003,
+      "position_size": 100000.0,
+      "initial_capital": 1000000.0
+    },
+    "equity_curve": [
+      {
+        "date": null,
+        "equity": 1000000.0,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-06-05",
+        "equity": 1016559.11,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-06-09",
+        "equity": 1020167.89,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-06-23",
+        "equity": 1021394.86,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-06-24",
+        "equity": 1026630.09,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-06-24",
+        "equity": 1031146.05,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-06-24",
+        "equity": 1030502.11,
+        "drawdown": -0.0006
+      },
+      {
+        "date": "2026-06-26",
+        "equity": 1027872.28,
+        "drawdown": -0.0032
+      },
+      {
+        "date": "2026-06-30",
+        "equity": 1025060.47,
+        "drawdown": -0.0059
+      },
+      {
+        "date": "2026-07-02",
+        "equity": 1025338.45,
+        "drawdown": -0.0056
+      },
+      {
+        "date": "2026-07-14",
+        "equity": 1027730.81,
+        "drawdown": -0.0033
+      },
+      {
+        "date": "2026-07-16",
+        "equity": 1027259.81,
+        "drawdown": -0.0038
+      },
+      {
+        "date": "2026-07-17",
+        "equity": 1026788.81,
+        "drawdown": -0.0042
+      },
+      {
+        "date": "2026-07-23",
+        "equity": 1054328.59,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-07-23",
+        "equity": 1054694.68,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-07-23",
+        "equity": 1055297.69,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-07-23",
+        "equity": 1054826.69,
+        "drawdown": -0.0004
+      }
+    ]
   },
   "limitations": [
     "settlement uses next-day close as open-price proxy (snapshots carry no open)",
     "fixed 1-unit position; 加碼/減碼 partial sizing deferred",
-    "momentum needs fii (from 2026-06-12) + weakening (from 2026-06-15)"
+    "momentum needs fii (from 2026-06-12) + weakening (from 2026-06-15)",
+    "資金曲線(2.2):P&L 於出場日一次性實現,非逐日 mark-to-market(快照無未平倉逐日估值);成本模型見 summary.cost_model(R2:參數在core/engine_params.py BACKTEST_*,不入 config_hash)"
   ],
   "trades": [
     {
