@@ -113,18 +113,73 @@ def _prior_priority_from_snapshot(reports_dir, top_net=12):
     return golden, high_net
 
 
+def _branch_effective_date(branch_path):
+    """Return a branch file's freshness date (YYYY-MM-DD), or None if unusable.
+
+    Same basis as data/adapters/legacy.py's `_branch_stale` (fetched_date first,
+    file-mtime local date as fallback) — re-implemented here directly on the
+    JSON/mtime so this module keeps its no-adapter-import boundary.
+    """
+    try:
+        with open(branch_path, encoding="utf-8") as f:
+            bdata = json.load(f)
+    except Exception:
+        return None
+    fd = bdata.get("fetched_date") if isinstance(bdata, dict) else None
+    if isinstance(fd, str) and len(fd) == 10 and fd[4] == "-" and fd[7] == "-":
+        return fd
+    try:
+        mtime = os.path.getmtime(branch_path)
+        return datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+    except Exception:
+        return None
+
+
+def stale_backfill_candidates(universe, branches_dir, n=5):
+    """Pick up to `n` tickers from `universe` whose local branch file is oldest.
+
+    修正案 C-2 上線後,分點榜排名不夠前的長尾股可能永久停留在同一天的分點快照
+    ——沒有回補機制的話,會被判定為誠實 None 卻永遠抓不到新資料。這裡從「今日
+    宇宙內(今日 mainForceBuy 榜單有出現)且本機已有 data/branches/<ticker>.json」
+    的股票中,挑出最舊的 n 檔,保證每天固定名額優先回補。
+
+    只考慮已有分點檔的股票——沒有檔案的不算「該回補」，它們會透過一般榜單
+    路徑正常抓到。宇宙內沒有可回補的老檔時回傳空 list,名額自然讓給後面的
+    榜單,不硬佔。
+    """
+    dated = []
+    for ticker in dict.fromkeys(universe):  # de-dup, preserve first-seen order
+        path = os.path.join(branches_dir, f"{ticker}.json")
+        if not os.path.isfile(path):
+            continue
+        eff_date = _branch_effective_date(path)
+        if eff_date is None:
+            continue
+        dated.append((eff_date, ticker))
+    dated.sort(key=lambda pair: pair[0])  # oldest first
+    return [t for _, t in dated[:n]]
+
+
 def build_branch_fetch_list(*, memory, tier_a, prior_golden, prior_high_net,
                             cross, fii_top, mf_top, fii_sell_top, mf_sell_top,
-                            cap=40):
+                            stale_backfill=None, cap=40):
     """Deterministic priority order for the capped daily branch-fetch list.
 
     Priority (first wins, so the names we actually act on survive the cap):
-      記憶體 anchors → Tier-A anchors → 昨日黃金名單 → 昨日高累積買超 →
-      今日共現榜 → 今日外資/主力買超 → 今日外資/主力賣超.
+      記憶體 anchors → Tier-A anchors → 最舊優先回補槽(≤5) → 昨日黃金名單 →
+      今日外資/主力賣超 → 昨日高累積買超 → 今日共現榜 → 今日外資/主力買超.
+
+    賣超榜排在 prior_golden 之後、prior_high_net/cross 之前——它的用途是
+    餵 avgSellCost/安全邊際(見 fetch_daily.py Step 7 註解),排太後面容易被
+    cap 砍掉,與用途矛盾,故提前。
+
+    stale_backfill 是呼叫端算好的「最舊優先回補」候選(見
+    stale_backfill_candidates),放在固定 anchors 之後、其他所有榜單之前，
+    確保回補名額不被排名榜擠掉。
     """
-    ordered = (list(memory) + list(tier_a) + list(prior_golden) + list(prior_high_net)
-               + list(cross) + list(fii_top) + list(mf_top)
-               + list(fii_sell_top) + list(mf_sell_top))
+    ordered = (list(memory) + list(tier_a) + list(stale_backfill or [])
+               + list(prior_golden) + list(fii_sell_top) + list(mf_sell_top)
+               + list(prior_high_net) + list(cross) + list(fii_top) + list(mf_top))
     return list(dict.fromkeys(ordered))[:cap]
 
 
@@ -347,11 +402,16 @@ def run(dry_run=False, date_str=None):
     # rest. (prior golden is empty in P3a, auto-activates at P3b.)
     prior_golden, prior_high_net = _prior_priority_from_snapshot(
         os.path.join(ROOT_DIR, "reports"))
+    # 最舊優先回補槽(≤5):今日宇宙 = 今日 mainForceBuy 全榜(非僅前10),
+    # 從中挑本機已有分點檔但最舊的 5 檔,防止長尾股零回補、永久停滯。
+    mainforce_universe = [s["code"] for s in main_force_buy]
+    stale_backfill = stale_backfill_candidates(mainforce_universe, branches_dir, n=5)
     sino_tickers = build_branch_fetch_list(
         memory=MEMORY_ANCHORS, tier_a=TIER_A_ANCHORS,
         prior_golden=prior_golden, prior_high_net=prior_high_net,
         cross=cross[:10], fii_top=fii_top, mf_top=mf_top,
-        fii_sell_top=fii_sell_top, mf_sell_top=mf_sell_top, cap=40)
+        fii_sell_top=fii_sell_top, mf_sell_top=mf_sell_top,
+        stale_backfill=stale_backfill, cap=40)
 
     if not sino_tickers:
         emit(7, TOTAL_STEPS, "無三榜/雙榜共現股，跳過分點抓取", status="skip")
