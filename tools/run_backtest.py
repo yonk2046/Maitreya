@@ -22,12 +22,14 @@ _AI_STOCK = _HERE.parent
 if str(_AI_STOCK) not in sys.path:
     sys.path.insert(0, str(_AI_STOCK))
 
+from core.benchmark import period_return_pct        # noqa: E402
 from core.hashing import canonical_sha256          # noqa: E402
 from core.paper_trading import run_backtest          # noqa: E402
 from core.strategies import ALL_STRATEGIES, STRATEGY_B  # noqa: E402
 
 REPORTS = _AI_STOCK / "reports"
 OUT_DIR = REPORTS / "backtest"
+TAIEX_HISTORY_FILE = _AI_STOCK / "data" / "taiex_history.json"
 _ISO = re.compile(r"^\d{4}-\d{2}-\d{2}\.json$")
 
 
@@ -56,6 +58,54 @@ def _load_backfill_snapshots() -> list[dict]:
         except Exception:
             pass
     return snaps
+
+
+def _load_taiex_history() -> dict[str, dict]:
+    """{date: {close, change, change_pct, source}} from data/taiex_history.json.
+
+    Missing/corrupt file → {} (benchmark/alpha fields stay None; the backtest
+    itself never depends on this — R4 is additive, not a hard requirement).
+    """
+    if not TAIEX_HISTORY_FILE.is_file():
+        return {}
+    try:
+        return json.loads(TAIEX_HISTORY_FILE.read_text(encoding="utf-8")).get("dates", {})
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _enrich_with_benchmark(payload: dict, taiex_history: dict[str, dict]) -> None:
+    """R4 (2.3): 每筆交易記同期大盤報酬與超額報酬 + 整體 alpha 統計.
+
+    Mutates `payload` in place (post-processing on the already-serialized
+    result dict — core/paper_trading.py stays a pure function untouched by
+    this; core/benchmark.py holds the actual lookup/return-calc logic).
+    """
+    excess: list[float] = []
+    for t in payload["trades"]:
+        bret = period_return_pct(taiex_history, t["entry_date"], t["exit_date"])
+        if bret is None:
+            t["benchmark_return_pct"] = None
+            t["excess_return_pct"] = None
+            continue
+        bret = round(bret, 4)
+        ex = round(t["return_pct"] - bret, 4)
+        t["benchmark_return_pct"] = bret
+        t["excess_return_pct"] = ex
+        excess.append(ex)
+
+    lo, hi = payload["date_range"]
+    period_bench = period_return_pct(taiex_history, lo, hi) if lo and hi else None
+    alpha = {
+        "trades_with_benchmark": len(excess),
+        "trades_total": len(payload["trades"]),
+        "avg_excess_return": round(sum(excess) / len(excess), 4) if excess else None,
+        "period_buy_hold_return": round(period_bench, 4) if period_bench is not None else None,
+        "note": ("avg_excess_return = 策略平均報酬 − 同期(進場↔出場)大盤買入持有報酬"
+                 "(逐筆);period_buy_hold_return = 整段回測期間(date_range)大盤買入持有"
+                 "報酬,供對照——回答「策略總報酬是 alpha 還是 beta」看兩者相對大小。"),
+    }
+    payload.setdefault("summary", {})["alpha"] = alpha
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -88,12 +138,18 @@ def main(argv: list[str] | None = None) -> int:
     if s.get("exit_reasons"):
         print(f"[backtest] exit_reasons={s['exit_reasons']}", file=sys.stderr)
 
+    payload = result.as_dict()
+    # provenance 標記(viewer 顯示用)
+    payload["_source"] = args.source
+    _enrich_with_benchmark(payload, _load_taiex_history())
+    a = payload["summary"]["alpha"]
+    print(f"[backtest] alpha vs TAIEX: avg_excess_return={a['avg_excess_return']} "
+          f"(n={a['trades_with_benchmark']}/{a['trades_total']}) "
+          f"period_buy_hold={a['period_buy_hold_return']}", file=sys.stderr)
+
     if not args.no_write:
         out_dir = OUT_DIR if args.source == "main" else OUT_DIR / "backfill"
         out_dir.mkdir(parents=True, exist_ok=True)
-        payload = result.as_dict()
-        # provenance 標記(viewer 顯示用)
-        payload["_source"] = args.source
         if args.latest_only:
             out = out_dir / f"{strategy.name}_latest.json"
         else:

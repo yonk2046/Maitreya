@@ -158,7 +158,8 @@ def _abstain_stock_record(ticker: str, raw: dict, has_branches: bool) -> dict:
         "ticker":        ticker,
         "name":          raw.get("name", ""),
         "market":        "TWSE",  # default; not verified by adapter
-        "industry":      None,
+        "industry":      raw.get("industry"),  # adapter-populated forward-only (Wave A3);
+                                                 # None for legacy raw_inputs lacking the key
 
         "current_price": raw.get("current_price"),
         "open":          raw.get("open"),   # 開盤價 — backtest 次日開盤結算 (None if pre-field history)

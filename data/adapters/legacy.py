@@ -103,6 +103,58 @@ def legacy_paths() -> dict[str, pathlib.Path]:
     }
 
 
+# ---- industry lookup (Wave A3, 2026-07-23) ---------------------------------
+#
+# data/industry_map.json is a STATIC curated table (ticker → TWSE 官方產業分類),
+# a one-off snapshot of the current universe + TIER_A — NOT a refreshable cache
+# (unlike data/industry/industry_map.json, which is the raw code fetch behind
+# it). Ticker → industry-name is a pure, time-invariant lookup: unlike branch
+# staleness (_branch_stale/mtime_fallback), there is no live-vs-replay
+# reliability gap here — the same static file, read the same way, gives the
+# same answer whether adapt_legacy runs live or under replay.
+#
+# The C10 as-was risk is different: `industry` is a NEW canonical field. Full
+# replay recomputes each date with HEAD code, so if this lookup applied
+# unconditionally it would inject a value into the recomputed snapshot for
+# EVERY historical date — including all dates already committed (frozen) with
+# industry=None — breaking their replay hash. So the gate here is a DATE
+# cutover, not a live/replay flag: dates before the cutover (all already-
+# committed snapshots as of 2026-07-23, this file's ship date) stay exactly
+# as-was; dates from the cutover onward get industry populated identically
+# under both live runs AND their future replay (same code, same static file,
+# no live-only fallback needed) — forward-only, 舊快照不動.
+_INDUSTRY_MAP_CUTOVER_DATE = "2026-07-24"  # first date eligible for industry backfill
+
+_industry_map_cache: dict[str, str] | None = None
+
+
+def _load_industry_map() -> dict[str, str]:
+    """Lazy-loaded {ticker: industry_name} from the static curated table.
+
+    Absent/corrupt file → {} (industry stays None, same as before this
+    feature; never raises — this is an enrichment, not a required input).
+    """
+    global _industry_map_cache
+    if _industry_map_cache is None:
+        path = _project_root() / "data" / "industry_map.json"
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            _industry_map_cache = {
+                t: meta.get("industry")
+                for t, meta in raw.get("tickers", {}).items()
+                if meta.get("industry")
+            }
+        except (OSError, json.JSONDecodeError):
+            _industry_map_cache = {}
+    return _industry_map_cache
+
+
+def _reset_industry_map_cache() -> None:
+    """Test hook — force re-read of data/industry_map.json."""
+    global _industry_map_cache
+    _industry_map_cache = None
+
+
 # ---- Helpers --------------------------------------------------------------
 
 def _utc_iso(ts: float) -> str:
@@ -303,6 +355,11 @@ def adapt_legacy(
             "change_pct":    row.get("chgPct"),
             "buy_vol_lots":  row.get("buyVol"),
         }
+        # industry backfill — forward-only date cutover, see _load_industry_map above.
+        if target_date >= _INDUSTRY_MAP_CUTOVER_DATE:
+            ind = _load_industry_map().get(ticker)
+            if ind:
+                ri["industry"] = ind
         # Branches detail if available AND fresh for this snapshot date.
         # 修正案 C-2 逐檔新鮮度守門:一檔停在舊交易日(fetched_date/mtime 日期
         # < target_date)即視為「該股無分點資料」——與 _branches_present=False
