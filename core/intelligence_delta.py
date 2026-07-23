@@ -420,6 +420,22 @@ def _diff_confidence(
 # Diff: Market-level structural changes
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _snap_breadth(snap: dict) -> float | None:
+    """Read the real market-breadth value landed at ``obs_market_breadth.breadth``.
+
+    ``market_regime`` is a deprecated stub field with no ``breadth`` key — reading
+    it always silently returned 0 (via ``.get(..., 0)``), which fabricated a fake
+    "0% market breadth" story line. ``obs_market_breadth`` is the sole producer
+    (core/market_family.py #41) but its ``breadth`` value is honestly ``None`` on
+    data-gap days (old snapshots without the field, or fetch failures) — callers
+    must treat ``None`` as "unknown", never coerce it to 0.
+    """
+    ob = snap.get("obs_market_breadth")
+    if not isinstance(ob, dict):
+        return None
+    return ob.get("breadth")
+
+
 def _diff_market_structure(
     snaps_today:     list[dict],
     snaps_yesterday: list[dict] | None,
@@ -433,7 +449,8 @@ def _diff_market_structure(
     # ── 1. Breadth streak ─────────────────────────────────────────────────
     streak = 0
     for snap in reversed(snaps_today):
-        if snap.get("market_regime", {}).get("breadth", 0) >= 0.70:
+        b = _snap_breadth(snap)
+        if b is not None and b >= 0.70:
             streak += 1
         else:
             break
@@ -652,18 +669,22 @@ def _build_market_story(
 ) -> list[str]:
     story: list[str] = []
 
-    # 1. Breadth state
-    latest_b = snaps_today[-1].get("market_regime", {}).get("breadth", 0) * 100 if snaps_today else 0
+    # 1. Breadth state — obs_market_breadth.breadth is the sole SoT (see
+    #    _snap_breadth); honestly None on data-gap days → skip the line
+    #    entirely rather than fabricate "0%" (as-was, no `or 0` padding).
+    latest_b = _snap_breadth(snaps_today[-1]) if snaps_today else None
     streak = 0
     for snap in reversed(snaps_today):
-        if snap.get("market_regime", {}).get("breadth", 0) >= 0.70:
+        b = _snap_breadth(snap)
+        if b is not None and b >= 0.70:
             streak += 1
         else:
             break
-    if streak >= 3:
-        story.append(f"市場廣度連續 {streak} 天維持 ≥70%（今日 {latest_b:.0f}%）")
-    else:
-        story.append(f"市場廣度 {latest_b:.0f}%")
+    if latest_b is not None:
+        if streak >= 3:
+            story.append(f"市場廣度連續 {streak} 天維持 ≥70%（今日 {latest_b * 100:.0f}%）")
+        else:
+            story.append(f"市場廣度 {latest_b * 100:.0f}%")
 
     # 2. Temperature
     story.append(f"市場風險溫度：{today_temp.temperature_zh}（{today_temp.temperature:.0%}）")
