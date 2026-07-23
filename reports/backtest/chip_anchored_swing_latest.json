@@ -4,26 +4,50 @@
     "2026-05-08",
     "2026-07-23"
   ],
-  "trade_count": 16,
+  "trade_count": 15,
   "summary": {
-    "trades": 16,
-    "win_rate": 0.6875,
-    "avg_return": 0.0043,
-    "median_return": 0.0128,
-    "sharpe_per_trade": 0.07,
-    "avg_holding_days": 6.56,
-    "max_drawdown": -0.0199,
+    "trades": 15,
+    "win_rate": 0.5333,
+    "avg_return": -0.0055,
+    "median_return": 0.0048,
+    "sharpe_per_trade": -0.09,
+    "avg_holding_days": 6.6,
+    "max_drawdown": -0.0316,
     "worst_single_trade": -0.1942,
     "exit_reasons": {
-      "weakening": 15,
+      "weakening": 14,
       "end_of_data": 1
     },
     "net": {
-      "win_rate": 0.6875,
-      "avg_return": -0.0005,
-      "median_return": 0.008,
-      "sharpe_per_trade": -0.01
+      "win_rate": 0.5333,
+      "avg_return": -0.0101,
+      "median_return": 0.0001,
+      "sharpe_per_trade": -0.16
     },
+    "realized": {
+      "trades": 14,
+      "win_rate": 0.5714,
+      "avg_return": 0.008,
+      "median_return": 0.0054,
+      "net": {
+        "win_rate": 0.5714,
+        "avg_return": 0.0033,
+        "median_return": 0.0007
+      }
+    },
+    "unrealized": {
+      "trades": 1,
+      "win_rate": 0.0,
+      "avg_return": -0.1942,
+      "median_return": -0.1942,
+      "net": {
+        "win_rate": 0.0,
+        "avg_return": -0.1981,
+        "median_return": -0.1981
+      }
+    },
+    "independent_tickers": 12,
+    "disclosure": "頂層 avg_return/win_rate/median 含全部交易(含 end_of_data 未實現部位);realized/unrealized 已分離(3.4)——未實現不得混入已實現統計。信賴區間一律以 independent_tickers(獨立標的數)計,非交易筆數。",
     "cost_model": {
       "fee_rate": 0.000855,
       "fee_min": 20.0,
@@ -68,56 +92,78 @@
         "drawdown": -0.0016
       },
       {
-        "date": "2026-06-30",
-        "equity": 1015574.39,
-        "drawdown": -0.0014
+        "date": "2026-07-06",
+        "equity": 1008975.34,
+        "drawdown": -0.0079
       },
       {
         "date": "2026-07-06",
-        "equity": 1009259.0,
-        "drawdown": -0.0076
-      },
-      {
-        "date": "2026-07-06",
-        "equity": 1013655.93,
-        "drawdown": -0.0032
+        "equity": 1007164.24,
+        "drawdown": -0.0096
       },
       {
         "date": "2026-07-07",
-        "equity": 1016134.79,
-        "drawdown": -0.0008
+        "equity": 1001670.66,
+        "drawdown": -0.015
       },
       {
         "date": "2026-07-17",
-        "equity": 1019583.8,
-        "drawdown": 0.0
+        "equity": 1005119.67,
+        "drawdown": -0.0116
       },
       {
         "date": "2026-07-20",
-        "equity": 1019590.57,
-        "drawdown": 0.0
+        "equity": 1005126.44,
+        "drawdown": -0.0116
       },
       {
         "date": "2026-07-20",
-        "equity": 1017610.26,
-        "drawdown": -0.0019
+        "equity": 1003146.13,
+        "drawdown": -0.0136
       },
       {
         "date": "2026-07-22",
-        "equity": 1018931.81,
-        "drawdown": -0.0006
+        "equity": 1004467.68,
+        "drawdown": -0.0123
       },
       {
         "date": "2026-07-22",
-        "equity": 1019064.53,
-        "drawdown": -0.0005
+        "equity": 1004600.4,
+        "drawdown": -0.0122
       },
       {
         "date": "2026-07-23",
-        "equity": 999250.91,
-        "drawdown": -0.0199
+        "equity": 984786.78,
+        "drawdown": -0.0316
       }
-    ]
+    ],
+    "alpha": {
+      "trades_with_benchmark": 15,
+      "trades_total": 15,
+      "avg_excess_return": -0.0028,
+      "period_buy_hold_return": 0.078,
+      "note": "avg_excess_return = 策略平均報酬 − 同期(進場↔出場)大盤買入持有報酬(逐筆);period_buy_hold_return = 整段回測期間(date_range)大盤買入持有報酬,供對照——回答「策略總報酬是 alpha 還是 beta」看兩者相對大小。"
+    },
+    "by_regime": {
+      "note": "進場當日落地體制(obs_market_regime.regime_label_en)分組毛平均報酬;unlabeled = 該進場日快照無 obs_market_*(內部 pulse 僅 7/08 起)。R5:讀落地值,不重算。",
+      "groups": {
+        "Capital Waiting": {
+          "trades": 3,
+          "win_rate": 1.0,
+          "avg_return": 0.0212
+        },
+        "Mild Risk-Off": {
+          "trades": 2,
+          "win_rate": 0.5,
+          "avg_return": -0.0052
+        },
+        "unlabeled": {
+          "trades": 10,
+          "win_rate": 0.4,
+          "avg_return": -0.0135
+        }
+      }
+    }
   },
   "limitations": [
     "settlement uses next-day close as open-price proxy (snapshots carry no open)",
@@ -137,7 +183,10 @@
       "return_pct": 0.0408,
       "exit_reason": "weakening",
       "holding_days": 2,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": 0.0218,
+      "excess_return_pct": 0.019,
+      "regime": null
     },
     {
       "ticker": "2886",
@@ -149,7 +198,10 @@
       "return_pct": 0.0392,
       "exit_reason": "weakening",
       "holding_days": 4,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": 0.0632,
+      "excess_return_pct": -0.024,
+      "regime": null
     },
     {
       "ticker": "2892",
@@ -161,7 +213,10 @@
       "return_pct": 0.0538,
       "exit_reason": "weakening",
       "holding_days": 8,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": 0.0671,
+      "excess_return_pct": -0.0133,
+      "regime": null
     },
     {
       "ticker": "2618",
@@ -173,7 +228,10 @@
       "return_pct": 0.0553,
       "exit_reason": "weakening",
       "holding_days": 5,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": 0.0051,
+      "excess_return_pct": 0.0502,
+      "regime": null
     },
     {
       "ticker": "2610",
@@ -185,7 +243,10 @@
       "return_pct": -0.0023,
       "exit_reason": "weakening",
       "holding_days": 3,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": -0.0091,
+      "excess_return_pct": 0.0068,
+      "regime": null
     },
     {
       "ticker": "2890",
@@ -197,19 +258,10 @@
       "return_pct": -0.005,
       "exit_reason": "weakening",
       "holding_days": 3,
-      "units": 1.0
-    },
-    {
-      "ticker": "2890",
-      "name": "永豐金",
-      "entry_date": "2026-06-26",
-      "entry_price": 39.6,
-      "exit_date": "2026-06-30",
-      "exit_price": 39.9,
-      "return_pct": 0.0076,
-      "exit_reason": "weakening",
-      "holding_days": 2,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": -0.0537,
+      "excess_return_pct": 0.0487,
+      "regime": null
     },
     {
       "ticker": "2880",
@@ -221,31 +273,40 @@
       "return_pct": -0.0587,
       "exit_reason": "weakening",
       "holding_days": 11,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": 0.002,
+      "excess_return_pct": -0.0607,
+      "regime": null
     },
     {
       "ticker": "2618",
       "name": "長榮航",
-      "entry_date": "2026-06-24",
-      "entry_price": 41.95,
+      "entry_date": "2026-06-26",
+      "entry_price": 44.6,
       "exit_date": "2026-07-06",
       "exit_price": 44.0,
-      "return_pct": 0.0489,
+      "return_pct": -0.0135,
       "exit_reason": "weakening",
-      "holding_days": 8,
-      "units": 1.0
+      "holding_days": 6,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0445,
+      "excess_return_pct": -0.058,
+      "regime": null
     },
     {
       "ticker": "2610",
       "name": "華航",
-      "entry_date": "2026-06-24",
-      "entry_price": 21.95,
+      "entry_date": "2026-06-26",
+      "entry_price": 23.8,
       "exit_date": "2026-07-07",
       "exit_price": 22.6,
-      "return_pct": 0.0296,
+      "return_pct": -0.0504,
       "exit_reason": "weakening",
-      "holding_days": 9,
-      "units": 1.0
+      "holding_days": 7,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0204,
+      "excess_return_pct": -0.0708,
+      "regime": null
     },
     {
       "ticker": "5876",
@@ -257,7 +318,15 @@
       "return_pct": 0.0394,
       "exit_reason": "weakening",
       "holding_days": 3,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": -0.0597,
+      "excess_return_pct": 0.0991,
+      "regime": {
+        "breadth": 0.192,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "warm"
+      }
     },
     {
       "ticker": "2610",
@@ -269,7 +338,15 @@
       "return_pct": 0.0048,
       "exit_reason": "weakening",
       "holding_days": 3,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": -0.0697,
+      "excess_return_pct": 0.0745,
+      "regime": {
+        "breadth": 0.8284,
+        "regime": "Mild Risk-Off",
+        "regime_zh": "偏弱整理",
+        "temperature_level": "stable"
+      }
     },
     {
       "ticker": "2634",
@@ -281,7 +358,15 @@
       "return_pct": -0.0152,
       "exit_reason": "weakening",
       "holding_days": 3,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": -0.0697,
+      "excess_return_pct": 0.0545,
+      "regime": {
+        "breadth": 0.8284,
+        "regime": "Mild Risk-Off",
+        "regime_zh": "偏弱整理",
+        "temperature_level": "stable"
+      }
     },
     {
       "ticker": "2603",
@@ -293,7 +378,15 @@
       "return_pct": 0.018,
       "exit_reason": "weakening",
       "holding_days": 4,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": -0.0175,
+      "excess_return_pct": 0.0355,
+      "regime": {
+        "breadth": 0.3438,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "stable"
+      }
     },
     {
       "ticker": "2609",
@@ -305,7 +398,15 @@
       "return_pct": 0.0061,
       "exit_reason": "weakening",
       "holding_days": 3,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": 0.0505,
+      "excess_return_pct": -0.0444,
+      "regime": {
+        "breadth": 0.0806,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "warm"
+      }
     },
     {
       "ticker": "2317",
@@ -317,7 +418,10 @@
       "return_pct": -0.1942,
       "exit_reason": "end_of_data",
       "holding_days": 34,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": -0.0346,
+      "excess_return_pct": -0.1596,
+      "regime": null
     }
   ],
   "_source": "main"

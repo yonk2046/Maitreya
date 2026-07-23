@@ -24,6 +24,8 @@ from dataclasses import dataclass, field, asdict
 from typing import Any
 
 from core.engine_params import (
+    BACKTEST_ADD_MIN_PRICE_MULT,
+    BACKTEST_COOLDOWN_DAYS,
     BACKTEST_FEE_MIN,
     BACKTEST_FEE_RATE,
     BACKTEST_INITIAL_CAPITAL,
@@ -79,6 +81,14 @@ class BacktestResult:
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+# 3.4 報告揭露口徑(單一字串常數,避免各處複製漂移)。
+_DISCLOSURE_NOTE = (
+    "頂層 avg_return/win_rate/median 含全部交易(含 end_of_data 未實現部位);"
+    "realized/unrealized 已分離(3.4)——未實現不得混入已實現統計。"
+    "信賴區間一律以 independent_tickers(獨立標的數)計,非交易筆數。"
+)
+
+
 def _rec_for(snap: dict, ticker: str) -> dict | None:
     for s in snap.get("stocks", []):
         if s.get("ticker") == ticker:
@@ -96,6 +106,20 @@ def _fill_price(snap: dict, ticker: str) -> float | None:
 
 def _weakening_sev(rec: dict) -> str:
     return ((rec or {}).get("weakening") or {}).get("severity", "none")
+
+
+def _in_cooldown(cooldown: dict[str, int], ticker: str, entry_fill_i: int) -> bool:
+    """3.3 冷卻期:出場後 N 個交易日內同標的禁再進場(純成本消耗的洗單防護)。
+
+    cooldown[ticker] = 該標的上次「完全出場」的成交日索引(fill index)。
+    prospective 進場成交日索引 = entry_fill_i。gap = entry_fill_i − last_exit_i。
+    gap < BACKTEST_COOLDOWN_DAYS → 禁(含同日 gap==0)。COOLDOWN_DAYS==0 → 恆不禁
+    (掃描對照組)。參數見 core/engine_params.py(BACKTEST_*,研究層,不入 config_hash)。
+    """
+    last_exit_i = cooldown.get(ticker)
+    if last_exit_i is None:
+        return False
+    return (entry_fill_i - last_exit_i) < BACKTEST_COOLDOWN_DAYS
 
 
 # ── Engine ────────────────────────────────────────────────────────────────────
@@ -137,6 +161,7 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
             "golden membership computed on-the-fly via golden.run over each slice")
 
     open_pos: dict[str, dict] = {}   # ticker -> {entry_date, entry_price, peak, fii_neg_run, mfb_neg_run}
+    cooldown: dict[str, int] = {}    # 3.3: ticker -> 上次完全出場的 fill index(冷卻期防洗單)
 
     # iterate decision days i = 0..n-2 (fill on i+1)
     for i in range(n - 1):
@@ -175,6 +200,7 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
                     continue
                 result.trades.append(_close(pos, ticker, decide, fill, fp, reason, dates, i))
                 del open_pos[ticker]
+                cooldown[ticker] = i + 1        # 3.3: 出場成交日 → 起算冷卻期
 
         # ---- new entries (decide on i, execute on i+1) ----
         # 進場判斷共用 core.strategies.would_enter — 回測與 UI 標示的單一事實來源
@@ -187,6 +213,8 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
         for rec in decide.get("stocks", []):
             ticker = rec.get("ticker")
             if not ticker or ticker in open_pos:
+                continue
+            if _in_cooldown(cooldown, ticker, i + 1):   # 3.3: 冷卻期內禁再進場
                 continue
             ok, _reasons = would_enter(ticker, slice_upto, strategy, golden_result=gres)
             if not ok:
@@ -291,6 +319,34 @@ def _equity_curve(trades: list[Trade]) -> tuple[list[dict], float]:
     return curve, round(mdd, 4)
 
 
+def _return_stats(trades: list[Trade]) -> dict[str, Any]:
+    """毛+淨的一組報酬統計(3.4 已實現/未實現分離用的可複用區塊)。
+
+    空集合回傳全 None 骨架。net 用 _net_return_pct(逐筆扣成本)。
+    """
+    if not trades:
+        return {"trades": 0, "win_rate": None, "avg_return": None, "median_return": None,
+                "net": {"win_rate": None, "avg_return": None, "median_return": None}}
+    rets = sorted(t.return_pct for t in trades)
+    n = len(rets)
+    wins = sum(1 for r in rets if r > 0)
+    mean = sum(rets) / n
+    median = rets[n // 2] if n % 2 else (rets[n // 2 - 1] + rets[n // 2]) / 2
+    net_rets = sorted(_net_return_pct(t.return_pct, t.units) for t in trades)
+    n_wins = sum(1 for r in net_rets if r > 0)
+    n_mean = sum(net_rets) / n
+    n_median = net_rets[n // 2] if n % 2 else (net_rets[n // 2 - 1] + net_rets[n // 2]) / 2
+    return {
+        "trades": n,
+        "win_rate": round(wins / n, 4),
+        "avg_return": round(mean, 4),
+        "median_return": round(median, 4),
+        "net": {"win_rate": round(n_wins / n, 4),
+                "avg_return": round(n_mean, 4),
+                "median_return": round(n_median, 4)},
+    }
+
+
 def _summarize(trades: list[Trade], strategy: StrategyConfig) -> dict[str, Any]:
     if not trades:
         return {
@@ -300,6 +356,10 @@ def _summarize(trades: list[Trade], strategy: StrategyConfig) -> dict[str, Any]:
             "worst_single_trade": None,
             "net": {"win_rate": None, "avg_return": None,
                     "median_return": None, "sharpe_per_trade": None},
+            "realized": _return_stats([]),
+            "unrealized": _return_stats([]),
+            "independent_tickers": 0,
+            "disclosure": _DISCLOSURE_NOTE,
             "cost_model": _cost_model_dict(),
             "equity_curve": [],
         }
@@ -336,6 +396,15 @@ def _summarize(trades: list[Trade], strategy: StrategyConfig) -> dict[str, Any]:
             "median_return": round(n_median, 4),
             "sharpe_per_trade": n_sharpe,
         },
+        # 3.4 已實現/未實現分離:頂層(avg_return 等)含全部交易(向後相容,viewer 讀此),
+        # realized = 真出場的交易,unrealized = end_of_data(回測窗末強制結算,未真出場)。
+        # 混入 unrealized 會膨脹平均(例:mom v1 台化 +28.12% 未實現拉高毛均)。
+        "realized": _return_stats([t for t in trades if t.exit_reason != "end_of_data"]),
+        "unrealized": _return_stats([t for t in trades if t.exit_reason == "end_of_data"]),
+        # 3.4 獨立標的數揭露:信賴區間應以獨立標的數計(非交易筆數;同一標的多次進出
+        # 非獨立樣本)。此欄供報表/統計以正確 n 計算。
+        "independent_tickers": len({t.ticker for t in trades}),
+        "disclosure": _DISCLOSURE_NOTE,
         "cost_model": _cost_model_dict(),
         "equity_curve": equity_curve,
     }
@@ -391,6 +460,7 @@ def _run_backtest_v2(snaps, dates, strategy, result):
     result.limitations.append(
         "v2 partial sizing: 加碼/減碼/TP1 已實作; ATR 用收盤對收盤代理(快照無 high/low)")
     open_pos: dict[str, dict] = {}
+    cooldown: dict[str, int] = {}    # 3.3: ticker -> 上次完全出場的 fill index(冷卻期防洗單)
 
     def _seq(ticker, upto):
         out = []
@@ -445,10 +515,17 @@ def _run_backtest_v2(snaps, dates, strategy, result):
                 if cost and slow is not None and atrp is not None:
                     stop = max(cost, slow) * (1 - strategy.atr_buffer_mult * atrp)
                     if price <= stop:
-                        full = "atr_stop"
+                        # 3.1:此止損位 = max(主力成本, 近N日結構低)×(1−緩衝·ATR%)。
+                        # 結構低點隨股價墊高會被抬到進場均價之上,獲利部位也會觸發
+                        # ——那實為「移動停利」(trailing_stop),不是砍損的 atr_stop。
+                        # 依出場報酬正負分標籤:虧損出場才記 atr_stop,獲利/打平出場
+                        # 改標 trailing_stop(驗收:所有 atr_stop 出場報酬必為負)。
+                        avg_cost = pos["total_cost"] / pos["units"] if pos["units"] else 0.0
+                        full = "atr_stop" if fp < avg_cost else "trailing_stop"
             if full:
                 _record_leg(result, pos, ticker, pos["units"], fp, dates[i + 1], full, hd)
                 del open_pos[ticker]
+                cooldown[ticker] = i + 1        # 3.3: 出場成交日 → 起算冷卻期
                 continue
 
             # ---- TP1 partial (sell half, once) ----
@@ -470,12 +547,21 @@ def _run_backtest_v2(snaps, dates, strategy, result):
             # ---- 加碼 ----
             if pos["units"] < strategy.max_units:
                 if chip and not pos.get("scaled") and sev in ("none", "yellow"):
-                    cost = rec.get("main_force_cost")
+                    # 3.2 防向下攤平(鴻海 309→273.5 黑洞):三約束同時成立才加碼。
+                    #  (1) 成本錨固定:回貼帶用 entry_cost_anchor(進場當日 main_force_cost,
+                    #      不隨後續重算下修)——舊碼用當日重算 cost,股價下跌途中反覆成立。
+                    #  (2) 禁向下攤平:加碼價 fp ≥ 前次進場價 × BACKTEST_ADD_MIN_PRICE_MULT。
+                    #  (3) 動能仍在:velocity_3d > 0。
+                    anchor = pos.get("entry_cost_anchor")
                     lo, hi = strategy.add_cost_band
-                    if cost and lo * cost <= price <= hi * cost:
+                    if (anchor
+                            and lo * anchor <= price <= hi * anchor
+                            and fp >= pos["last_entry_price"] * BACKTEST_ADD_MIN_PRICE_MULT
+                            and (vel or 0) > 0):
                         pos["total_cost"] += strategy.add_unit * fp
                         pos["units"] += strategy.add_unit
                         pos["scaled"] = True
+                        pos["last_entry_price"] = fp
                 elif not chip and (vel or 0) > 0 and (i - pos["last_add_i"]) >= strategy.add_cooldown_days:
                     prior_mfb = [r.get("main_force_buy") for r in _seq(ticker, i)
                                  if r.get("main_force_buy") is not None]
@@ -496,6 +582,8 @@ def _run_backtest_v2(snaps, dates, strategy, result):
             ticker = rec.get("ticker")
             if not ticker or ticker in open_pos:
                 continue
+            if _in_cooldown(cooldown, ticker, i + 1):   # 3.3: 冷卻期內禁再進場
+                continue
             ok, _reasons = would_enter(ticker, snaps[:i + 1], strategy, golden_result=gres)
             if not ok:
                 continue
@@ -515,6 +603,10 @@ def _run_backtest_v2(snaps, dates, strategy, result):
                 "fii_neg_run": 0, "mfb_neg_run": 0, "vel_neg_run": 0,
                 "scaled": False, "reduced": False, "tp1_done": False, "last_add_i": i + 1,
                 "anchor": anchor,
+                # 3.2: 加碼防護狀態 —— 成本錨固定為進場當日 main_force_cost(不重算);
+                # last_entry_price 追蹤最近一次進場成交價(禁向下攤平的比較基準)。
+                "entry_cost_anchor": rec.get("main_force_cost") if chip else None,
+                "last_entry_price": fp,
                 "accum_avg_buy": (sum(pos_buys) / len(pos_buys)) if pos_buys else 0.0,
             }
 

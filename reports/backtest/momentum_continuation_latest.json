@@ -8,10 +8,10 @@
   "summary": {
     "trades": 16,
     "win_rate": 0.625,
-    "avg_return": 0.0391,
+    "avg_return": 0.0389,
     "median_return": 0.0096,
-    "sharpe_per_trade": 0.5,
-    "avg_holding_days": 6.5,
+    "sharpe_per_trade": 0.49,
+    "avg_holding_days": 6.44,
     "max_drawdown": -0.0059,
     "worst_single_trade": -0.0235,
     "exit_reasons": {
@@ -21,10 +21,34 @@
     },
     "net": {
       "win_rate": 0.625,
-      "avg_return": 0.0343,
+      "avg_return": 0.0341,
       "median_return": 0.0048,
-      "sharpe_per_trade": 0.44
+      "sharpe_per_trade": 0.43
     },
+    "realized": {
+      "trades": 12,
+      "win_rate": 0.5833,
+      "avg_return": 0.0269,
+      "median_return": 0.0123,
+      "net": {
+        "win_rate": 0.5833,
+        "avg_return": 0.022,
+        "median_return": 0.0075
+      }
+    },
+    "unrealized": {
+      "trades": 4,
+      "win_rate": 0.75,
+      "avg_return": 0.0751,
+      "median_return": 0.0096,
+      "net": {
+        "win_rate": 0.75,
+        "avg_return": 0.0701,
+        "median_return": 0.0048
+      }
+    },
+    "independent_tickers": 12,
+    "disclosure": "頂層 avg_return/win_rate/median 含全部交易(含 end_of_data 未實現部位);realized/unrealized 已分離(3.4)——未實現不得混入已實現統計。信賴區間一律以 independent_tickers(獨立標的數)計,非交易筆數。",
     "cost_model": {
       "fee_rate": 0.000855,
       "fee_min": 20.0,
@@ -55,70 +79,92 @@
       },
       {
         "date": "2026-06-24",
-        "equity": 1026630.09,
+        "equity": 1026286.47,
         "drawdown": 0.0
       },
       {
         "date": "2026-06-24",
-        "equity": 1031146.05,
+        "equity": 1030802.43,
         "drawdown": 0.0
       },
       {
         "date": "2026-06-24",
-        "equity": 1030502.11,
+        "equity": 1030158.49,
         "drawdown": -0.0006
       },
       {
         "date": "2026-06-26",
-        "equity": 1027872.28,
+        "equity": 1027528.66,
         "drawdown": -0.0032
       },
       {
         "date": "2026-06-30",
-        "equity": 1025060.47,
+        "equity": 1024716.85,
         "drawdown": -0.0059
       },
       {
         "date": "2026-07-02",
-        "equity": 1025338.45,
+        "equity": 1024994.83,
         "drawdown": -0.0056
       },
       {
         "date": "2026-07-14",
-        "equity": 1027730.81,
+        "equity": 1027387.18,
         "drawdown": -0.0033
       },
       {
         "date": "2026-07-16",
-        "equity": 1027259.81,
+        "equity": 1026916.18,
         "drawdown": -0.0038
       },
       {
         "date": "2026-07-17",
-        "equity": 1026788.81,
+        "equity": 1026445.18,
         "drawdown": -0.0042
       },
       {
         "date": "2026-07-23",
-        "equity": 1054328.59,
+        "equity": 1053984.96,
         "drawdown": 0.0
       },
       {
         "date": "2026-07-23",
-        "equity": 1054694.68,
+        "equity": 1054351.06,
         "drawdown": 0.0
       },
       {
         "date": "2026-07-23",
-        "equity": 1055297.69,
+        "equity": 1054954.07,
         "drawdown": 0.0
       },
       {
         "date": "2026-07-23",
-        "equity": 1054826.69,
+        "equity": 1054483.07,
         "drawdown": -0.0004
       }
-    ]
+    ],
+    "alpha": {
+      "trades_with_benchmark": 16,
+      "trades_total": 16,
+      "avg_excess_return": 0.033,
+      "period_buy_hold_return": 0.078,
+      "note": "avg_excess_return = 策略平均報酬 − 同期(進場↔出場)大盤買入持有報酬(逐筆);period_buy_hold_return = 整段回測期間(date_range)大盤買入持有報酬,供對照——回答「策略總報酬是 alpha 還是 beta」看兩者相對大小。"
+    },
+    "by_regime": {
+      "note": "進場當日落地體制(obs_market_regime.regime_label_en)分組毛平均報酬;unlabeled = 該進場日快照無 obs_market_*(內部 pulse 僅 7/08 起)。R5:讀落地值,不重算。",
+      "groups": {
+        "Capital Waiting": {
+          "trades": 3,
+          "win_rate": 0.6667,
+          "avg_return": 0.0064
+        },
+        "unlabeled": {
+          "trades": 13,
+          "win_rate": 0.6154,
+          "avg_return": 0.0464
+        }
+      }
+    }
   },
   "limitations": [
     "settlement uses next-day close as open-price proxy (snapshots carry no open)",
@@ -137,7 +183,10 @@
       "return_pct": 0.171,
       "exit_reason": "weakening",
       "holding_days": 7,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": 0.0184,
+      "excess_return_pct": 0.1526,
+      "regime": null
     },
     {
       "ticker": "2892",
@@ -149,7 +198,10 @@
       "return_pct": 0.041,
       "exit_reason": "fii_reversal",
       "holding_days": 2,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": -0.0081,
+      "excess_return_pct": 0.0491,
+      "regime": null
     },
     {
       "ticker": "2884",
@@ -161,19 +213,25 @@
       "return_pct": 0.017,
       "exit_reason": "weakening",
       "holding_days": 4,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": 0.0282,
+      "excess_return_pct": -0.0112,
+      "regime": null
     },
     {
       "ticker": "2892",
       "name": "第一金",
-      "entry_date": "2026-06-10",
-      "entry_price": 30.55,
+      "entry_date": "2026-06-11",
+      "entry_price": 30.65,
       "exit_date": "2026-06-24",
       "exit_price": 32.3,
-      "return_pct": 0.0573,
+      "return_pct": 0.0538,
       "exit_reason": "weakening",
-      "holding_days": 9,
-      "units": 1.0
+      "holding_days": 8,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0671,
+      "excess_return_pct": -0.0133,
+      "regime": null
     },
     {
       "ticker": "2618",
@@ -185,7 +243,10 @@
       "return_pct": 0.0501,
       "exit_reason": "weakening",
       "holding_days": 6,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": 0.0142,
+      "excess_return_pct": 0.0359,
+      "regime": null
     },
     {
       "ticker": "1402",
@@ -197,7 +258,10 @@
       "return_pct": -0.0017,
       "exit_reason": "weakening",
       "holding_days": 4,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": 0.0036,
+      "excess_return_pct": -0.0053,
+      "regime": null
     },
     {
       "ticker": "2887",
@@ -209,7 +273,10 @@
       "return_pct": -0.0217,
       "exit_reason": "weakening",
       "holding_days": 7,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": -0.027,
+      "excess_return_pct": 0.0053,
+      "regime": null
     },
     {
       "ticker": "1802",
@@ -221,7 +288,10 @@
       "return_pct": -0.0235,
       "exit_reason": "weakening",
       "holding_days": 6,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": -0.0338,
+      "excess_return_pct": 0.0103,
+      "regime": null
     },
     {
       "ticker": "2887",
@@ -233,7 +303,10 @@
       "return_pct": 0.0075,
       "exit_reason": "fii_reversal",
       "holding_days": 2,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": 0.0134,
+      "excess_return_pct": -0.0059,
+      "regime": null
     },
     {
       "ticker": "2892",
@@ -245,7 +318,10 @@
       "return_pct": 0.0287,
       "exit_reason": "weakening",
       "holding_days": 3,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": -0.0077,
+      "excess_return_pct": 0.0364,
+      "regime": null
     },
     {
       "ticker": "2883",
@@ -257,7 +333,10 @@
       "return_pct": 0.0,
       "exit_reason": "weakening",
       "holding_days": 19,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": -0.0055,
+      "excess_return_pct": 0.0055,
+      "regime": null
     },
     {
       "ticker": "2884",
@@ -269,7 +348,10 @@
       "return_pct": 0.0,
       "exit_reason": "weakening",
       "holding_days": 5,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": -0.0592,
+      "excess_return_pct": 0.0592,
+      "regime": null
     },
     {
       "ticker": "1326",
@@ -281,7 +363,10 @@
       "return_pct": 0.2812,
       "exit_reason": "end_of_data",
       "holding_days": 24,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": -0.0224,
+      "excess_return_pct": 0.3036,
+      "regime": null
     },
     {
       "ticker": "1101",
@@ -293,7 +378,15 @@
       "return_pct": 0.0084,
       "exit_reason": "end_of_data",
       "holding_days": 3,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": 0.0566,
+      "excess_return_pct": -0.0482,
+      "regime": {
+        "breadth": 0.3494,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "warm"
+      }
     },
     {
       "ticker": "2002",
@@ -305,7 +398,15 @@
       "return_pct": 0.0108,
       "exit_reason": "end_of_data",
       "holding_days": 3,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": 0.0566,
+      "excess_return_pct": -0.0458,
+      "regime": {
+        "breadth": 0.3494,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "warm"
+      }
     },
     {
       "ticker": "3231",
@@ -317,7 +418,15 @@
       "return_pct": 0.0,
       "exit_reason": "end_of_data",
       "holding_days": 0,
-      "units": 1.0
+      "units": 1.0,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": 0.0,
+      "regime": {
+        "breadth": 0.3475,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "warm"
+      }
     }
   ],
   "_source": "main"

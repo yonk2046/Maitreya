@@ -108,6 +108,62 @@ def _enrich_with_benchmark(payload: dict, taiex_history: dict[str, dict]) -> Non
     payload.setdefault("summary", {})["alpha"] = alpha
 
 
+def _regime_index(snaps: list[dict]) -> dict[str, dict]:
+    """{date: 落地體制值} — 只收「至少有一個 obs_market_* 落地」的日期(R5:讀落地,
+    不重算)。內部 pulse 僅 2026-07-08 起才有這些欄,故多數歷史日缺 → 不入索引,
+    對應交易記 None(歸入「未標記」體制組)。"""
+    idx: dict[str, dict] = {}
+    for s in snaps:
+        d = s.get("date")
+        if not d:
+            continue
+        breadth = s.get("obs_market_breadth")
+        regime = s.get("obs_market_regime")
+        temp = s.get("obs_market_temperature")
+        if not (breadth or regime or temp):
+            continue
+        idx[d] = {
+            "breadth": (breadth or {}).get("breadth"),
+            "regime": (regime or {}).get("regime_label_en"),
+            "regime_zh": (regime or {}).get("regime_label_zh"),
+            "temperature_level": (temp or {}).get("temperature_level"),
+        }
+    return idx
+
+
+def _enrich_with_regime(payload: dict, snaps: list[dict]) -> None:
+    """2.4 體制標記(裁定 R5:讀落地不重算)。
+
+    為每筆交易記進場當日(entry_date)的落地 obs_market_breadth/regime/temperature
+    值(t["regime"]),並輸出分體制績效表(summary["by_regime"])。純後處理:
+    core/paper_trading.py 維持純函數,體制值來自已落地的快照,不在此重算。
+    """
+    idx = _regime_index(snaps)
+    buckets: dict[str, list[float]] = {}
+    for t in payload["trades"]:
+        info = idx.get(t["entry_date"])
+        t["regime"] = info                      # None 或落地體制 dict
+        label = (info or {}).get("regime") or "unlabeled"
+        buckets.setdefault(label, []).append(t.get("return_pct") or 0.0)
+
+    by_regime: dict[str, dict] = {}
+    for label in sorted(buckets):
+        rets = buckets[label]
+        n = len(rets)
+        wins = sum(1 for r in rets if r > 0)
+        by_regime[label] = {
+            "trades": n,
+            "win_rate": round(wins / n, 4) if n else None,
+            "avg_return": round(sum(rets) / n, 4) if n else None,
+        }
+    payload.setdefault("summary", {})["by_regime"] = {
+        "note": ("進場當日落地體制(obs_market_regime.regime_label_en)分組毛平均報酬;"
+                 "unlabeled = 該進場日快照無 obs_market_*(內部 pulse 僅 7/08 起)。"
+                 "R5:讀落地值,不重算。"),
+        "groups": by_regime,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Maitreya paper-trading backtest")
     ap.add_argument("--strategy", default=STRATEGY_B.name, choices=list(ALL_STRATEGIES))
@@ -146,6 +202,18 @@ def main(argv: list[str] | None = None) -> int:
     print(f"[backtest] alpha vs TAIEX: avg_excess_return={a['avg_excess_return']} "
           f"(n={a['trades_with_benchmark']}/{a['trades_total']}) "
           f"period_buy_hold={a['period_buy_hold_return']}", file=sys.stderr)
+
+    _enrich_with_regime(payload, snaps)   # 2.4 體制標記(R5:讀落地不重算)
+    rg = payload["summary"]["by_regime"]["groups"]
+    print(f"[backtest] by_regime: " + " | ".join(
+        f"{k}:{v['trades']}筆 avg={v['avg_return']}" for k, v in rg.items()), file=sys.stderr)
+
+    rz = payload["summary"].get("realized", {})
+    uz = payload["summary"].get("unrealized", {})
+    print(f"[backtest] realized(3.4): n={rz.get('trades')} avg={rz.get('avg_return')} "
+          f"net={rz.get('net',{}).get('avg_return')} | unrealized: n={uz.get('trades')} "
+          f"avg={uz.get('avg_return')} | independent_tickers={payload['summary'].get('independent_tickers')}",
+          file=sys.stderr)
 
     if not args.no_write:
         out_dir = OUT_DIR if args.source == "main" else OUT_DIR / "backfill"

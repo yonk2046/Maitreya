@@ -178,8 +178,21 @@ DATA.strategies.forEach((s,idx)=>{
   const su=s.summary||{};
   const net=su.net||{};
   const cm=su.cost_model||{};
+  const rz=su.realized||{}, uz=su.unrealized||{};
+  const byreg=(su.by_regime||{}).groups||{};
   const zh=ZH[s.name]||s.name;
   const sec=document.createElement('div');
+  const rzRow=(g,label)=>`<tr><td>${label}</td><td>${g.trades??'—'}</td><td>${fmtPct(g.win_rate)}</td>`
+    +`<td class="${cls(g.avg_return)}">${fmtPct(g.avg_return)}</td>`
+    +`<td class="${cls((g.net||{}).avg_return)}">${fmtPct((g.net||{}).avg_return)}</td></tr>`;
+  const realizedBlock=(rz.trades!=null)?`<div class="panel"><h3>已實現 vs 未實現(3.4)</h3>
+    <table><tr><th>組別</th><th>筆數</th><th>勝率</th><th>平均(毛)</th><th>平均(淨)</th></tr>
+    ${rzRow(rz,'已實現')}${rzRow(uz,'未實現 end_of_data')}</table>
+    <div class="note">獨立標的 ${su.independent_tickers??'—'} 檔(信賴區間以此計,非交易筆數);未實現不混入已實現統計。</div></div>`:'';
+  const regRows=Object.entries(byreg).map(([k,v])=>`<tr><td>${k}</td><td>${v.trades}</td><td>${fmtPct(v.win_rate)}</td><td class="${cls(v.avg_return)}">${fmtPct(v.avg_return)}</td></tr>`).join('');
+  const regimeBlock=regRows?`<div class="panel"><h3>分體制績效(2.4)</h3>
+    <table><tr><th>進場當日體制</th><th>筆數</th><th>勝率</th><th>平均(毛)</th></tr>${regRows}</table>
+    <div class="note">R5 讀落地體制值;unlabeled = 該進場日快照無 obs_market_*(內部 pulse 僅 7/08 起)。</div></div>`:'';
   const costNote=cm.fee_rate!=null
     ?`成本模型:手續費 ${(cm.fee_rate*100).toFixed(4)}%/筆(最低 $${cm.fee_min}) + 證交稅 ${(cm.tax_rate*100).toFixed(2)}%(賣出) ·`
      +` 固定部位 $${(cm.position_size||0).toLocaleString()} · 起始資金 $${(cm.initial_capital||0).toLocaleString()}`
@@ -204,6 +217,7 @@ DATA.strategies.forEach((s,idx)=>{
      ${kpi('平均持有',(su.avg_holding_days??'—')+'d')}
    </div>
    ${costNote?`<div class="note">${costNote}</div>`:''}
+   ${(realizedBlock||regimeBlock)?`<div class="grid2">${realizedBlock}${regimeBlock}</div>`:''}
    <div class="grid2">
      <div class="panel"><h3>權益曲線${s.equity_is_currency?'(固定部位・淨值)':'(累積倍數・舊版估算)'}</h3><canvas id="eq${idx}"></canvas></div>
      <div class="panel"><h3>報酬分布</h3><canvas id="hi${idx}"></canvas></div>

@@ -165,11 +165,16 @@ def test_backtest_params_excluded_from_config_hash():
 # ═══════════════════════════════════════════════════════════════════════════
 
 def test_chip_anchored_swing_net_return_acceptance_checkpoint():
-    """驗收:chip_anchored_swing 淨平均應約為 −0.04%(2026-07-23 分析基準)。
+    """驗收(B1 後重新基準化):chip_anchored_swing 全交易淨平均應約為 −1.0%。
 
-    容忍帶 ±0.3pp:這是 2026-07-23 快照集(16 筆交易,2026-05-08→2026-07-23)
-    下的已知基準,隨每日 pipeline 累積新交易數字會緩慢漂移——測的是「成本模型
-    把毛報酬正確拉進小幅負值區間」,不是鎖死某一天的精確浮點數。
+    原基準 −0.04% 是 B1 前的數字,其中含 3.3 洗單(同日出場又進場,買在人為偏低的
+    出場日價再騎上去)膨脹的獲利。B1 修正(3.3 冷卻期 + 3.1 標籤 + 3.4 已/未實現分離)
+    後,那些洗單獲利消失、單一 end_of_data 未實現大虧不再被稀釋 → 全交易淨平均落到
+    ~−1.0%。容忍帶 ±0.5pp:小樣本 + 未實現尾端隨每日 pipeline 累積會漂移,測的是
+    「成本模型把報酬正確拉進負值,且 3.3 洗單造成的虛假獲利已移除」,非鎖死浮點數。
+
+    註:3.4 分離後,已實現(realized)淨平均為小幅正值(~+0.3%);全交易淨為負是被
+    單筆未實現大虧拖累——這正是 3.4 要把兩組分開揭露的理由。
     """
     snaps = _load_snapshots()
     if len(snaps) < 2:
@@ -179,9 +184,12 @@ def test_chip_anchored_swing_net_return_acceptance_checkpoint():
         pytest.skip("chip_anchored_swing produced no trades on current snapshots")
     net_avg = res.summary["net"]["avg_return"]
     assert net_avg is not None
-    assert abs(net_avg - (-0.0004)) < 0.003, (
+    assert abs(net_avg - (-0.0101)) < 0.005, (
         f"chip_anchored_swing net avg_return {net_avg} drifted far from the "
-        f"~-0.04% checklist baseline (±0.3pp band)")
+        f"post-B1 ~-1.0% baseline (±0.5pp band)")
+    # 3.4:已實現/未實現必須分離揭露,且兩組筆數合計 == 全交易筆數
+    real, unreal = res.summary["realized"], res.summary["unrealized"]
+    assert real["trades"] + unreal["trades"] == res.summary["trades"]
 
 
 def test_determinism_same_snapshots_same_summary():
