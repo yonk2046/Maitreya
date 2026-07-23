@@ -34,6 +34,9 @@ import streamlit as st
 
 from viewer import data as vd
 from viewer import intelligence as vi
+from viewer import terms as _terms
+from viewer import view_params as _vp
+from viewer.terms import label as _L, defn as _D, col as _C
 from core.narrative_engine import generate as _narrative_generate
 from core.market_context import (
     accumulation_velocity,
@@ -970,33 +973,28 @@ def _heat_score(streak: int, fii, conf_tier: str, weak_sev: str) -> int:
       Weakening   -25 red, -15 orange, -5 yellow, 0 none
     """
     s = 0
-    if streak >= 7:   s += 30
-    elif streak >= 5: s += 22
-    elif streak >= 3: s += 14
-    elif streak >= 1: s += 5
+    for thr, pts in _vp.HEAT_STREAK_TIERS:
+        if streak >= thr:
+            s += pts
+            break
 
     if fii is not None:
-        if fii > 0:   s += 15
-        elif fii < 0: s -= 5
+        if fii > 0:   s += _vp.HEAT_FII_SAME_DIR
+        elif fii < 0: s += _vp.HEAT_FII_OPP_DIR
 
-    if conf_tier == "FULL":    s += 10
-    elif conf_tier == "PARTIAL": s += 5
+    if conf_tier == "FULL":    s += _vp.HEAT_TIER_FULL
+    elif conf_tier == "PARTIAL": s += _vp.HEAT_TIER_PARTIAL
 
-    if weak_sev == "red":    s -= 25
-    elif weak_sev == "orange": s -= 15
-    elif weak_sev == "yellow": s -= 5
+    s += _vp.HEAT_WEAK_PENALTY.get(weak_sev, 0)
 
     return s
 
 
 def _heat_level(score: int) -> tuple[str, str]:
-    """熱度分 → (SCD 色類別, 中文級別)。切點沿用舊 _heat_bar 色階(40/20/5)。"""
-    if score >= 40:
-        return "scd-green", "高"
-    if score >= 20:
-        return "scd-amber", "中"
-    if score >= 5:
-        return "scd-blue", "低"
+    """熱度分 → (SCD 色類別, 中文級別)。切點集中於 view_params.HEAT_LEVEL_CUTS。"""
+    for thr, cls, zh in _vp.HEAT_LEVEL_CUTS:
+        if score >= thr:
+            return cls, zh
     return "scd-neutral", "冷"
 
 
@@ -1077,7 +1075,7 @@ def _render_heat_radar(snaps: list[dict]) -> None:
         _dt_empty("今日無追蹤標的 ✓")
         return
     _density_table(
-        ["代號", "名稱", "熱度", "連買(日)", "外資", "觀察標籤"],
+        ["代號", "名稱", "熱度", _C("streak_strict"), _L("fii_sync"), "觀察標籤"],
         html_rows, sort_note="熱度排序",
     )
 
@@ -1270,14 +1268,14 @@ def _strengthening_rows(key: str, snaps: list[dict]) -> list[dict]:
             "資料": fresh_txt,
             "代號": ticker,
             "名稱": name,
-            "動能": mom_txt,
+            _L("momentum_glyph"): mom_txt,
             "現價": f"NT${price:,.2f}" if price else "—",
             "漲跌": f"{chg:+.2f}%" if chg is not None else "—",
-            "連買(日)": streak,
-            "窗口買(日)": _stock_buy_days_in_window_or_none(stock),  # 1.7.0 缺欄位顯示「—」
-            "累計(張)": net,
-            "速度(張/日)": round(vel) if vel is not None else None,
-            "20日回買": _rebuy_days_label(spon_score, spon_days),  # C:原始日數,取代高/中/低
+            _C("streak_strict"): streak,
+            _C("window_buy_days"): _stock_buy_days_in_window_or_none(stock),  # 1.7.0 缺欄位顯示「—」
+            _C("net_window"): net,
+            _C("velocity_3d"): round(vel) if vel is not None else None,
+            _L("sponsorship"): f"{spon_score:.0%}" if spon_days and spon_days >= 3 else "樣本不足",
             "成本": f"NT${cost:,.2f}" if cost else "—",
             "Tier A": "★" if ticker in TIER_A else "",
             "_mom": mom_rank,
@@ -1320,17 +1318,17 @@ def _render_strengthening(snaps: list[dict]) -> None:
     import pandas as _pd
     df = (
         _pd.DataFrame(rows)
-        .sort_values(["_mom", "_fresh", "累計(張)"], ascending=[True, True, False])
+        .sort_values(["_mom", "_fresh", _C("net_window")], ascending=[True, True, False])
         .drop(columns=["_mom", "_fresh", "_spon", "_spon_days"])
     )
-    st.caption("排序：動能方向 → 資料新鮮度 → 累計買超 ｜ ▼ 減速中的標的代表動能衰竭，連買天數高也應降權看待")
+    st.caption("排序：動能方向 → 資料新鮮度 → 20日累計買超 ｜ ▼ 減速中的標的代表動能衰竭，連買天數高也應降權看待")
     st.dataframe(
         _style_signal_df(
             df,
-            color_cols=["漲跌", "速度(張/日)"],
-            text_cols=["動能", "資料"],
-            fmt={"累計(張)": "{:+,.0f}", "速度(張/日)": "{:+,.0f}",
-                 "連買(日)": "{:d} 日", "窗口買(日)": "{:d}/20"},
+            color_cols=["漲跌", _C("velocity_3d")],
+            text_cols=[_L("momentum_glyph"), "資料"],
+            fmt={_C("net_window"): "{:+,.0f}", _C("velocity_3d"): "{:+,.0f}",
+                 _C("streak_strict"): "{:d} 日", _C("window_buy_days"): "{:d}/20"},
         ),
         use_container_width=True,
         hide_index=True,
@@ -1422,7 +1420,7 @@ def _render_weakening(snaps: list[dict]) -> None:
         )
 
     _density_table(
-        ["代號", "名稱", "嚴重度", "窗口累計(張)", "轉弱旗標"],
+        ["代號", "名稱", "嚴重度", _C("weak_net_window"), "轉弱旗標"],
         html_rows, sort_note="嚴重度排序 · 旗標滑鼠停留看定義",
     )
 
@@ -1654,16 +1652,16 @@ def _render_temporal_chains(snaps: list[dict]) -> None:
         spon = _sponsorship(ticker, snaps)   # D1:sponsorship 單一取值來源(漂移第11例收案)
 
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("連買天數 Strict",  f"{_stock_streak(stock_latest)}日",
-                    help="嚴格連續尾部買超天數(任何缺日或賣超皆中斷)")
+        col1.metric(_L("streak_strict"),  f"{_stock_streak(stock_latest)}日",
+                    help=_D("streak_strict"))
         _win_v = _stock_buy_days_in_window_or_none(stock_latest)
-        col2.metric("窗口買超 Window",
+        col2.metric(_L("window_buy_days"),
                     f"{_win_v}/20" if _win_v is not None else "—",
-                    help="過去 20 個交易日內主力買超天數(鬆語意,缺日不計但不中斷)。"
-                         "舊 1.7.0 快照無此欄位,顯示「—」;明日 pipeline 跑出 1.8.0 即生效。")
-        col3.metric("累計買超 Net",      f"{_stock_net_accumulation(stock_latest):+,}張",
-                    help="20 天窗口內主力買超累計")
-        col4.metric("贊助持續 Sponsor", f"{spon['persistence_score']:.0%}")
+                    help=_D("window_buy_days") +
+                         "舊 1.7.0 快照無此欄位,顯示「—」;pipeline 1.8.0 起生效。")
+        col3.metric(_L("net_window"),      f"{_stock_net_accumulation(stock_latest):+,}張",
+                    help=_D("net_window"))
+        col4.metric(_L("sponsorship"), f"{spon['persistence_score']:.0%}", help=_D("sponsorship"))
 
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -1859,11 +1857,11 @@ def _render_narrative_watchpoints(report: dict, n_dates: int = 10) -> None:
                     f'<tr><td class="dt-ticker">{e["ticker"]}</td>'
                     f'<td class="dt-name">{_short_name(e["ticker"])}</td>'
                     f'<td><span class="scd-dot {s_cls}"></span> <span class="dt-num">{streak}</span></td>'
-                    f'<td class="dt-num">{days} / {win} 日</td>'
+                    f'<td class="dt-num">{days} / {win} 快照</td>'
                     f'<td class="dt-name">{note}</td></tr>'
                 )
             _density_table(
-                ["代號", "名稱", "連續在榜(日)", "窗口出現", "最近動向"],
+                ["代號", "名稱", _C("presence_streak"), _L("appearance"), "最近動向"],
                 html_rows, sort_note="持續度排序",
             )
 
@@ -1998,9 +1996,9 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
     def _momentum(e: "_golden_mod.GoldenEntry") -> str:
         acc = e.acceleration or 0
         vel = e.velocity_3d or 0
-        if acc > 500 or (acc > 0 and vel > 3000):
+        if acc > _vp.MOMENTUM_ACCEL_UP or (acc > 0 and vel > _vp.MOMENTUM_VEL_STRONG):
             return "strengthening"
-        if acc < -500 or (acc < 0 and vel < 0):
+        if acc < _vp.MOMENTUM_ACCEL_BREAKDOWN or (acc < 0 and vel < 0):
             return "weakening"
         return "stable"
 
@@ -2021,7 +2019,7 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
         vel = e.velocity_3d or 0
         acc = e.acceleration or 0
         # Institutional: steady accumulation with strong sponsorship
-        if (e.streak or 0) >= 5 and e.sponsorship_score >= 0.7 and (e.net_cumulative or 0) > 0:
+        if (e.streak or 0) >= _vp.STREAK_HIGH and e.sponsorship_score >= _vp.SPON_HIGH and (e.net_cumulative or 0) > 0:
             cats.append("institutional")
         # Momentum: velocity + acceleration both positive, in strong state
         if vel > 0 and acc > 0 and e.sm_state in {"strengthening", "confirmed", "accumulating"}:
@@ -2042,22 +2040,23 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
         items = []
 
         # 1. Consecutive accumulation
+        # e.streak = accumulation_velocity streak(缺席不中斷)= 榜上連買,非落地嚴格連買
         streak_n = e.streak or 0
-        if streak_n >= 5:
-            items.append(("✓", "連續買超", f"{streak_n} 日連續主力買超", True))
+        if streak_n >= _vp.STREAK_HIGH:
+            items.append(("✓", _L("streak_on_board"), f"{streak_n} 日榜上連續買超", True))
         elif streak_n >= 1:
-            items.append(("△", "連續買超", f"連買 {streak_n} 日（≥5日視為確認）", None))
+            items.append(("△", _L("streak_on_board"), f"榜上連買 {streak_n} 日（≥{_vp.STREAK_HIGH}日視為確認）", None))
         else:
-            items.append(("✗", "連續買超", "無持續買超紀錄", False))
+            items.append(("✗", _L("streak_on_board"), "無持續買超紀錄", False))
 
         # 2. Sponsorship strength
         spon = e.sponsorship_score
-        if spon >= 0.7:
-            items.append(("✓", "主力回頭率", f"回頭率 {spon:.0%}（≥70%,同一主力鎖碼）", True))
-        elif spon >= 0.45:
-            items.append(("△", "主力回頭率", f"回頭率 {spon:.0%}（≥70% 視為強）", None))
+        if spon >= _vp.SPON_HIGH:
+            items.append(("✓", _L("sponsorship"), f"回頭率 {spon:.0%}（≥{_vp.SPON_HIGH:.0%},同一主力鎖碼）", True))
+        elif spon >= _vp.SPON_GATE:
+            items.append(("△", _L("sponsorship"), f"回頭率 {spon:.0%}（≥{_vp.SPON_HIGH:.0%} 視為強）", None))
         else:
-            items.append(("✗", "主力回頭率", f"回頭率 {spon:.0%}，偏低（買盤分散）", False))
+            items.append(("✗", _L("sponsorship"), f"回頭率 {spon:.0%}，偏低（買盤分散）", False))
 
         # 3. Institutional alignment — from T86 fii_sync_count (0-3)
         sync = stock.get("fii_sync_count")
@@ -2079,9 +2078,9 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
         # 4. Cost support
         if mf_cost and mf_cost > 0 and cur_price_val and cur_price_val > 0:
             dist = (cur_price_val - mf_cost) / mf_cost * 100
-            if abs(dist) <= 5:
-                items.append(("✓", "主力成本支撐", f"現價距成本 {dist:+.1f}%，在安全區間 ±5% 內", True))
-            elif dist > 5:
+            if abs(dist) <= _vp.COST_SAFETY_BAND_PCT:
+                items.append(("✓", "主力成本支撐", f"現價距成本 {dist:+.1f}%，在安全區間 ±{_vp.COST_SAFETY_BAND_PCT:.0f}% 內", True))
+            elif dist > _vp.COST_SAFETY_BAND_PCT:
                 items.append(("△", "主力成本支撐", f"現價高於成本 {dist:.1f}%（偏離安全區）", None))
             else:
                 items.append(("✗", "主力成本支撐", f"現價低於成本 {abs(dist):.1f}%", False))
@@ -2227,16 +2226,16 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
     def _why_matters(e: "_golden_mod.GoldenEntry") -> str:
         parts = []
         if e.streak >= 5:
-            parts.append(f"連續 {e.streak} 日主力買超")
+            parts.append(f"榜上連續 {e.streak} 日主力買超")
         elif e.streak >= 3:
-            parts.append(f"連買 {e.streak} 日呈現持續吸籌")
+            parts.append(f"榜上連買 {e.streak} 日呈現持續吸籌")
         if e.sponsorship_score >= 0.8:
-            parts.append(f"贊助強度達 {e.sponsorship_score:.0%}，法人高度集中")
+            parts.append(f"{_L('sponsorship')}達 {e.sponsorship_score:.0%}，法人高度集中")
         elif e.sponsorship_score >= 0.5:
-            parts.append(f"贊助度 {e.sponsorship_score:.0%}")
-        if (e.velocity_3d or 0) > 5000:
+            parts.append(f"{_L('sponsorship')} {e.sponsorship_score:.0%}")
+        if (e.velocity_3d or 0) > _vp.VELOCITY_STRONG:
             parts.append("近三日動能加速顯著")
-        elif (e.velocity_3d or 0) > 1000:
+        elif (e.velocity_3d or 0) > _vp.VELOCITY_POS:
             parts.append("近三日動能為正")
         if e.sm_state in ("confirmed", "strengthening"):
             parts.append(f"狀態進入「{e.sm_state_zh}」")
@@ -2266,10 +2265,10 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
             tags.append("已進入出貨警戒")
         if (e.streak or 0) == 0:
             tags.append("連買中斷")
-        if (e.acceleration or 0) < -500:
+        if (e.acceleration or 0) < _vp.MOMENTUM_ACCEL_BREAKDOWN:
             tags.append("動能快速衰退")
         if e.sponsorship_score < 0.3:
-            tags.append("贊助顯著下滑")
+            tags.append(f"{_L('sponsorship')}顯著下滑")
         return tags or ["無明顯失效訊號"]
 
     # Build "Recent Changes" from intel events — strips redundant ticker/name prefix,
@@ -2295,7 +2294,8 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
     # Gate labels (kept for diagnostics expander)
     _GATE_LABELS = {
         "G1": "G1 漏斗確認", "G2": "G2 狀態強勢",
-        "G3": "G3 贊助≥45%", "G4": "G4 風險<臨界", "G5": "G5 淨累計>0",
+        "G3": f"G3 {_L('sponsorship')}≥{_vp.SPON_GATE:.0%}", "G4": "G4 風險<臨界",
+        "G5": f"G5 {_L('net_alltime')}>0",
     }
 
     # ── Load learning-layer history once, update at end ─────────────────
@@ -2519,12 +2519,12 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
             f'<hr class="gc-divider">'
             # Row 2: key metrics grid (3-column, 6 items)
             + f'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px;margin:6px 0;">'
-            f'<div class="gc-metric"><span class="gc-metric-label">主力連買</span><span class="gc-metric-val" style="color:#7EB8D4;">{streak_n}日{(" · 窗" + str(_stock_buy_days_in_window(stock))) if _stock_buy_days_in_window(stock) > streak_n else ""}</span></div>'
-            f'<div class="gc-metric"><span class="gc-metric-label">贊助強度</span><span class="gc-metric-val" style="color:#D4A84B;">{e.sponsorship_score:.0%}</span></div>'
+            f'<div class="gc-metric"><span class="gc-metric-label">{_L("streak_on_board")}</span><span class="gc-metric-val" style="color:#7EB8D4;">{streak_n}日{(" · " + _L("window_buy_days") + str(_stock_buy_days_in_window(stock))) if _stock_buy_days_in_window(stock) > streak_n else ""}</span></div>'
+            f'<div class="gc-metric"><span class="gc-metric-label">{_L("sponsorship")}</span><span class="gc-metric-val" style="color:#D4A84B;">{e.sponsorship_score:.0%}</span></div>'
             f'<div class="gc-metric"><span class="gc-metric-label">主力成本</span><span class="gc-metric-val">{cost_s}</span></div>'
-            f'<div class="gc-metric"><span class="gc-metric-label">3日速度</span><span class="gc-metric-val">{f"{e.velocity_3d:+,.0f}" if e.velocity_3d is not None else "—"}</span></div>'
+            f'<div class="gc-metric"><span class="gc-metric-label">{_L("velocity_3d")}</span><span class="gc-metric-val">{f"{e.velocity_3d:+,.0f}" if e.velocity_3d is not None else "—"}</span></div>'
             f'<div class="gc-metric"><span class="gc-metric-label">加速度</span><span class="gc-metric-val">{f"{e.acceleration:+,.0f}" if e.acceleration is not None else "—"}</span></div>'
-            f'<div class="gc-metric"><span class="gc-metric-label">淨累計</span><span class="gc-metric-val">{f"{e.net_cumulative:+,}" if e.net_cumulative else "—"}張</span></div>'
+            f'<div class="gc-metric"><span class="gc-metric-label">{_L("net_alltime")}</span><span class="gc-metric-val">{f"{e.net_cumulative:+,}" if e.net_cumulative else "—"}張</span></div>'
             f'</div>'
             # Divider
             f'<hr class="gc-divider">'
@@ -2532,7 +2532,7 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
             f'<div class="gc-signals">'
             f'{res_html}'
             f'<div class="gc-signal-pill" style="background:#161B26;color:{cs.grade_color};border:1px solid {cs.grade_color}40;">'
-            f'籌碼動能&nbsp;{chip_bar}'
+            f'{_L("chip_grade")}&nbsp;{chip_bar}'
             f'</div>'
             f'<div class="gc-signal-pill" style="background:#161B26;color:{vol_col};border:1px solid {vol_col}40;">'
             f'量能比&nbsp;<b>{vol_ratio_s}</b>&nbsp;{vol_label}'
@@ -2573,7 +2573,7 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
             else:
                 _ev_row("—", "買超占成交量（市場成交量資料待補）")
 
-            # 2) 連續買超(嚴格) + 窗口買超(鬆語意)
+            # 2) 連續買超(嚴格) + 20日內買超(鬆語意)
             if streak_n >= 7:
                 _ev_row("✓", f"連續買超 {streak_n} 天")
             elif streak_n >= 3:
@@ -2583,42 +2583,44 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
             else:
                 _ev_row("—", "無連續買超")
 
-            # 2b) 窗口買超 — 20 天內主力買超天數(鬆語意,輔助參考)
+            # 2b) 20日內買超 — 20 天內主力買超天數(鬆語意,輔助參考)
             _pos_days = _stock_buy_days_in_window(stock)
-            if _pos_days > streak_n:  # 只有當鬆語意大於嚴格時才有額外資訊量
+            _wlbl = _L("window_buy_days")
+            if _pos_days > streak_n:  # 只有當 20 日內買超天數大於榜上連買時才有額外資訊量
                 if _pos_days >= 12:
-                    _ev_row("✓", f"窗口買超 {_pos_days}/20 天（高頻吸籌）")
+                    _ev_row("✓", f"{_wlbl} {_pos_days}/20 天（高頻吸籌）")
                 elif _pos_days >= 7:
-                    _ev_row("△", f"窗口買超 {_pos_days}/20 天（中頻）")
+                    _ev_row("△", f"{_wlbl} {_pos_days}/20 天（中頻）")
                 else:
-                    _ev_row("△", f"窗口買超 {_pos_days}/20 天（偶現）")
+                    _ev_row("△", f"{_wlbl} {_pos_days}/20 天（偶現）")
 
             # 3) 主力成本支撐
             if mf_cost and mf_cost > 0 and cur_price and cur_price > 0:
                 dist = (cur_price - mf_cost) / mf_cost * 100
-                if abs(dist) <= 2:
+                if abs(dist) <= _vp.COST_TIGHT_PCT:
                     _ev_row("✓", f"主力成本 {dist:+.1f}%（貼近）")
-                elif dist <= 5:
+                elif dist <= _vp.COST_SAFETY_BAND_PCT:
                     _ev_row("✓", f"主力成本 {dist:+.1f}%（安全區）")
-                elif dist > 5:
+                elif dist > _vp.COST_SAFETY_BAND_PCT:
                     _ev_row("△", f"主力成本 {dist:+.1f}%（偏離安全區）")
                 else:
                     _ev_row("△", f"主力成本 {dist:+.1f}%（低於成本）")
             else:
                 _ev_row("—", "主力成本資料待補")
 
-            # 4) Velocity(3 日速度)
+            # 4) Velocity(3日速度)
             vel = e.velocity_3d
+            _vlbl = _L("velocity_3d")
             if vel is None:
-                _ev_row("—", "3 日速度資料待補")
-            elif vel > 1000:
-                _ev_row("✓", f"Velocity ↑（3 日速度 +{vel:,.0f}）")
+                _ev_row("—", f"{_vlbl}資料待補")
+            elif vel > _vp.VELOCITY_POS:
+                _ev_row("✓", f"Velocity ↑（{_vlbl} +{vel:,.0f}）")
             elif vel > 0:
-                _ev_row("△", f"Velocity ↑（3 日速度 +{vel:,.0f},力道有限）")
-            elif vel < -1000:
-                _ev_row("△", f"Velocity ↓（3 日速度 {vel:,.0f}）")
+                _ev_row("△", f"Velocity ↑（{_vlbl} +{vel:,.0f},力道有限）")
+            elif vel < _vp.VELOCITY_NEG:
+                _ev_row("△", f"Velocity ↓（{_vlbl} {vel:,.0f}）")
             else:
-                _ev_row("△", f"Velocity 持平（3 日速度 {vel:,.0f}）")
+                _ev_row("△", f"Velocity 持平（{_vlbl} {vel:,.0f}）")
 
             # 5) 法人同向
             sync = stock.get("fii_sync_count")
@@ -2676,7 +2678,7 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
                 f'<div style="padding:8px 10px;background:#0A1018;border-radius:7px;border:1px solid #1A2232;margin-bottom:8px;">'
                 f'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">'
                 f'<div style="font-size:10px;color:#4A6A8A;text-transform:uppercase;letter-spacing:.06em;">'
-                f'Chip Momentum Evidence · 籌碼動能證據</div>'
+                f'Chip Momentum Evidence · {_L("chip_grade")}證據</div>'
                 f'<div style="font-size:11px;color:#6B8EAA;">'
                 f'Strength <b style="color:{cs.grade_color};">{cs.grade}</b></div>'
                 f'</div>'
@@ -2894,8 +2896,8 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
             all_gates = ["G1", "G2", "G3", "G4", "G5"]
             failed_gs = [g for g in all_gates if g not in (e.gates_passed or [])]
             fail_txt  = "缺 " + "、".join({
-                "G1": "漏斗確認", "G2": "狀態強勢", "G3": "贊助≥45%",
-                "G4": "風險<臨界", "G5": "淨累計>0",
+                "G1": "漏斗確認", "G2": "狀態強勢", "G3": f"{_L('sponsorship')}≥{_vp.SPON_GATE:.0%}",
+                "G4": "風險<臨界", "G5": f"{_L('net_alltime')}>0",
             }.get(g, g) for g in failed_gs) if failed_gs else "全通"
             state_col = _state_color(e.sm_state)
             scout_cards.append(
@@ -2914,7 +2916,7 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
                 f'<span style="font-size:11px;color:#6B5FA8;width:28px;flex-shrink:0;text-align:right;">{conv_pct}%</span>'
                 f'</div>'
                 f'<div class="g5-scout-miss">△ {fail_txt}'
-                f'&nbsp;·&nbsp; 連買 {e.streak}日 &nbsp;·&nbsp; 贊助 {e.sponsorship_score:.0%}</div>'
+                f'&nbsp;·&nbsp; {_L("streak_on_board")} {e.streak}日 &nbsp;·&nbsp; {_L("sponsorship")} {e.sponsorship_score:.0%}</div>'
                 f'</div>'
             )
 
@@ -2959,22 +2961,14 @@ def _lvl_risk(score) -> str:
     """警訊分(越高越糟)→ 🔴高/🟠中/🟢低。"""
     if score is None:
         return "—"
-    return "🔴高" if score >= 0.5 else ("🟠中" if score >= 0.3 else "🟢低")
+    return "🔴高" if score >= _vp.RISK_LEVEL_HI else ("🟠中" if score >= _vp.RISK_LEVEL_MID else "🟢低")
 
 
 def _lvl_sponsor(score, days) -> str:
     """主力回頭率;分點樣本 <3 天 → 樣本不足(1/1=100% 假訊號防呆)。"""
     if not days or days < 3:
         return "⚪樣本不足"
-    return _lvl(score, 0.7, 0.4)
-
-
-def _rebuy_days_label(score, days) -> str:
-    """C(Yonki 2026-07-15):主力回頭率去分數化——換算為原始日數「20日回買 X 日」
-    (回頭率×20,0.7×20=14日)。分點樣本 <3 天 → 樣本不足(假訊號防呆)。"""
-    if not days or days < 3:
-        return "樣本不足"
-    return f"{round((score or 0) * 20)} 日"
+    return _lvl(score, _vp.SPON_HIGH, _vp.SPON_GATE)
 
 
 def _render_score_glossary() -> None:
@@ -2997,7 +2991,7 @@ def _render_score_glossary() -> None:
             '<br><br>'
             '共用的基礎指標:'
             '<br>主力回頭率 ＝ 同一家分點回頭買的頻率（🟢高≥70%:同一主力鎖碼｜🟡中≥40%｜⚪低:每天換人像散戶追價｜樣本不足:分點資料未滿 3 天不評分）'
-            '<br>連買(日) ＝ 主力連續淨買超天數 ｜ 累計(張) ＝ 20 日窗口總買超 ｜ 速度 ＝ 近 3 日平均每天買幾張'
+            '<br>連買(日) ＝ 主力連續淨買超天數 ｜ 20日累計買超(張) ＝ 20 日內主力總買超 ｜ 3日速度 ＝ 近 3 日平均每天買幾張'
             '<br>疑似出貨 ＝ 之前強勢吸籌但買超動能連續轉負——主力可能在倒貨的「嫌疑」狀態（未定罪:缺席買超榜 ≠ 一定在賣）'
             '</div>',
             unsafe_allow_html=True,
@@ -3018,15 +3012,15 @@ def _render_watch_table(active_date: str, snaps: list[dict]) -> None:
     """精選觀察 — intelligence report watch_list rendered as a sortable table.
 
     C(Yonki 2026-07-15)去分數化:刪「多頭分/警訊分/主力回頭率(高/中/低)」三欄,
-    改原始數據——連買日數、20 日窗口回買日數(回頭率×20 換算)、累計買超張數;
-    #排名 按累計買超張數排。"""
+    改原始數據——榜上連買日數、主力回頭率(%)、20日累計買超張數;
+    #排名 按 20日累計買超張數排。"""
     report = _intel_load(active_date) if active_date else None
     _section_header("◉", "精選觀察", "Top Watch (next 3–5 sessions)",
                     len(report.watch_list) if report else 0)
     st.markdown(_EXPLAIN_DIV.format(
-        text="狀態機已達 吸籌中/轉強/已確認 的股票。原始數據優先：連買日數、20 日窗口回買日數、"
-             "累計買超張數，依累計買超張數排名。「20日回買」＝主力回頭率換算的原始日數（回頭率×20 日；"
-             "同一家分點回頭買越頻繁，日數越高）。只有 10 秒的話，看這張表就夠。"),
+        text="狀態機已達 吸籌中/轉強/已確認 的股票。原始數據優先：榜上連買日數、主力回頭率、"
+             "20日累計買超張數，依 20日累計買超張數排名。主力回頭率＝同一家分點回頭買的頻率"
+             "（越頻繁越高）。只有 10 秒的話，看這張表就夠。"),
         unsafe_allow_html=True)
     if not report or not report.watch_list:
         st.markdown('<div class="data-gap-notice">無觀察名單資料（今日情報尚未生成）</div>',
@@ -3037,19 +3031,18 @@ def _render_watch_table(active_date: str, snaps: list[dict]) -> None:
     tmp = []
     for w in report.watch_list:
         net = _stock_net_accumulation(latest_stocks.get(w.ticker, {}))
-        rebuy_days = round((w.sponsorship or 0) * 20)   # 回頭率原始日數(0.7×20=14日)
-        tmp.append((net, rebuy_days, w))
-    tmp.sort(key=lambda t: -t[0])   # 按累計買超張數排
+        tmp.append((net, w))
+    tmp.sort(key=lambda t: -t[0])   # 按 20日累計買超張數排
     rows = []
-    for rank, (net, rebuy_days, w) in enumerate(tmp, 1):
+    for rank, (net, w) in enumerate(tmp, 1):
         rows.append({
             "#排名": rank,
             "代號": w.ticker,
             "名稱": w.name,
             "狀態": w.sm_state_zh,
-            "連買(日)": w.streak,
-            "20日回買(日)": rebuy_days,
-            "累計(張)": f"{net:+,}",
+            _C("streak_on_board"): w.streak,
+            _L("sponsorship"): f"{(w.sponsorship or 0):.0%}",
+            _C("net_window"): f"{net:+,}",
             "在此狀態(天)": w.days_in_state,
             "入選理由": _strip_score_fragments(w.reason_zh),
         })
@@ -3063,7 +3056,8 @@ def _render_near_miss_table(snaps: list[dict]) -> None:
     near = sorted(result.near_miss, key=lambda e: e.conviction, reverse=True)
     _section_header("△", "黃金候補", "Near-Miss Watchzone", len(near))
     st.markdown(_EXPLAIN_DIV.format(
-        text="黃金名單 5 道門檻（G1 漏斗確認／G2 狀態強勢／G3 回頭率≥45%／G4 無疑似出貨等臨界風險／G5 淨累計>0）"
+        text=f"黃金名單 5 道門檻（G1 漏斗確認／G2 狀態強勢／G3 {_L('sponsorship')}≥{_vp.SPON_GATE:.0%}／"
+             f"G4 無疑似出貨等臨界風險／G5 {_L('net_alltime')}>0）"
              "剛好通過 4 道的股票——距離升級黃金最近的預備隊。「缺門檻」欄標出還差哪一道。"
              "黃金分＝過門後的加分賽總分（連買越久、回頭率越高、動能越正分數越高）。"),
         unsafe_allow_html=True)
@@ -3072,8 +3066,8 @@ def _render_near_miss_table(snaps: list[dict]) -> None:
                     unsafe_allow_html=True)
         return
     latest_stocks = {s["ticker"]: s for s in snaps[-1].get("stocks", [])}
-    _gate_zh = {"G1": "漏斗確認", "G2": "狀態強勢", "G3": "回頭率≥45%",
-                "G4": "風險<臨界", "G5": "淨累計>0"}
+    _gate_zh = {"G1": "漏斗確認", "G2": "狀態強勢", "G3": f"{_L('sponsorship')}≥{_vp.SPON_GATE:.0%}",
+                "G4": "風險<臨界", "G5": f"{_L('net_alltime')}>0"}
     import pandas as _pd
     rows = []
     for e in near:
@@ -3087,11 +3081,11 @@ def _render_near_miss_table(snaps: list[dict]) -> None:
         rows.append({
             "代號": e.ticker,
             "名稱": e.name,
-            "黃金分": _lvl(e.conviction, 0.65, 0.40),
+            "黃金分": _lvl(e.conviction, _vp.TIER_PRIME_CUT, _vp.TIER_STRONG_CUT),
             "缺門檻": "、".join(_gate_zh.get(g, g) for g in failed) or "—",
             "狀態": e.sm_state_zh,
-            "連買(日)": e.streak or 0,
-            "主力回頭率": _lvl(e.sponsorship_score, 0.7, 0.4),
+            _C("streak_on_board"): e.streak or 0,
+            _L("sponsorship"): _lvl(e.sponsorship_score, _vp.SPON_HIGH, _vp.SPON_GATE),
             "現價": f"NT${price:,.2f}" if price else "—",
             "漲跌": f"{chg:+.2f}%" if chg is not None else "—",
             "距主力成本": f"{premium:+.1f}%" if premium is not None else "—",
@@ -3232,7 +3226,7 @@ def _render_confidence(snaps: list[dict]) -> None:
             "decelerating": "減速中", "distributing": "疑似出貨", "failed": "訊號失敗",
             "exited": "已退出",
         }
-        _RISK_RANK = {"low": 0, "medium": 1, "elevated": 2, "critical": 3}
+        _RISK_RANK = _vp.RISK_RANK
 
         # 持股集合(金框);holdings.json 目前可能為空。
         try:
@@ -3241,12 +3235,12 @@ def _render_confidence(snaps: list[dict]) -> None:
         except Exception:
             held = set()
 
-        # flow 宇宙:20 日累計淨買 ≠ 0,最大者優先,取前 30(顯示用,非評分)
+        # flow 宇宙:20 日累計淨買 ≠ 0,最大者優先,取前 N(顯示用,非評分)
         flow = sorted(
             [p for p in profs if _stock_net_accumulation(latest_ls.get(p.ticker, {}))],
             key=lambda p: abs(_stock_net_accumulation(latest_ls.get(p.ticker, {}))),
             reverse=True,
-        )[:30] or profs[:30]
+        )[:_vp.BUBBLE_FLOW_TOP_N] or profs[:_vp.BUBBLE_FLOW_TOP_N]
 
         import random as _rnd
         _rnd.seed(42)  # jitter 確定性:同一輸入 → 同一圖
@@ -3265,7 +3259,7 @@ def _render_confidence(snaps: list[dict]) -> None:
             flag_codes = "、".join(f'{f.get("code","")}{f.get("zh","")}' for f in flags) if flags else "無"
             xs.append(x_pos)
             ys.append(streak)
-            sizes.append(14 + (abs(net) ** 0.5) / 20)
+            sizes.append(_vp.BUBBLE_BASE_SIZE + (abs(net) ** 0.5) / _vp.BUBBLE_NET_DIVISOR)
             colors.append(_SM_TOKEN.get(sm, "#8B949E"))
             line_w.append(3 if is_held else 1.5)
             line_c.append("#EBC92F" if is_held else _SM_TOKEN.get(sm, "#8B949E"))
@@ -3316,7 +3310,7 @@ def _render_confidence(snaps: list[dict]) -> None:
 
     _section_header("☑", "全市場體檢表", "All Profiles", len(profs))
     st.markdown(_EXPLAIN_DIV.format(
-        text="原始數據優先：sm 狀態（白話生命週期）、連買日數、20 日窗口累計買超張數、"
+        text="原始數據優先：sm 狀態（白話生命週期）、榜上連買日數、20日累計買超張數、"
              "轉弱旗標（W1-W5，無則空）。多頭分/警訊分（高/中/低）已去分數化移除。"
              "排序：狀態較強者在前。搜尋用表格右上角 🔍。"),
         unsafe_allow_html=True)
@@ -3339,8 +3333,8 @@ def _render_confidence(snaps: list[dict]) -> None:
             "現價": f"NT${price:,.2f}" if price else "—",
             "漲跌": f"{chg:+.2f}%" if chg is not None else "—",
             "sm 狀態": p.sm_state_zh,
-            "連買(日)": p.streak,
-            "窗口買超(張)": f"{_stock_net_accumulation(stock):+,}",
+            _C("streak_on_board"): p.streak,
+            _C("net_window"): f"{_stock_net_accumulation(stock):+,}",
             "轉弱旗標": flag_str,
         })
     if prof_rows:
@@ -3377,20 +3371,15 @@ def _event_card(e: DailyEvent, card_cls: str) -> str:
 
 
 def _delta_table(changes: list[BiggestChange], mode: str = "pct") -> str:
-    """mode: 'pct'（0-1→%）｜ 'raw'（原始張數）｜ 'days'（回頭率 0-1 換算 20 日回買日數）。
-    C(Yonki 2026-07-15):回頭率Δ 改 'days' 顯示日數變化,不再顯 %。"""
+    """mode: 'pct'（0-1→%,主力回頭率Δ 用）｜ 'raw'（原始張數,速度Δ 用）。
+    C(術語契約):刪回頭率×20 假日數 'days' 模式,回頭率Δ 一律顯 %。"""
     if not changes:
         return '<div class="data-gap-notice">無顯著變化</div>'
     rows = ""
     for c in changes:
         color = "#52B788" if c.direction == "up" else "#E05C7A"
         arrow = "↑" if c.direction == "up" else "↓"
-        if mode == "days":
-            f_d, t_d = round((c.from_value or 0) * 20), round((c.to_value or 0) * 20)
-            fv = f"{f_d}日"
-            tv = f"{t_d}日"
-            dv = f"{t_d - f_d:+d}日"
-        elif mode == "raw":
+        if mode == "raw":
             fv = f"{c.from_value:+,.0f}"
             tv = f"{c.to_value:+,.0f}"
             dv = f"{c.delta:+,.0f}"
@@ -3497,9 +3486,9 @@ def _render_intelligence(active_date: str, snaps: list[dict], part: str = "story
     if part == "changes":
         _section_header("△", "最大變化排行", "Biggest Changes (last 24h)")
         st.markdown(_EXPLAIN_DIV.format(
-            text="原始數據優先：20 日回買日數變化、主力速度（張/日）變化、以及「樂觀分數」欄"
+            text="原始數據優先：主力回頭率變化（%）、主力速度（張/日）變化、以及「樂觀分數」欄"
                  "（內部按綜合多頭證據排序，版面顯示各股最主要的原始變化——連買日數或累計張數；"
-                 "滑鼠停在該列看完整明細）。不顯示任何百分比。"),
+                 "滑鼠停在該列看完整明細，該欄不顯示百分比）。"),
             unsafe_allow_html=True)
         _latest_map = {s["ticker"]: s for s in (snaps[-1].get("stocks", []) if snaps else [])}
         _prev_map   = {s["ticker"]: s for s in (snaps[-2].get("stocks", []) if len(snaps) >= 2 else [])}
@@ -3507,9 +3496,9 @@ def _render_intelligence(active_date: str, snaps: list[dict], part: str = "story
         with col_s:
             st.markdown(
                 '<div style="font-size:11px;color:#6B8EAA;text-transform:uppercase;'
-                'letter-spacing:.08em;margin-bottom:8px;">20日回買 Δ (日)</div>',
+                f'letter-spacing:.08em;margin-bottom:8px;">{_L("sponsorship")} Δ (%)</div>',
                 unsafe_allow_html=True)
-            st.markdown(_delta_table(report.biggest_sponsorship_changes, mode="days"),
+            st.markdown(_delta_table(report.biggest_sponsorship_changes, mode="pct"),
                         unsafe_allow_html=True)
         with col_v:
             st.markdown(
