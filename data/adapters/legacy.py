@@ -114,23 +114,39 @@ def _nfc(s: str) -> str:
     return unicodedata.normalize("NFC", s)
 
 
-def _read_branches_dir(branches_dir: pathlib.Path) -> tuple[dict[str, dict], str, str]:
-    """Read all per-ticker branch JSONs. Returns (by_ticker, dir_manifest_sha256, latest_mtime_iso).
+def _read_branches_dir(
+    branches_dir: pathlib.Path,
+) -> tuple[dict[str, dict], str, str, dict[str, str]]:
+    """Read all per-ticker branch JSONs.
 
-    The dir manifest sha is SHA-256 over a deterministic listing of (filename, file_sha256).
-    This lets us record one provenance entry for the whole branches directory.
+    Returns (by_ticker, dir_manifest_sha256, latest_mtime_iso, mtime_date_by_ticker).
+
+    The dir manifest sha is SHA-256 over a deterministic listing of
+    (filename, file_sha256). This lets us record one provenance entry for the
+    whole branches directory. `mtime_date_by_ticker` maps each ticker to the
+    YYYY-MM-DD date of its file's mtime — the per-file freshness fallback used
+    when a branch JSON has no `fetched_date` (see `_branch_effective_date`).
     """
     if not branches_dir.is_dir():
-        return ({}, "sha256:" + "0" * 64, _utc_iso(0))
+        return ({}, "sha256:" + "0" * 64, _utc_iso(0), {})
     by_ticker: dict[str, dict] = {}
+    mtime_date_by_ticker: dict[str, str] = {}
     manifest_lines: list[str] = []
     latest_mtime = 0.0
     for f in sorted(branches_dir.glob("*.json")):
         ticker = f.stem
         sha = file_sha256(f)
         manifest_lines.append(f"{f.name} {sha}")
-        if f.stat().st_mtime > latest_mtime:
-            latest_mtime = f.stat().st_mtime
+        mtime = f.stat().st_mtime
+        # LOCAL date (not UTC) for freshness comparison — target_date is a
+        # Taiwan trading day and fetch_sinotrade stamps fetched_date via
+        # datetime.date.today() (local). Using UTC here would roll an
+        # evening-fetched file back to the previous calendar day and falsely
+        # flag it stale (also breaks as-was replay of archived branches whose
+        # mtime is the trading day in local time). See _branch_effective_date.
+        mtime_date_by_ticker[ticker] = dt.date.fromtimestamp(mtime).isoformat()
+        if mtime > latest_mtime:
+            latest_mtime = mtime
         try:
             by_ticker[ticker] = json.loads(f.read_text(encoding="utf-8"))
         except json.JSONDecodeError as e:
@@ -138,7 +154,40 @@ def _read_branches_dir(branches_dir: pathlib.Path) -> tuple[dict[str, dict], str
     import hashlib
     manifest_bytes = ("\n".join(manifest_lines) + "\n").encode("utf-8")
     manifest_sha = "sha256:" + hashlib.sha256(manifest_bytes).hexdigest()
-    return (by_ticker, manifest_sha, _utc_iso(latest_mtime))
+    return (by_ticker, manifest_sha, _utc_iso(latest_mtime), mtime_date_by_ticker)
+
+
+def _branch_stale(
+    bdata: dict, mtime_local_date: str, target_date: str, *, mtime_fallback: bool
+) -> tuple[bool, str]:
+    """Decide whether a branch file's 分點 data is stale for `target_date`.
+
+    Returns (is_stale, effective_date). 修正案 C-2, forward-only (C10/C11):
+
+      1. `fetched_date` (YYYY-MM-DD) — written by fetch_sinotrade.py at fetch
+         time. AUTHORITATIVE and replay-stable (it is immutable file content):
+         used for the staleness decision in BOTH live and replay. A file dated
+         before target_date is stale (分點 is a same-day post-close product; the
+         previous trading day's file is stale for today).
+      2. No `fetched_date` (legacy files predating this amendment) → fall back
+         to the file's own mtime LOCAL date, but ONLY when `mtime_fallback` is
+         True (live reads). In replay we must NOT use mtime: archived branch
+         files preserve a genuinely-stale file's OLD mtime, and mtime is mutable
+         copy metadata — using it would rewrite as-was history and break replay.
+         So replay + no fetched_date → never stale (reproduces the snapshot as
+         it was actually built, before this gate existed). FUTURE snapshots'
+         archives DO carry fetched_date, so their staleness decision reproduces
+         via path 1 above.
+
+    Returns (False, "") when no usable/ trusted date signal exists → caller keeps
+    the branch (never abstains on an unknown date, matching pre-amendment behaviour).
+    """
+    fd = bdata.get("fetched_date")
+    if isinstance(fd, str) and len(fd) == 10 and fd[4] == "-" and fd[7] == "-":
+        return (fd < target_date, fd)
+    if mtime_fallback and mtime_local_date:
+        return (mtime_local_date < target_date, mtime_local_date)
+    return (False, "")
 
 
 def _trading_days_between(d1: str, d2: str) -> int:
@@ -157,6 +206,7 @@ def adapt_legacy(
     *,
     paths_override: dict[str, pathlib.Path] | None = None,
     tdcc_asof: str | None = None,
+    branch_mtime_fallback: bool | None = None,
 ) -> dict[str, Any]:
     """Read existing legacy data and return canonical raw_inputs.
 
@@ -180,6 +230,14 @@ def adapt_legacy(
         }
     """
     paths = paths_override or legacy_paths()
+    # mtime is a trustworthy freshness fallback only for LIVE reads (default:
+    # paths_override is None). Replay reads the immutable archive, where a
+    # branch file's mtime is mutable copy metadata, not its trading day — so
+    # replay must NOT use it (see _branch_stale). Tests can force either mode.
+    mtime_fallback = (
+        branch_mtime_fallback if branch_mtime_fallback is not None
+        else (paths_override is None)
+    )
     audit_events: list[dict] = []
 
     # --- Source 1: today.json (market-level + mainForceBuy) ---
@@ -205,8 +263,16 @@ def adapt_legacy(
         })
 
     # --- Source 2: branches dir ---
-    branches_by_ticker, branches_manifest_sha, branches_latest_iso = _read_branches_dir(paths["branches_dir"])
-    # latest mtime → ISO date for lag calc
+    branches_by_ticker, branches_manifest_sha, branches_latest_iso, branches_mtime_date = \
+        _read_branches_dir(paths["branches_dir"])
+    # latest mtime → ISO date for lag calc.
+    # NOTE (修正案 C-2): this DIRECTORY-level lag warning is now AUXILIARY only.
+    # Any single file re-fetched today makes the whole-dir latest mtime look
+    # fresh even while most files rot at an old trading day — that blind spot
+    # was the root cause of cross-day 分點 residual (台船 stuck 7/13, 神達 7/2).
+    # The authoritative freshness check is now PER-TICKER in the build loop
+    # below (`_branch_effective_date` vs target_date); this dir warning is kept
+    # only as a coarse secondary signal.
     branches_latest_date = branches_latest_iso[:10]
     lag_days = _trading_days_between(target_date, branches_latest_date)
     if lag_days > 1:
@@ -214,7 +280,8 @@ def adapt_legacy(
             "ticker": None,
             "event": "DATA_WARNING",
             "reason": f"branches directory latest mtime is {branches_latest_date}, "
-                      f"{lag_days} days behind target snapshot date {target_date}",
+                      f"{lag_days} days behind target snapshot date {target_date} "
+                      "(auxiliary signal; per-ticker freshness is authoritative)",
             "step": "adapters.legacy.branches",
         })
 
@@ -236,9 +303,33 @@ def adapt_legacy(
             "change_pct":    row.get("chgPct"),
             "buy_vol_lots":  row.get("buyVol"),
         }
-        # Branches detail if available
+        # Branches detail if available AND fresh for this snapshot date.
+        # 修正案 C-2 逐檔新鮮度守門:一檔停在舊交易日(fetched_date/mtime 日期
+        # < target_date)即視為「該股無分點資料」——與 _branches_present=False
+        # 完全同路徑,分點派生欄(top5/total_buy_vol/avg_buy_cost/_branch_raw…)
+        # 一律 abstain,絕不拿舊值充今值。個股級 fallback,不影響其他個股。
+        # target_date 是交易日;分點為當日盤後產物,前一交易日的檔案對今日=過期
+        # (同日或更新才算新鮮)。此判定 forward-only:歷史快照 replay 讀 archive
+        # 內舊檔,其 mtime≥target_date(archive 於盤後產生)→ 判定為新鮮 → as-was
+        # 輸出不變(C10);未來快照的 archive 檔帶 fetched_date → replay 重現同判定。
         bdata = branches_by_ticker.get(ticker)
+        _stale_branch = False
         if bdata and "_error" not in bdata:
+            _stale_branch, _eff_date = _branch_stale(
+                bdata, branches_mtime_date.get(ticker, ""), target_date,
+                mtime_fallback=mtime_fallback,
+            )
+            if _stale_branch:
+                audit_events.append({
+                    "ticker": ticker,
+                    "event": "DATA_WARNING",
+                    "reason": f"branch file for {ticker} dated {_eff_date} is older "
+                              f"than snapshot date {target_date}; stale cross-day "
+                              "分點 residual — derived branch fields abstained "
+                              "(treated as no branch data for this ticker)",
+                    "step": "adapters.legacy.branches",
+                })
+        if bdata and "_error" not in bdata and not _stale_branch:
             buy_b = bdata.get("buyBranches", []) or []
             sell_b = bdata.get("sellBranches", []) or []
             ri["top5_branches"] = [
@@ -259,14 +350,19 @@ def adapt_legacy(
             ri["_branch_raw"]     = bdata   # full branch dict for weakening_profile W5
             ri["_branches_present"] = True
         else:
+            # No file, unreadable file, OR stale cross-day residual (C-2): all
+            # collapse to the individual-stock "no branch data" state. Derived
+            # branch fields stay absent → downstream abstains, never a stale value.
             ri["top5_branches"] = []
             ri["_branches_present"] = False
-            audit_events.append({
-                "ticker": ticker,
-                "event": "DATA_WARNING",
-                "reason": f"no branches file for {ticker}; top5_branches abstained",
-                "step": "adapters.legacy.branches",
-            })
+            if not _stale_branch:
+                # Stale case already emitted its own (more specific) warning above.
+                audit_events.append({
+                    "ticker": ticker,
+                    "event": "DATA_WARNING",
+                    "reason": f"no branches file for {ticker}; top5_branches abstained",
+                    "step": "adapters.legacy.branches",
+                })
         raw_inputs_per_ticker[ticker] = ri
 
     # --- Merge volRows market volume into per-ticker raw_inputs ---

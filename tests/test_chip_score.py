@@ -99,6 +99,38 @@ def test_compute_concentration_available_lowers_pct():
     assert cs.grade == "弱"           # 10/18 ≈ 0.556 < 0.60
 
 
+# ── compute(): vol_ratio > 1 cross-day-residual guard (修正案 C-2) ───────────────
+
+def test_compute_vol_ratio_over_one_abstains():
+    # main_force_buy > market_volume is physically impossible for a single day —
+    # it means the 分點 file is stuck on an older high-volume trading day. The
+    # guard must abstain (available False, score 0, out of denominator) instead
+    # of surfacing an absurd >100% ratio.
+    cs = compute(
+        streak=7, sponsorship=0.0, fii_sync_count=None,
+        main_force_buy=1500, market_volume=1000,   # ratio 1.5 > 1.0 → abstain
+        main_force_cost=None, current_price=None,
+    )
+    assert cs.items["vol_ratio"]["available"] is False
+    assert cs.items["vol_ratio"]["score"] == 0
+    assert "跨日殘資料" in cs.items["vol_ratio"]["detail"]
+    # streak is the only available item → vol_ratio excluded from denominator.
+    assert cs.max_total == 10
+    assert cs.total == 10
+
+
+def test_compute_vol_ratio_exactly_one_still_available():
+    # ratio == 1.0 is the boundary — implausible but not impossible; keep it
+    # available so the guard only trips on the strictly-impossible > 1.0 case.
+    cs = compute(
+        streak=1, sponsorship=0.0, fii_sync_count=None,
+        main_force_buy=1000, market_volume=1000,   # ratio exactly 1.0
+        main_force_cost=None, current_price=None,
+    )
+    assert cs.items["vol_ratio"]["available"] is True
+    assert "主力買超 / 成交量" in cs.items["vol_ratio"]["detail"]
+
+
 # ── ChipScore grade banding (post_init) ─────────────────────────────────────────
 
 def test_chipscore_grade_bands():

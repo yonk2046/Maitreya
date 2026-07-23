@@ -5,6 +5,7 @@ BIG5 encoded. No auth required.
 Output: JSON with buyBranches[], sellBranches[], avgBuyCost, avgSellCost, totalBuyVol, totalSellVol
 """
 
+import datetime
 import json
 import sys
 import re
@@ -68,6 +69,10 @@ def fetch(ticker):
     log(f"[sinotrade] {ticker}: buy={len(buy_branches)} branches, avgBuyCost={avg_buy_cost}")
     return {
         "ticker": ticker,
+        # 抓取當天日期（YYYY-MM-DD，本機時區）。修正案 C-2:分點資料是當日盤後
+        # 產物,寫入此欄讓讀取端能逐檔判定新鮮度,不再拿舊交易日殘資料充今值。
+        # 向後相容:舊 branch 檔無此欄,讀取端退回檔案 mtime 日期(見 legacy.py)。
+        "fetched_date": datetime.date.today().isoformat(),
         "buyBranches": buy_branches,
         "sellBranches": sell_branches,
         "totalBuyVol": total_buy_vol,

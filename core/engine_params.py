@@ -104,6 +104,11 @@ CHIP_SCORE_CONFIG: dict = {
         # mfb / market_volume > 12% → 8, 6-12% → 4, <6% → 0
         "thresholds": [0.12, 0.06],
         "scores":     [8,    4,    0],
+        # 防呆上限(修正案 C-2):主力買超 ÷ 成交量 > 此值在物理上不可能,
+        # 幾乎必然是分點檔停在舊高量交易日(舊淨買 ÷ 今日成交量)。ratio 超過
+        # 即 abstain(不計分、退出分母),不硬顯示 >100%。C11:此為判斷參數,
+        # 只影響新產出;歷史快照 replay 綁定 as-was config(無此鍵)→ 防呆不啟用。
+        "impossible_ratio_cap": 1.0,
     },
     "streak": {
         "max": 10,

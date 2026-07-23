@@ -93,12 +93,25 @@ def compute(
     c = cfg["vol_ratio"]
     if main_force_buy is not None and market_volume and market_volume > 0:
         ratio = abs(main_force_buy) / market_volume
-        s     = _threshold_score(ratio, c["thresholds"], c["scores"])
-        items["vol_ratio"] = {
-            "score": s, "max": c["max"],
-            "detail": f"主力買超 / 成交量 = {ratio:.1%}",
-            "available": True,
-        }
+        # 防呆(修正案 C-2):cap 從 engine_params 讀,as-was config 無此鍵 → None
+        # → 防呆不啟用(歷史 replay 綁定舊 config,行為不變,C10/C11)。
+        _cap = c.get("impossible_ratio_cap")
+        if _cap is not None and ratio > _cap:
+            # 主力買超 > 當日成交量在物理上不可能,幾乎必然是分點檔停在舊交易日、
+            # 舊高量日淨買除以今日真實成交量所致。abstain(不計分、退出分母),
+            # 與「資料待補」同級,不硬顯示 >100%。
+            items["vol_ratio"] = {
+                "score": 0, "max": c["max"],
+                "detail": "主力買超>成交量，疑似跨日殘資料",
+                "available": False,
+            }
+        else:
+            s = _threshold_score(ratio, c["thresholds"], c["scores"])
+            items["vol_ratio"] = {
+                "score": s, "max": c["max"],
+                "detail": f"主力買超 / 成交量 = {ratio:.1%}",
+                "available": True,
+            }
     else:
         items["vol_ratio"] = {
             "score": 0, "max": c["max"],
