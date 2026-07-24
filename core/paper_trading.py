@@ -26,6 +26,10 @@ from typing import Any
 from core.engine_params import (
     BACKTEST_ADD_MIN_PRICE_MULT,
     BACKTEST_COOLDOWN_DAYS,
+    BACKTEST_COST_BREAK,
+    BACKTEST_COST_CAP,
+    BACKTEST_COST_FULL_TIER,
+    BACKTEST_ENTRY_STOP,
     BACKTEST_FEE_MIN,
     BACKTEST_FEE_RATE,
     BACKTEST_INITIAL_CAPITAL,
@@ -149,6 +153,9 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
         if not strategy.enabled:
             result.limitations.append(f"strategy '{strategy.name}' is disabled")
         return result
+
+    if strategy.triple_stop:
+        return _run_backtest_v3(snaps, dates, strategy, result)
 
     if strategy.partial_sizing:
         return _run_backtest_v2(snaps, dates, strategy, result)
@@ -618,6 +625,139 @@ def _run_backtest_v2(snaps, dates, strategy, result):
             continue
         _record_leg(result, pos, ticker, pos["units"], fp, dates[-1], "end_of_data",
                     (n - 1) - pos["entry_i"])
+
+    result.summary = _summarize(result.trades, strategy)
+    return result
+
+
+# ── v3 engine — 交換鬆緊 + 三重止損(Part 4.3;研究待審,非上線)────────────────
+# 進場:共用 would_enter(治理紅線 5:與 UI 標示/v1/v2 同一實作)——黃金名單 + 放寬
+# 成本閘門至 BACKTEST_COST_CAP + 動能否決權(velocity/accel/外資/轉弱)。位階分流決定
+# 進場單位(1.0 或 0.5)。單筆進出:無 TP1/加碼/減碼(v2 分批於兩家族皆惡化,4.3 暫移除)。
+# 出場(取最先觸發者):轉弱(orange/red,籌碼定義的普世出場)→ S1 硬熔斷 → S2 進場價
+# 止損 → S3 結構低點(既有 ATR 收盤代理)。S1/S2 為純價格止損,不依賴任何籌碼旗標(4.3)。
+
+def _close_v3(pos, ticker, dates, i, fill_price, reason) -> Trade:
+    ep = pos["entry_price"]
+    ret = (fill_price - ep) / ep if ep else 0.0
+    return Trade(
+        ticker=ticker, name=pos["name"], entry_date=pos["entry_date"], entry_price=ep,
+        exit_date=dates[i + 1], exit_price=fill_price, return_pct=ret,
+        exit_reason=reason, holding_days=(i + 1) - pos["entry_i"], units=round(pos["units"], 2),
+    )
+
+
+def _run_backtest_v3(snaps, dates, strategy, result):
+    n = len(snaps)
+    chip = strategy.kind == "chip_anchored"
+    if chip:
+        from core import golden as _golden
+    result.limitations.append(
+        "v3 交換鬆緊(研究待審,非上線):放寬成本閘門(COST_CAP)+ 收緊動能(動能否決權)+ "
+        "位階分流進場(1.0/0.5 單位);三重止損 S1 硬熔斷/S2 進場價止損/S3 結構低點(取最先觸發);"
+        "TP1/加碼/減碼暫移除;參數見 core/engine_params.py BACKTEST_*(R2:不入 config_hash);"
+        "ATR 用收盤對收盤代理(快照無 high/low)")
+    open_pos: dict[str, dict] = {}
+    cooldown: dict[str, int] = {}    # 3.3: ticker -> 上次完全出場的 fill index(冷卻期防洗單)
+
+    def _seq(ticker, upto):
+        out = []
+        for s in snaps[:upto]:
+            for r in s.get("stocks", []):
+                if r.get("ticker") == ticker:
+                    out.append(r); break
+        return out
+
+    for i in range(n - 1):
+        decide, fill = snaps[i], snaps[i + 1]
+
+        # ---- manage open positions (decide on i, execute on i+1) ----
+        for ticker in list(open_pos.keys()):
+            pos = open_pos[ticker]
+            rec = _rec_for(decide, ticker)
+            price = rec.get("current_price") if rec else None
+            if price is None:
+                continue
+            pos["peak"] = max(pos["peak"], price)
+            fp = _fill_price(fill, ticker)
+            if fp is None:
+                continue
+
+            reason = None
+            if _weakening_sev(rec) in strategy.exit_on_weakening:
+                reason = "weakening"                      # 籌碼定義普世出場(轉弱橙/紅)
+            else:
+                eca = pos.get("entry_cost_anchor")
+                if eca and price < eca * BACKTEST_COST_BREAK:
+                    reason = "hard_break"                 # S1 硬熔斷(不依賴籌碼旗標)
+                elif price < pos["entry_price"] * BACKTEST_ENTRY_STOP:
+                    reason = "entry_stop"                 # S2 進場價止損(不依賴籌碼旗標)
+                else:
+                    # S3 結構低點(既有邏輯):max(主力成本, 近N日結構低)×(1−緩衝·ATR%)。
+                    # 3.1:結構低隨股價墊高會抬到進場價之上,獲利觸發實為移動停利 →
+                    # 依出場報酬正負分標籤(虧損 atr_stop / 獲利·打平 trailing_stop)。
+                    closes = _seq_closes(_seq(ticker, i + 1))
+                    cost = rec.get("main_force_cost") or pos.get("anchor")
+                    atrp = _atr_pct(closes, strategy.atr_window)
+                    slow = min(closes[-strategy.structure_low_window:]) if closes else None
+                    if cost and slow is not None and atrp is not None:
+                        stop = max(cost, slow) * (1 - strategy.atr_buffer_mult * atrp)
+                        if price <= stop:
+                            reason = "atr_stop" if fp < pos["entry_price"] else "trailing_stop"
+
+            if reason:
+                result.trades.append(_close_v3(pos, ticker, dates, i, fp, reason))
+                del open_pos[ticker]
+                cooldown[ticker] = i + 1                  # 3.3: 出場成交日 → 起算冷卻期
+
+        # ---- new entries (decide on i, execute on i+1) ----
+        # 進場閘門共用 would_enter(治理紅線 5);chip 型另留 golden_map 只為取 anchor
+        # 供位階分流(would_enter 已保證過閘者 ge 存在)。切片 snaps[:i+1] 防前視。
+        gres = None
+        golden_map = {}
+        if chip:
+            gres = _golden.run(snaps[:i + 1])
+            golden_map = {e.ticker: e for e in (gres.prime + gres.strong)}
+        for rec in decide.get("stocks", []):
+            ticker = rec.get("ticker")
+            if not ticker or ticker in open_pos:
+                continue
+            if _in_cooldown(cooldown, ticker, i + 1):     # 3.3: 冷卻期內禁再進場
+                continue
+            ok, _reasons = would_enter(ticker, snaps[:i + 1], strategy, golden_result=gres)
+            if not ok:
+                continue
+            ge = golden_map.get(ticker)
+            anchor = (ge.cost_conservative if ge.cost_conservative is not None
+                      else ge.main_force_cost) if ge else None
+            fp = _fill_price(fill, ticker)
+            if fp is None:
+                continue
+            # 4.3 進場層3 成本位階分流:價/本 ≤ FULL_TIER → 1.0 單位;
+            # FULL_TIER < 價/本 ≤ COST_CAP → 0.5 單位(would_enter 已擋 > COST_CAP)。
+            price_d = rec.get("current_price")
+            ratio = (price_d / anchor) if (anchor and price_d) else None
+            units = 1.0 if (ratio is not None and ratio <= BACKTEST_COST_FULL_TIER) else 0.5
+            open_pos[ticker] = {
+                "units": units, "entry_price": fp, "entry_i": i + 1,
+                "entry_date": dates[i + 1], "name": rec.get("name", ""), "peak": fp,
+                # 3.2/S1: 成本錨固定為進場當日 main_force_cost(不隨後續重算漂移)。
+                "entry_cost_anchor": rec.get("main_force_cost"), "anchor": anchor,
+            }
+
+    # ---- settle anything still open at the last snapshot ----
+    last = snaps[-1]
+    for ticker, pos in open_pos.items():
+        fp = _fill_price(last, ticker)
+        if fp is None:
+            continue
+        ep = pos["entry_price"]
+        ret = (fp - ep) / ep if ep else 0.0
+        result.trades.append(Trade(
+            ticker=ticker, name=pos["name"], entry_date=pos["entry_date"], entry_price=ep,
+            exit_date=dates[-1], exit_price=fp, return_pct=ret, exit_reason="end_of_data",
+            holding_days=(n - 1) - pos["entry_i"], units=round(pos["units"], 2),
+        ))
 
     result.summary = _summarize(result.trades, strategy)
     return result

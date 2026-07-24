@@ -274,6 +274,15 @@ BACKTEST_COOLDOWN_DAYS      = 2     # 3.3:出場後「至少須間隔」N 個交
                                     #      進場的洗單(純成本消耗)。Part 5 掃描值 {0,2,3}。
 BACKTEST_ADD_MIN_PRICE_MULT = 0.98  # 3.2:加碼價必須 ≥ 前次進場價 × 此(禁向下攤平)。
 
+# ── Wave C1 策略 v3 參數(Part 4.3;研究待審,研究層,仍不入 config_hash)────────
+# 「交換鬆緊」:放寬成本閘門(COST_CAP)+ 收緊動能(momentum_veto,見 strategies.py)。
+# 三重止損(S1/S2)水位。S3 結構低點沿用既有 atr_* 參數(在 StrategyConfig)。
+# 裁定 R2:全屬研究層,不入 config_hash;Part 5 將掃描各值(見清單 Part 5 矩陣)。
+BACKTEST_COST_FULL_TIER = 1.05  # 4.3 進場層3:價/本 ≤ 此 → 1.0 單位(滿倉);此上限至 COST_CAP → 0.5 單位
+BACKTEST_COST_CAP       = 1.15  # 4.3 進場層3:價/本 > 此 → 不進場(放寬後的成本閘門上界)。Part 5 掃描 {1.05,1.10,1.15,1.20}
+BACKTEST_COST_BREAK     = 0.92  # 4.3 S1 硬熔斷:現價 < entry_cost_anchor × 此 → 出(不依賴籌碼旗標)。Part 5 掃描 {0.90,0.92,0.95}
+BACKTEST_ENTRY_STOP     = 0.93  # 4.3 S2 進場價止損:現價 < 進場價 × 此 → 出(不依賴籌碼旗標)。Part 5 掃描 {0.93,0.95,無}
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # as_config_dict — 判斷參數的確定性序列化(P2-W2:config_snapshot 雙來源之一)

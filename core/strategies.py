@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from core.engine_params import BACKTEST_COST_CAP   # C1 v3 放寬後成本閘門上界(研究層)
+
 
 @dataclass(frozen=True)
 class StrategyConfig:
@@ -41,6 +43,16 @@ class StrategyConfig:
     # ── Sizing (spec setting 3: fixed position for v1) ─────────────────────
     position_unit: float = 1.0
     enabled: bool = True                 # A is disabled until gates exist
+
+    # ── v3 交換鬆緊(Part 4.3;研究待審)— off by default ──────────────────────
+    # momentum_veto:進場層2「動能否決權」+ 放寬成本閘門至 BACKTEST_COST_CAP。
+    #   為 True 且 kind==chip_anchored 時,would_enter 用 COST_CAP 當上界(取代
+    #   max_premium_ratio),並額外要求 velocity_3d>0 且 acceleration>=0 且 外資同向
+    #   且 轉弱 severity==none。單一事實來源仍為 would_enter(治理紅線 5)。
+    # triple_stop:路由至 _run_backtest_v3(成本位階分流進場 + 三重止損 S1/S2/S3,
+    #   單筆進出、無 TP1/加碼/減碼)。S1/S2 為價格止損,不依賴任何籌碼旗標(4.3)。
+    momentum_veto: bool = False
+    triple_stop: bool = False
 
     # ── v2 partial sizing (spec §32-67) — off by default (v1 = full in/out) ──
     partial_sizing: bool = False
@@ -103,8 +115,27 @@ STRATEGY_B_V2 = StrategyConfig(
     enabled=True,
 )
 
+# ── v3 交換鬆緊（Part 4.3；研究待審，非上線）──────────────────────────────────
+# 「交換」進場鬆緊而非單方面放寬:放寬成本閘門(讓趨勢股進得來)＋收緊動能(擋崩跌股)。
+# 進場:黃金名單 + 價/本 ≤ COST_CAP(放寬)+ 動能否決權(velocity/accel/外資/轉弱)。
+# 位階分流:價/本 ≤ 1.05 → 1.0 單位;1.05 < 價/本 ≤ COST_CAP → 0.5 單位。
+# 出場:轉弱(orange/red)+ 三重止損(S1 硬熔斷 / S2 進場價止損 / S3 結構低點),
+#       取最先觸發者;S1/S2 不依賴籌碼旗標。TP1/加碼/減碼皆移除(單筆進出)。
+# 參數(COST_CAP/COST_BREAK/ENTRY_STOP/FULL_TIER)全在 engine_params BACKTEST_*(R2)。
+# 標示 C 標籤先不上 viewer(等 fable/Yonki 終審);此檔只把 v3 加進回測策略集。
+STRATEGY_A_V3 = StrategyConfig(
+    name="chip_anchored_v3", zh="籌碼錨定波段 v3", kind="chip_anchored",
+    entry_streak_min=3,
+    max_premium_ratio=1.05,     # 全倉/半倉分界的語意值;權威值為 BACKTEST_COST_FULL_TIER
+    exit_on_weakening=("orange", "red"), fii_reversal_days=2,
+    momentum_veto=True,         # 4.3 進場層2:動能否決權 + 放寬成本閘門至 BACKTEST_COST_CAP
+    triple_stop=True,           # 4.3 三重止損 + 成本位階分流(單筆進出,無 TP1/加碼/減碼)
+    structure_low_window=10, atr_window=14, atr_buffer_mult=0.5,   # S3 結構低點(既有,ATR 收盤代理)
+    enabled=True,
+)
+
 ALL_STRATEGIES = {s.name: s for s in
-                  (STRATEGY_B, STRATEGY_A, STRATEGY_B_V2, STRATEGY_A_V2)}
+                  (STRATEGY_B, STRATEGY_A, STRATEGY_B_V2, STRATEGY_A_V2, STRATEGY_A_V3)}
 
 
 # ── Shared entry judgement (single source of truth) ─────────────────────────
@@ -158,9 +189,28 @@ def would_enter(
         price_d = rec.get("current_price")
         if not anchor or not price_d:
             return (False, ["缺主力成本錨或現價"])
-        if price_d > anchor * strategy.max_premium_ratio:
-            return (False, [f"價/本 {price_d / anchor:.2f} 超出上限 {strategy.max_premium_ratio:.2f}"])
-        return (True, [])
+        # 成本閘門上界:v3(momentum_veto)放寬至 BACKTEST_COST_CAP;A/A_v2 仍用
+        # max_premium_ratio(行為 byte-identical:非 veto 時 ceiling==max_premium_ratio,
+        # 未通過原因字串與舊碼逐字相同,通過回 (True, []))。
+        ceiling = BACKTEST_COST_CAP if strategy.momentum_veto else strategy.max_premium_ratio
+        reasons: list[str] = []
+        if price_d > anchor * ceiling:
+            reasons.append(f"價/本 {price_d / anchor:.2f} 超出上限 {ceiling:.2f}")
+        if strategy.momentum_veto:
+            # 4.3 進場層2「動能否決權」:velocity_3d>0 且 acceleration>=0 且 外資同向
+            # 且 轉弱 severity==none。收緊動能以擋掉崩跌股(與放寬成本閘門成對,4.1)。
+            from core.market_context import temporal_enrich   # lazy(與 momentum 分支一致)
+            te = temporal_enrich(ticker, prior, rec)
+            if not ((te["velocity_3d"] or 0) > 0):
+                reasons.append("3日速度未轉正")
+            if not ((te["acceleration"] or 0) >= 0):
+                reasons.append("加速度為負")
+            if not ((rec.get("fii_net_buy") or 0) > 0):
+                reasons.append("外資未同向")
+            sev = ((rec.get("weakening") or {}).get("severity", "none"))
+            if sev != "none":
+                reasons.append(f"轉弱 {sev}(需 none)")
+        return (not reasons, reasons)
 
     # momentum — 逐條對應舊 _momentum_entry_ok
     from core.market_context import temporal_enrich   # lazy (matches engine import)

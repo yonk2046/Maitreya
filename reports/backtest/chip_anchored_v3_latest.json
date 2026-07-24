@@ -1,0 +1,324 @@
+{
+  "strategy": "chip_anchored_v3",
+  "date_range": [
+    "2026-05-08",
+    "2026-07-23"
+  ],
+  "trade_count": 10,
+  "summary": {
+    "trades": 10,
+    "win_rate": 0.8,
+    "avg_return": 0.0337,
+    "median_return": 0.0306,
+    "sharpe_per_trade": 0.93,
+    "avg_holding_days": 5.5,
+    "max_drawdown": -0.0005,
+    "worst_single_trade": 0.0,
+    "exit_reasons": {
+      "weakening": 8,
+      "trailing_stop": 1,
+      "end_of_data": 1
+    },
+    "net": {
+      "win_rate": 0.8,
+      "avg_return": 0.0289,
+      "median_return": 0.0258,
+      "sharpe_per_trade": 0.8
+    },
+    "realized": {
+      "trades": 9,
+      "win_rate": 0.8889,
+      "avg_return": 0.0375,
+      "median_return": 0.0392,
+      "net": {
+        "win_rate": 0.8889,
+        "avg_return": 0.0326,
+        "median_return": 0.0343
+      }
+    },
+    "unrealized": {
+      "trades": 1,
+      "win_rate": 0.0,
+      "avg_return": 0.0,
+      "median_return": 0.0,
+      "net": {
+        "win_rate": 0.0,
+        "avg_return": -0.0047,
+        "median_return": -0.0047
+      }
+    },
+    "independent_tickers": 9,
+    "disclosure": "頂層 avg_return/win_rate/median 含全部交易(含 end_of_data 未實現部位);realized/unrealized 已分離(3.4)——未實現不得混入已實現統計。信賴區間一律以 independent_tickers(獨立標的數)計,非交易筆數。",
+    "cost_model": {
+      "fee_rate": 0.000855,
+      "fee_min": 20.0,
+      "tax_rate": 0.003,
+      "position_size": 100000.0,
+      "initial_capital": 1000000.0
+    },
+    "equity_curve": [
+      {
+        "date": null,
+        "equity": 1000000.0,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-06-12",
+        "equity": 1005572.41,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-06-17",
+        "equity": 1009003.36,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-06-24",
+        "equity": 1013894.97,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-06-24",
+        "equity": 1018937.23,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-07-07",
+        "equity": 1018466.23,
+        "drawdown": -0.0005
+      },
+      {
+        "date": "2026-07-17",
+        "equity": 1021915.24,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-07-20",
+        "equity": 1023640.15,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-07-20",
+        "equity": 1023646.92,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-07-22",
+        "equity": 1023779.64,
+        "drawdown": 0.0
+      },
+      {
+        "date": "2026-07-23",
+        "equity": 1023544.14,
+        "drawdown": -0.0002
+      }
+    ],
+    "alpha": {
+      "trades_with_benchmark": 10,
+      "trades_total": 10,
+      "avg_excess_return": 0.0403,
+      "period_buy_hold_return": 0.078,
+      "note": "avg_excess_return = 策略平均報酬 − 同期(進場↔出場)大盤買入持有報酬(逐筆);period_buy_hold_return = 整段回測期間(date_range)大盤買入持有報酬,供對照——回答「策略總報酬是 alpha 還是 beta」看兩者相對大小。"
+    },
+    "by_regime": {
+      "note": "進場當日落地體制(obs_market_regime.regime_label_en)分組毛平均報酬;unlabeled = 該進場日快照無 obs_market_*(內部 pulse 僅 7/08 起)。R5:讀落地值,不重算。",
+      "groups": {
+        "Capital Waiting": {
+          "trades": 3,
+          "win_rate": 0.6667,
+          "avg_return": 0.0152
+        },
+        "Mild Risk-Off": {
+          "trades": 1,
+          "win_rate": 1.0,
+          "avg_return": 0.0048
+        },
+        "unlabeled": {
+          "trades": 6,
+          "win_rate": 0.8333,
+          "avg_return": 0.0478
+        }
+      }
+    }
+  },
+  "limitations": [
+    "settlement uses next-day close as open-price proxy (snapshots carry no open)",
+    "fixed 1-unit position; 加碼/減碼 partial sizing deferred",
+    "momentum needs fii (from 2026-06-12) + weakening (from 2026-06-15)",
+    "資金曲線(2.2):P&L 於出場日一次性實現,非逐日 mark-to-market(快照無未平倉逐日估值);成本模型見 summary.cost_model(R2:參數在core/engine_params.py BACKTEST_*,不入 config_hash)",
+    "v3 交換鬆緊(研究待審,非上線):放寬成本閘門(COST_CAP)+ 收緊動能(動能否決權)+ 位階分流進場(1.0/0.5 單位);三重止損 S1 硬熔斷/S2 進場價止損/S3 結構低點(取最先觸發);TP1/加碼/減碼暫移除;參數見 core/engine_params.py BACKTEST_*(R2:不入 config_hash);ATR 用收盤對收盤代理(快照無 high/low)"
+  ],
+  "trades": [
+    {
+      "ticker": "2887",
+      "name": "台新新光金",
+      "entry_date": "2026-06-03",
+      "entry_price": 28.3,
+      "exit_date": "2026-06-12",
+      "exit_price": 31.6,
+      "return_pct": 0.1166,
+      "exit_reason": "weakening",
+      "holding_days": 7,
+      "units": 0.5,
+      "benchmark_return_pct": -0.0493,
+      "excess_return_pct": 0.1659,
+      "regime": null
+    },
+    {
+      "ticker": "2886",
+      "name": "兆豐金",
+      "entry_date": "2026-06-11",
+      "entry_price": 43.4,
+      "exit_date": "2026-06-17",
+      "exit_price": 45.1,
+      "return_pct": 0.0392,
+      "exit_reason": "weakening",
+      "holding_days": 4,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0632,
+      "excess_return_pct": -0.024,
+      "regime": null
+    },
+    {
+      "ticker": "2892",
+      "name": "第一金",
+      "entry_date": "2026-06-11",
+      "entry_price": 30.65,
+      "exit_date": "2026-06-24",
+      "exit_price": 32.3,
+      "return_pct": 0.0538,
+      "exit_reason": "weakening",
+      "holding_days": 8,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0671,
+      "excess_return_pct": -0.0133,
+      "regime": null
+    },
+    {
+      "ticker": "2618",
+      "name": "長榮航",
+      "entry_date": "2026-06-16",
+      "entry_price": 39.75,
+      "exit_date": "2026-06-24",
+      "exit_price": 41.95,
+      "return_pct": 0.0553,
+      "exit_reason": "weakening",
+      "holding_days": 5,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0051,
+      "excess_return_pct": 0.0502,
+      "regime": null
+    },
+    {
+      "ticker": "2610",
+      "name": "華航",
+      "entry_date": "2026-06-25",
+      "entry_price": 22.6,
+      "exit_date": "2026-07-07",
+      "exit_price": 22.6,
+      "return_pct": 0.0,
+      "exit_reason": "weakening",
+      "holding_days": 8,
+      "units": 1.0,
+      "benchmark_return_pct": -0.0168,
+      "excess_return_pct": 0.0168,
+      "regime": null
+    },
+    {
+      "ticker": "5876",
+      "name": "上海商銀",
+      "entry_date": "2026-07-14",
+      "entry_price": 43.2,
+      "exit_date": "2026-07-17",
+      "exit_price": 44.9,
+      "return_pct": 0.0394,
+      "exit_reason": "weakening",
+      "holding_days": 3,
+      "units": 1.0,
+      "benchmark_return_pct": -0.0597,
+      "excess_return_pct": 0.0991,
+      "regime": {
+        "breadth": 0.192,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "warm"
+      }
+    },
+    {
+      "ticker": "5880",
+      "name": "合庫金",
+      "entry_date": "2026-06-29",
+      "entry_price": 24.95,
+      "exit_date": "2026-07-20",
+      "exit_price": 25.5,
+      "return_pct": 0.022,
+      "exit_reason": "trailing_stop",
+      "holding_days": 14,
+      "units": 1.0,
+      "benchmark_return_pct": -0.0567,
+      "excess_return_pct": 0.0787,
+      "regime": null
+    },
+    {
+      "ticker": "2610",
+      "name": "華航",
+      "entry_date": "2026-07-15",
+      "entry_price": 20.85,
+      "exit_date": "2026-07-20",
+      "exit_price": 20.95,
+      "return_pct": 0.0048,
+      "exit_reason": "weakening",
+      "holding_days": 3,
+      "units": 1.0,
+      "benchmark_return_pct": -0.0697,
+      "excess_return_pct": 0.0745,
+      "regime": {
+        "breadth": 0.8284,
+        "regime": "Mild Risk-Off",
+        "regime_zh": "偏弱整理",
+        "temperature_level": "stable"
+      }
+    },
+    {
+      "ticker": "2609",
+      "name": "陽明",
+      "entry_date": "2026-07-17",
+      "entry_price": 49.5,
+      "exit_date": "2026-07-22",
+      "exit_price": 49.8,
+      "return_pct": 0.0061,
+      "exit_reason": "weakening",
+      "holding_days": 3,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0505,
+      "excess_return_pct": -0.0444,
+      "regime": {
+        "breadth": 0.0806,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "warm"
+      }
+    },
+    {
+      "ticker": "3231",
+      "name": "緯創",
+      "entry_date": "2026-07-23",
+      "entry_price": 154.0,
+      "exit_date": "2026-07-23",
+      "exit_price": 154.0,
+      "return_pct": 0.0,
+      "exit_reason": "end_of_data",
+      "holding_days": 0,
+      "units": 0.5,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": 0.0,
+      "regime": {
+        "breadth": 0.3475,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "warm"
+      }
+    }
+  ],
+  "_source": "main"
+}
