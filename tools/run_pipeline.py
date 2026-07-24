@@ -6,6 +6,26 @@ Usage:
     python -m tools.run_pipeline --date 2026-05-25 --check-replay
 
 Outputs to Ai stock/reports/<date>.json + .sha256 + updates index.json.
+
+Exit codes:
+    EXIT_OK (0)                   — normal completion (snapshot written, or
+                                     --backfill-all loop finished).
+    EXIT_SKIP_EMPTY_UNIVERSE (3)  — universe==0 abstain (see below); no
+                                     snapshot/index/ledger write happened.
+    non-zero (unhandled exception)— genuine failure (WORM violation, stale
+                                     lookback, ingest error, ...).
+
+Empty-universe guard (2026-07-24 事故修法):
+    上游富邦主力買超榜有時整晚缺席(晚間分點不可得的已知模式)——today.json
+    仍有效但 mainForceBuy/buyList/sellList 全空,adapter 算出的 universe 因此
+    為 0 檔。若照常往下跑,會寫出一個 stocks=[] 的空快照、更新 index.json、
+    attest 進 _replay_ledger.json——這份空快照一旦 commit 上 origin,會滿足
+    canary.yml 的「reports/<date>.json 存在」判斷而消音告警,也會滿足
+    daily.yml 早班的 `[ -f reports/${TODAY}.json ]` 守門而跳過補建,真資料因
+    此永久遺失(靜默失敗)。修法:universe==0 時在寫入前乾淨 abstain——不寫
+    快照、不碰 index、不 attest,回傳 EXIT_SKIP_EMPTY_UNIVERSE 讓呼叫方
+    (tools/daily.py)辨識為「跳過」而非「pipeline_failed」。與既有「T86 未
+    公布→跳過等重跑」同語意(fail-closed skip,不是硬錯)。
 """
 from __future__ import annotations
 
@@ -38,6 +58,13 @@ INDEX_FILE = REPORTS_DIR / "index.json"
 RAW_ARCHIVE_DIR = REPORTS_DIR / "_raw_archive"
 REPLAY_LEDGER_FILE = REPORTS_DIR / "_replay_ledger.json"
 STRATEGY_TAGS_DIR = REPORTS_DIR / "strategy_tags"
+
+# Exit-code contract with tools/daily.py (subprocess boundary — see module
+# docstring "Empty-universe guard"). daily.py imports EXIT_SKIP_EMPTY_UNIVERSE
+# (the int constant only, not this module's functions) so the two files never
+# drift on the sentinel value.
+EXIT_OK = 0
+EXIT_SKIP_EMPTY_UNIVERSE = 3
 
 
 def _load_chain_upto(target_date: str) -> list[dict]:
@@ -237,13 +264,20 @@ def _update_index(snapshot_path: pathlib.Path, snapshot_hash: str, snapshot_obj:
     )
 
 
-def run(date: str | None, *, check_replay: bool = False, source: str = "auto") -> dict:
+def run(date: str | None, *, check_replay: bool = False, source: str = "auto") -> dict | None:
     """Run pipeline for a given date, write snapshot, update index. Returns the snapshot dict.
 
     Args:
         date: target YYYY-MM-DD; for 'auto', falls back to today.json's tradingDate.
         source: 'auto' (legacy for today, rollup for historical),
                 'legacy' (force today.json), 'rollup' (force backfill from rollup).
+
+    Returns:
+        The snapshot dict on a normal write, or None if the run abstained
+        (empty-universe guard — see module docstring). Callers that need to
+        distinguish "abstained" from "wrote a snapshot" for exit-code purposes
+        should check for None; `main()` below does this via
+        EXIT_SKIP_EMPTY_UNIVERSE.
     """
     cfg = _load_config()
 
@@ -276,6 +310,24 @@ def run(date: str | None, *, check_replay: bool = False, source: str = "auto") -
     adapter_out = _run_adapter(date)
     target_date = adapter_out["date"]
     print(f"[pipeline] date={target_date} source={source} universe={len(adapter_out['universe'])} stocks", file=sys.stderr)
+
+    # ── Empty-universe guard (2026-07-24 事故修法)───────────────────────────
+    # universe==0 means the upstream 主力買超榜 was empty (mainForceBuy/buyList/
+    # sellList all empty) — a known "evening 分點 unavailable" pattern, NOT a
+    # trading holiday (breadth/marketQuotes can be fully populated). Writing a
+    # stocks=[] snapshot here would silently satisfy both the canary's
+    # "reports/<date>.json exists" check and daily.yml's file-exists gate,
+    # permanently losing the real data. Abstain cleanly BEFORE any write
+    # (snapshot, index.json, replay ledger) — same fail-closed-skip semantics
+    # as the existing "T86 未公布→跳過等重跑" branch in tools/daily.py, not an
+    # error. See module docstring for the full incident writeup.
+    if len(adapter_out["universe"]) == 0:
+        print(
+            "[pipeline] SKIP: 主力買超榜為空(universe=0)— 上游分點缺席,"
+            "不建空快照,待下一班次重試",
+            file=sys.stderr,
+        )
+        return None
 
     # Gather lookback chain
     window = cfg.get("temporal", {}).get("lookback_window_days", 5)
@@ -398,7 +450,12 @@ def main():
             except Exception as e:
                 print(f"[pipeline] ❌ {d}: {e}", file=sys.stderr)
     else:
-        run(args.date, check_replay=args.check_replay, source=args.source)
+        result = run(args.date, check_replay=args.check_replay, source=args.source)
+        if result is None:
+            # Empty-universe abstain — nothing was written (see module
+            # docstring). Distinct exit code so tools/daily.py can treat this
+            # as a clean skip instead of pipeline_failed.
+            sys.exit(EXIT_SKIP_EMPTY_UNIVERSE)
 
 
 if __name__ == "__main__":

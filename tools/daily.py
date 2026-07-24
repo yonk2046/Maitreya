@@ -8,8 +8,9 @@ Chains the four post-close steps:
   4. summary      — append structured outcome to reports/_daily_logs/<date>.log
 
 Each step writes one JSON line to the log; the last line is a summary with
-the overall status. Exit code:
-    0  every step succeeded
+the overall status. Exit code (this orchestrator's OWN return value — distinct
+from any subprocess's own exit code, see note below):
+    0  every step succeeded (or a guard skipped cleanly, incl. universe==0)
     1  pipeline failed (no snapshot written, WORM violation, ...)
     2  verify failed (whole-archive integrity broke)
     3  fetch failed (upstream fetch_daily.py non-zero)
@@ -22,7 +23,11 @@ Usage:
 Design notes:
   - Each step is a subprocess (clean isolation, real exit codes, real stdout).
   - We do NOT import the pipeline directly — keeps the orchestrator from
-    accidentally retaining state from a prior run.
+    accidentally retaining state from a prior run. (The one exception is
+    importing the EXIT_SKIP_EMPTY_UNIVERSE int constant from tools.run_pipeline
+    for the pipeline step's rc check below — that's a shared sentinel value,
+    not pipeline state/logic, and its subprocess exit-code namespace is
+    independent of this module's own 0/1/2/3 return-code namespace above.)
   - The orchestrator itself never writes under data/ or reports/<date>.json;
     it only writes reports/_daily_logs/<date>.log. WORM/contracts still hold.
 """
@@ -38,6 +43,13 @@ import sys
 import urllib.request
 from typing import Any
 from zoneinfo import ZoneInfo
+
+# Exit-code contract with the pipeline subprocess (2026-07-24 empty-universe
+# guard). This imports ONLY the int sentinel from tools.run_pipeline — not the
+# pipeline's run()/main() — so the "each step is an isolated subprocess, we
+# never retain state from a prior run" design note above still holds; it just
+# keeps the skip exit code as a single source of truth shared by both files.
+from tools.run_pipeline import EXIT_SKIP_EMPTY_UNIVERSE
 
 _HERE = pathlib.Path(__file__).resolve().parent      # Ai stock/tools/
 _AI_STOCK = _HERE.parent                              # Ai stock/
@@ -792,6 +804,25 @@ def run(
         log_lines=log_lines,
         timeout_sec=600,
     )
+    if rc == EXIT_SKIP_EMPTY_UNIVERSE:
+        # 2026-07-24 事故修法:上游主力買超榜整晚缺席 → run_pipeline abstained
+        # BEFORE writing anything (no snapshot/index/ledger touched). This is
+        # a clean skip, not a failure — same semantics as the fii_gate /
+        # trading_day_oracle skip branches above. Treating it as
+        # pipeline_failed (exit 1) would just add alert noise for a night
+        # where there is honestly nothing buildable yet; the next scheduled
+        # run retries naturally.
+        log_lines.append({
+            "step": "pipeline", "status": "skip_empty_universe",
+            "reason": "run_pipeline reported universe=0 (upstream 主力買超榜/"
+                      "分點資料整晚缺席) and abstained before any write — "
+                      "reports/index/ledger all untouched; skipping cleanly, "
+                      "next scheduled run retries",
+        })
+        _finalize(log_lines, "skip_empty_universe", target_date)
+        print(f"[daily] pipeline SKIP — universe=0 (上游分點缺席), "
+              f"未建空快照,乾淨跳過 (exit 0)", file=sys.stderr)
+        return 0
     if rc != 0:
         _finalize(log_lines, "pipeline_failed", target_date)
         print(f"[daily] pipeline FAILED rc={rc}:\n{err}", file=sys.stderr)

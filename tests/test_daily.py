@@ -100,6 +100,29 @@ def test_pipeline_failure_returns_1_and_stops(tmp_logs_dir):
     assert log[-1]["status"] == "pipeline_failed"
 
 
+def test_pipeline_empty_universe_returns_0_and_skips_cleanly(tmp_logs_dir):
+    """2026-07-24 事故修法: when run_pipeline abstains on universe==0 (its
+    subprocess exit code == EXIT_SKIP_EMPTY_UNIVERSE), the orchestrator must
+    treat it as a CLEAN SKIP (exit 0, no pipeline_failed noise) — not a
+    failure — because run_pipeline already wrote nothing. verify must also
+    be skipped: there is no new snapshot to verify."""
+    def fake_run(argv, **kw):
+        if "tools.run_pipeline" in " ".join(argv):
+            return _FakeProc(daily.EXIT_SKIP_EMPTY_UNIVERSE, "", "universe=0")
+        return _FakeProc(0, "ok", "")
+
+    with patch.object(subprocess, "run", side_effect=fake_run):
+        rc = daily.run(date="2026-05-25", skip_fetch=True)
+
+    assert rc == 0
+    log = _read_log("2026-05-25", tmp_logs_dir)
+    step_names = [r["step"] for r in log]
+    assert "pipeline" in step_names
+    # verify must have been skipped — nothing new was written to verify
+    assert "verify_all_replay" not in step_names
+    assert log[-1]["status"] == "skip_empty_universe"
+
+
 def test_verify_failure_returns_2(tmp_logs_dir):
     def fake_run(argv, **kw):
         if "verify_all_replay" in " ".join(argv):
