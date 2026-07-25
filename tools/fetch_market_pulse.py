@@ -61,8 +61,8 @@ Archiving: every successful run also writes a WORM per-date snapshot to
     <project_root>/data/market_pulse/YYYY-MM-DD.json
 An existing archive file for a date is never overwritten (write-once) — this
 is what makes historical backfill (`--date YYYYMMDD`) safe to re-run.
-`data/market_pulse.json` continues to hold the latest fetch unconditionally
-(the viewer reads this path and must not break).
+`data/market_pulse.json` holds the latest *fresh* fetch — see
+`_pulse_is_fresh` for when a degraded result abstains instead of overwriting.
 
 CLI:
     python tools/fetch_market_pulse.py
@@ -798,6 +798,29 @@ def _pulse_has_error(pulse: dict[str, Any]) -> bool:
     return False
 
 
+def _pulse_is_fresh(pulse: dict[str, Any]) -> bool:
+    """True iff this result may replace the mutable latest-pointer
+    `data/market_pulse.json` (display-only; the viewer's "current" TAIEX).
+
+    Fresh = no fetch errors AND a numeric TAIEX close that did NOT come from
+    the local cache. Anything less abstains: a stale-but-correct pointer beats
+    a silently wrong one.
+
+    **Partial results abstain too** (deliberate). 2026-07-25 事故:週六 11:52 的
+    late-cron 跑到「很抱歉，沒有符合條件的資料!」,taiex 退回 cache 44850.81、
+    tx/inst/breadth 三個 error,卻照樣覆寫掉前一日真實的 43654.84 (−2.67%) —
+    看板的「現在大盤」被無聲降級成隔夜快取值。收盤有行情的交易日本來就抓得乾淨
+    (近 14 份 per-date 檔:交易日 errors 全空,只有週末/假日跑出這個降級樣態),
+    所以「有 error 就不寫」不會把 pointer 凍住;真凍住時 fetched_at 會自己說話。
+    """
+    if _pulse_has_error(pulse):
+        return False
+    taiex = pulse.get("taiex") or {}
+    if not isinstance(taiex.get("close"), (int, float)):
+        return False
+    return "(cached)" not in (taiex.get("source") or "")
+
+
 def _archived_pulse_has_error(path: pathlib.Path) -> bool:
     """Like _pulse_has_error but reads an existing on-disk archive file.
     Any read/parse failure is conservatively treated as "has error" so a
@@ -889,9 +912,19 @@ def fetch_and_write(
     if out_path is None:
         out_path = _project_root() / "data" / "market_pulse.json"
 
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(pulse, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\n[market-pulse] ✓ written → {out_path}", flush=True)
+    # Latest pointer — only a fresh result overwrites it. No existing pointer
+    # → bootstrap-write anyway (the viewer needs a file, and errors[] makes the
+    # degradation self-describing).
+    if _pulse_is_fresh(pulse) or not out_path.exists():
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(pulse, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"\n[market-pulse] ✓ written → {out_path}", flush=True)
+    else:
+        print(
+            f"\n[market-pulse] ⚠ degraded fetch — latest pointer NOT overwritten "
+            f"(errors={errors or 'none'}, taiex.source={taiex.get('source')!r}) → {out_path}",
+            flush=True,
+        )
 
     # WORM per-date archive — data/market_pulse/YYYY-MM-DD.json.
     # Write-once, but only a CLEAN archive earns the protection:

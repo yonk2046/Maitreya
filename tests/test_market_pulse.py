@@ -362,6 +362,70 @@ def test_archive_error_not_overwritten_by_another_error(tmp_path, monkeypatch):
     assert archive_path.read_text(encoding="utf-8") == first_error_content
 
 
+# ── latest pointer 降級不覆寫 (2026-07-25 事故後修法) ────────────────────────
+#
+# 事故:週六 11:52 late-cron 三個來源全 error、taiex 退回 cache,卻照樣覆寫掉
+# data/market_pulse.json 裡前一日真實的 43654.84 (−2.67%) → 看板「現在大盤」
+# 被無聲降級成隔夜快取值。修法:只有 fresh 結果能覆寫 latest pointer。
+
+def test_latest_pointer_not_overwritten_by_errored_fetch(tmp_path, monkeypatch):
+    out_path = tmp_path / "market_pulse.json"
+    archive_dir = tmp_path / "market_pulse"
+
+    # 交易日:乾淨抓取 → pointer 寫入真值。
+    _stub_fetchers(monkeypatch)
+    fmp.fetch_and_write(dry_run=False, date_str="2026-07-24", out_path=out_path, archive_dir=archive_dir)
+    good = out_path.read_text(encoding="utf-8")
+    assert json.loads(good)["taiex"]["close"] == 22150.23
+
+    # 隔天(週六)late-cron:taiex 退回 cache + breadth error。
+    _stub_fetchers(monkeypatch)
+    monkeypatch.setattr(fmp, "_fetch_taiex", lambda date_str=None: {
+        "close": 22150.23, "change": 125.45, "change_pct": 0.57,
+        "volume_b_ntd": None, "source": "twse-MI_INDEX-tables (cached)",
+    })
+    monkeypatch.setattr(fmp, "_get_json", lambda *a, **k: {"stat": "很抱歉，沒有符合條件的資料!"})
+    pulse = fmp.fetch_and_write(dry_run=False, date_str="2026-07-25", out_path=out_path, archive_dir=archive_dir)
+
+    # Pointer 逐 byte 不動;但當日 per-date 檔仍誠實記錄這次降級嘗試。
+    assert out_path.read_text(encoding="utf-8") == good
+    assert pulse["errors"]
+    assert (archive_dir / "2026-07-25.json").exists()
+
+
+def test_latest_pointer_abstains_on_cached_taiex_even_without_errors(tmp_path, monkeypatch):
+    """Partial/cached 也 abstain — errors 空但 taiex 來自 cache 不算 fresh。"""
+    out_path = tmp_path / "market_pulse.json"
+    archive_dir = tmp_path / "market_pulse"
+
+    _stub_fetchers(monkeypatch)
+    fmp.fetch_and_write(dry_run=False, date_str="2026-07-24", out_path=out_path, archive_dir=archive_dir)
+    good = out_path.read_text(encoding="utf-8")
+
+    _stub_fetchers(monkeypatch)
+    monkeypatch.setattr(fmp, "_fetch_taiex", lambda date_str=None: {
+        "close": 22150.23, "change": 125.45, "change_pct": 0.57,
+        "volume_b_ntd": None, "source": "twse-MI_INDEX-tables (cached)",
+    })
+    pulse = fmp.fetch_and_write(dry_run=False, date_str="2026-07-25", out_path=out_path, archive_dir=archive_dir)
+
+    assert pulse["errors"] == []          # 沒有 error,但仍不夠新鮮
+    assert out_path.read_text(encoding="utf-8") == good
+
+
+def test_latest_pointer_bootstrap_writes_when_absent(tmp_path, monkeypatch):
+    """沒有既有 pointer 時,降級結果照寫(看板需要有檔;errors[] 自述降級)。"""
+    out_path = tmp_path / "market_pulse.json"
+    archive_dir = tmp_path / "market_pulse"
+
+    _stub_fetchers(monkeypatch)
+    monkeypatch.setattr(fmp, "_get_json", lambda *a, **k: {"stat": "查無資料"})
+    fmp.fetch_and_write(dry_run=False, date_str="2026-07-25", out_path=out_path, archive_dir=archive_dir)
+
+    assert out_path.exists()
+    assert json.loads(out_path.read_text(encoding="utf-8"))["errors"]
+
+
 # ── TAIFEX CSV fallback honours --date (歷史回補不吃 now()) — 2026-07-16/17 事故 ──
 # 根因:_fetch_*_futures_html 的 fallback 寫死 qdate = now(),忽略傳入日期 →
 # 歷史回補靜默抓成「今天」的期貨/三大法人資料。修法:_html 版吃 date_str。
