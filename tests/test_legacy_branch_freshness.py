@@ -198,6 +198,33 @@ def test_replay_mode_still_gates_on_fetched_date(tmp_path):
     assert out["raw_inputs_per_ticker"]["2208"]["_branches_present"] is False
 
 
+# ── live corpus invariant (修正案 C-3) ──────────────────────────────────────────
+
+def test_every_live_branch_file_carries_fetched_date():
+    """每個活的 data/branches/*.json 都必須帶 fetched_date。
+
+    這是 C-2 守門能同時滿足兩個要求的前提:
+
+      - 舊快照(守門上線前建的)replay 不得回頭棄權 → 所以 replay 不看 mtime;
+      - 新快照的 live 與 replay 判定必須一致 → 所以新快照吃到的檔案不能只有 mtime。
+
+    只要活檔案裡有一個沒蓋章,兩者就會分歧:live 讀 mtime 判 stale 而棄權、
+    replay 讀不到 mtime 於是照用 → canonical hash 不同 → verify_all_replay 紅。
+    2026-07-24 快照就是這樣爆的(140/190 檔未蓋章),已由
+    tools/migrate_branch_fetched_date.py 補齊。新檔由 fetch_sinotrade.py 蓋章。
+    """
+    branches = _AI_STOCK / "data" / "branches"
+    if not branches.is_dir():
+        pytest.skip("no live branches dir")
+    missing = [
+        f.name for f in sorted(branches.glob("*.json"))
+        if not (json.loads(f.read_text(encoding="utf-8")) or {}).get("fetched_date")
+    ]
+    assert not missing, (
+        f"{len(missing)} 個分點檔沒有 fetched_date(live/replay 會分歧):"
+        f"{missing[:10]}… 跑 `python3 tools/migrate_branch_fetched_date.py` 補蓋")
+
+
 # ── per-ticker isolation ────────────────────────────────────────────────────────
 
 def test_stale_ticker_does_not_affect_fresh_sibling(tmp_path):

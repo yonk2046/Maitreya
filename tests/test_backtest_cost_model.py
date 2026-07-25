@@ -31,6 +31,18 @@ from core.strategies import ALL_STRATEGIES, STRATEGY_A, STRATEGY_B  # noqa: E402
 from tools.run_backtest import _load_snapshots               # noqa: E402
 
 
+# 寫死數字的驗收測試必須跑在「凍結語料」上,不能跑在每天長大的 reports/。
+# Wave A/B 的基準數字是在 2026-07-23 收盤時點量出來的;每落地一個新交易日,
+# 未實現尾端就會移動,把 ±0.5pp 容忍帶推出去 → 正常的 pipeline 成功日反而讓 CI 變紅
+# (2026-07-24 首次爆)。驗收測的是「B1 修正把洗單虛假獲利移除」這個歷史事實,
+# 語料就該凍在那一刻;新資料的回歸由不變量測試(max_dd/洗單/向下攤平)負責。
+BASELINE_CUTOFF = "2026-07-23"
+
+
+def _baseline_snapshots():
+    return [s for s in _load_snapshots() if (s.get("date") or "") <= BASELINE_CUTOFF]
+
+
 # ── Fixtures (hand-built, deterministic — same style as test_paper_trading.py) ──
 
 def _rec(t, mf, fii, price, wk="none"):
@@ -175,8 +187,10 @@ def test_chip_anchored_swing_net_return_acceptance_checkpoint():
 
     註:3.4 分離後,已實現(realized)淨平均為小幅正值(~+0.3%);全交易淨為負是被
     單筆未實現大虧拖累——這正是 3.4 要把兩組分開揭露的理由。
+
+    語料凍在 BASELINE_CUTOFF(見檔頭):基準是那個時點量的,不能讓每日新資料把它推紅。
     """
-    snaps = _load_snapshots()
+    snaps = _baseline_snapshots()
     if len(snaps) < 2:
         pytest.skip("no committed snapshots to backtest against")
     res = run_backtest(snaps, STRATEGY_A)

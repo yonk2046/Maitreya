@@ -10,6 +10,7 @@ Covers:
 """
 from __future__ import annotations
 
+import datetime as dt
 import json
 import pathlib
 import sys
@@ -171,6 +172,13 @@ def flow_env(tmp_path, monkeypatch):
     # subprocess.run mock below making it look like origin/main already has
     # today's report.
     monkeypatch.setattr(daily, "_git_fetch_origin", lambda: False)
+    # 盤中守門(09:00-14:00 台北)讀真實牆上時鐘 → 這些 flow 測試在盤中跑就會紅
+    # (2026-07-25 上午實測:台北 10:47 執行 `make test` 兩顆必紅)。守門本身有
+    # 專屬測試(_intraday_guard_disposition 是純函數),flow 測試不該受執行時刻影響
+    # → 把時鐘凍在收盤後,測的才是 partial/supersede 流程本身。
+    monkeypatch.setattr(
+        daily, "_now_taipei",
+        lambda: dt.datetime(2026, 7, 7, 19, 0, tzinfo=dt.timezone(dt.timedelta(hours=8))))
 
     def _setup(*, latest_snap: dict | None, today: dict):
         if latest_snap:

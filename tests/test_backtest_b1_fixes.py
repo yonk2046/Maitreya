@@ -31,6 +31,14 @@ from tools.run_backtest import (                              # noqa: E402
     _enrich_with_regime, _load_snapshots, _regime_index,
 )
 
+# 見 tests/test_backtest_cost_model.py 檔頭:方向性驗收也是對「B1 當下的語料」
+# 成立的事實,每日新資料會翻轉它 → 凍結語料。
+BASELINE_CUTOFF = "2026-07-23"
+
+
+def _baseline_snapshots():
+    return [s for s in _load_snapshots() if (s.get("date") or "") <= BASELINE_CUTOFF]
+
 
 def _rec(t, mf, fii, price, wk="none"):
     return {"ticker": t, "name": t, "main_force_buy": mf, "fii_net_buy": fii,
@@ -181,8 +189,8 @@ def test_realized_unrealized_split_and_independent_tickers():
 
 def test_realized_excludes_inflating_unrealized_on_real_data():
     """驗收(3.4):真實快照上,momentum 全交易毛均 > 已實現毛均(未實現拉高),
-    對應清單「+2.71%(已實現)膨脹到 +3.91%」的方向。"""
-    snaps = _load_snapshots()
+    對應清單「+2.71%(已實現)膨脹到 +3.91%」的方向。語料凍結,見檔頭。"""
+    snaps = _baseline_snapshots()
     if len(snaps) < 2:
         pytest.skip("no committed snapshots")
     res = run_backtest(snaps, STRATEGY_B)
