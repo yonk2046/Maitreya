@@ -21,6 +21,21 @@ cd "$AI_STOCK"
 
 echo "[daily_and_push] $(date '+%Y-%m-%d %H:%M:%S') starting"
 
+# ── 0. Pin the interpreter ─────────────────────────────────────────────────
+# 2026-07-24 斷更根因:homebrew 於 7/21 建立 /opt/homebrew/bin/python3 → 3.14,
+# 而 launchd plist 的 PATH 把 /opt/homebrew/bin 排在 /usr/bin 前面,整條 pipeline
+# 靜默換了直譯器。3.14 沒有 PyYAML(run_pipeline `import yaml` 當場死),且其
+# OpenSSL 3.6 嚴格模式拒絕富邦/TDCC/永豐的憑證鏈(Missing Subject Key Identifier)
+# → fetch 回報 returncode 0「完成!」但主力買超 0 支。
+# 因此:釘死直譯器,並在動任何資料前用 import yaml 當「這是對的直譯器」的探針,
+# 錯了就大聲失敗(不產生資料、不 commit),絕不讓它繼續跑出空榜。
+PY="${MAITREYA_PYTHON:-/usr/bin/python3}"
+if ! "$PY" -c "import yaml" 2>/dev/null; then
+    echo "[daily_and_push] ❌ $PY 缺少相依套件(import yaml 失敗)— 直譯器不對,中止,不產生任何資料"
+    exit 1
+fi
+echo "[daily_and_push] python: $PY ($("$PY" -V 2>&1))"
+
 # ── 0. Clean any stale lock from a previously crashed run ──────────────────
 # Safe at this point: launchd serializes our own runs, and we haven't
 # started any git operation yet in THIS run.
@@ -67,10 +82,10 @@ if [ -f "${SNAP}" ] && ! grep -q '"fii_pending": true' "${SNAP}"; then
     echo "[daily_and_push] ${SNAP} exists locally but NOT on origin/main (stray run without push?) — skipping regeneration, publishing existing artifacts"
 else
     # ── 2. Market pulse (non-blocking: fails on non-trading days) ───────────
-    python3 tools/fetch_market_pulse.py || echo "[daily_and_push] fetch_market_pulse failed (non-trading day?)"
+    "$PY" tools/fetch_market_pulse.py || echo "[daily_and_push] fetch_market_pulse failed (non-trading day?)"
 
     # ── 3. Daily pipeline — failure ABORTS, we do not commit suspect data ──
-    if ! python3 -m tools.daily; then
+    if ! "$PY" -m tools.daily; then
         echo "[daily_and_push] ❌ tools.daily failed — NOT committing. Check reports/_daily_logs/."
         exit 1
     fi

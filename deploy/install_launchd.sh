@@ -24,9 +24,11 @@ case "${1:-help}" in
       echo "[install] non-macOS detected; launchd is macOS-only. Use cron on Linux." >&2
       exit 2
     fi
-    PYTHON_BIN="$(command -v python3)"
-    if [[ -z "$PYTHON_BIN" ]]; then
-      echo "[install] python3 not on PATH" >&2; exit 2
+    # 同 daily_and_push.sh:不信 PATH 上的 python3(homebrew 會插隊,見 7/24 斷更),
+    # 用「裝得起 yaml」當正確直譯器的探針。
+    PYTHON_BIN="${MAITREYA_PYTHON:-/usr/bin/python3}"
+    if ! "$PYTHON_BIN" -c "import yaml" 2>/dev/null; then
+      echo "[install] $PYTHON_BIN 缺相依套件(import yaml 失敗);設 MAITREYA_PYTHON 指定正確直譯器" >&2; exit 2
     fi
     mkdir -p "$LAUNCH_AGENT_DIR" "$AI_STOCK_DIR/reports/_daily_logs"
     sed -e "s|__AI_STOCK_DIR__|$AI_STOCK_DIR|g" \
