@@ -131,6 +131,44 @@ _FROM_IMPORT_SITES: dict[str, list[tuple[str, str]]] = {
     "DIST_AUTO_FILTER_CONSISTENCY": [("core.distribution", "AUTO_FILTER_CONSISTENCY")],
 }
 
+# core.watchlists is re-imported for the TIER_A_CODES rebuild below even when it is
+# not a listed site for the key being patched, so it must be warmed too.
+_EXTRA_SITE_MODULES = ("core.watchlists",)
+
+
+def _import_site_modules() -> dict[str, object]:
+    """Import EVERY from-import site module and return {dotted_path: module}.
+
+    ⚠️ LANDMINE — CALL THIS BEFORE THE FIRST PATCH, NEVER LAZILY MID-PATCH ⚠️
+    (root cause of the 2026-07-24 verify_all_replay non-determinism, fixed 2026-07-25)
+
+    A module whose FIRST import happens INSIDE the patch window runs its own
+    `from core.engine_params import <KEY>` against the ALREADY-PATCHED attribute, so
+    its module-level binding is BORN holding the recorded (historical) value. `_set`
+    then records that already-poisoned value as `old`, and the `finally` faithfully
+    "restores" the recorded value — so the LIVE parameter is silently gone for every
+    LATER date in the same process, and `_canon_equal` (which only inspects
+    engine_params, correctly restored) waves those dates through unpatched.
+
+    This is not hypothetical for any site here: ingest imports obs_landing lazily
+    (`from core import obs_landing` at call time) which is what first pulls in
+    chip_score / distribution / state_machine / funnel, so on a cold
+    `python3 tools/verify_all_replay.py` NONE of them is in sys.modules when the date
+    loop starts. The 2026-07-24 incident: the first patched date (an old snapshot
+    whose recorded CHIP_SCORE_CONFIG predates the C-2 `impossible_ratio_cap` key)
+    pinned core.chip_score.CHIP_SCORE_CONFIG to that cap-less dict for the rest of the
+    process, so 2026-07-24 replayed WITHOUT the vol_ratio guard and never matched its
+    hash. It looked non-deterministic only because any probe that imported
+    core.chip_score first (a debug print, a spy, an inlined copy of the loop) created
+    the binding with the live value and accidentally cured it.
+
+    Warming every site module up-front makes the save/restore round-trip exact: the
+    binding provably already holds the live value when `_set` snapshots it.
+    """
+    names = {m for sites in _FROM_IMPORT_SITES.values() for m, _ in sites}
+    names.update(_EXTRA_SITE_MODULES)
+    return {n: importlib.import_module(n) for n in sorted(names)}
+
 
 def _canon_equal(a: object, b: object) -> bool:
     """Compare two parameter values canonically.
@@ -160,10 +198,18 @@ def _params_as_recorded(recorded: dict | None):
         (no divergence → no patch needed).
       • A divergent key is rebound on engine_params AND on every from-import site
         registered for it (the trap). All originals are restored on exit.
+      • Every registered site module is imported BEFORE the first rebinding, so no
+        site's module-level binding can be born holding a patched value — that is
+        what made replay order-dependent (see _import_site_modules).
     """
     if not recorded:
         yield
         return
+
+    # ⚠️ MUST stay the first statement of the patch path — see _import_site_modules.
+    # A site module first imported *after* a patch is applied captures the patched
+    # value as its birth binding, and the restore then makes that permanent.
+    site_mods = _import_site_modules()
 
     saved: list[tuple[object, str, bool, object]] = []
 
@@ -179,13 +225,13 @@ def _params_as_recorded(recorded: dict | None):
                 continue  # no divergence → nothing to patch
             _set(engine_params, key, value)
             for mod_name, attr in _FROM_IMPORT_SITES.get(key, ()):
-                mod = importlib.import_module(mod_name)
+                mod = site_mods[mod_name]   # pre-warmed; never import_module() here
                 if hasattr(mod, attr):
                     _set(mod, attr, value)
             if key == "TIER_A":
                 # watchlists.TIER_A_CODES is a frozenset snapshot of TIER_A.keys()
                 # taken at import; rebuild it so tier membership checks match as-was.
-                wl = importlib.import_module("core.watchlists")
+                wl = site_mods["core.watchlists"]
                 if hasattr(wl, "TIER_A_CODES"):
                     _set(wl, "TIER_A_CODES", frozenset(value.keys()))
         yield
