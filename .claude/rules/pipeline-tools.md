@@ -11,3 +11,7 @@ paths: ["tools/**/*.py"]
 - run_pipeline 的 `_assert_lookback_fresh`＝build-time 不變量（裁定 W6-1），寫入/attest 前 fail fast，不可繞過。
 - replay strip 清單唯一來源＝`core/replay_contract.py`（從 registry excluded-M 派生），不要另開黑名單。
 - 長任務紀律：**先 commit 再長驗證**（P2 期間 4 次 agent 中斷全靠這條零損失）。
+- **改任何會讀時鐘／日曆的東西前，先看 `docs/FAILURE-MODE-INDEX.md`**：已發生事故按
+  「時刻 T／日型 D／執行者 M／上游 U」歸軸，每列指名可執行守門員。`make test` 固定在
+  「執行的那一刻」，測不到這四軸——那是「改一改隔天壞掉」的固定形狀。守門員＝
+  `tests/test_clock_matrix.py`（凍結時鐘＋產物不變式）。
