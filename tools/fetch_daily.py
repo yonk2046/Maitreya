@@ -417,10 +417,16 @@ def run(dry_run=False, date_str=None):
         emit(7, TOTAL_STEPS, "無三榜/雙榜共現股，跳過分點抓取", status="skip")
     else:
         from fetch_sinotrade import fetch as sino_fetch
+        # branch 檔的 fetched_date 必須記「資料所屬交易日」,不是執行當天的日曆日。
+        # 早班 T+1 補跑(08:35 盤前)抓到的是前一 session 的分點;記成執行日會讓
+        # legacy.py 的 C-2 鮮度閘門(`fd < target_date`)把昨日殘值判為新鮮。
+        # 與 line 543 落地 "date" 欄用同一個權威解析,兩處不得分歧。
+        _session_iso = derive_trading_date(twse_result if not twse_err else None)
         if not dry_run:
             os.makedirs(branches_dir, exist_ok=True)
         for ticker in sino_tickers:
-            sino_result, sino_err = safe_fetch(f"sino_{ticker}", sino_fetch, ticker)
+            sino_result, sino_err = safe_fetch(
+                f"sino_{ticker}", sino_fetch, ticker, _session_iso)
             if sino_err or not sino_result:
                 branch_fetch_summary["failed"].append({"ticker": ticker, "error": sino_err or "empty"})
             else:
