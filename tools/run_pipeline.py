@@ -87,6 +87,26 @@ def _load_chain_upto(target_date: str) -> list[dict]:
     return chain
 
 
+# R1 五支策略 key 對應(唯一權威來源 = 本 dict;viewer/cockpit.py 的 _TAG_META
+# 徽章 glyph/術語映射必須與此表的 key 集合一致,不得各自增減)。
+#   A  = chip_anchored_swing   (v1,既有語意 — viewer/舊 sidecar 依賴,不可變動)
+#   B  = momentum_continuation (v1,既有語意,同上)
+#   A2 = chip_anchored_v2      (v2 分批加碼/減碼/TP1,spec §32-67)
+#   B2 = momentum_v2           (v2 分批加碼,spec §32-67)
+#   A3 = chip_anchored_v3      (v3 交換鬆緊,研究待審非上線 — core/strategies.py
+#        Part 4.3 docstring;此處落地供 viewer 標記「研究中」樣式,非等同核准上線)
+_STRATEGY_TAG_KEYS: dict[str, str] = {
+    "A": "chip_anchored_swing",
+    "B": "momentum_continuation",
+    "A2": "chip_anchored_v2",
+    "B2": "momentum_v2",
+    "A3": "chip_anchored_v3",
+}
+# 4.3:研究待審,非上線(core/strategies.py STRATEGY_A_V3 docstring)。viewer 靠
+# payload 裡的 research 旗標決定是否用降彩度/虛線樣式區隔,不自行判斷。
+_STRATEGY_TAG_RESEARCH: frozenset[str] = frozenset({"A3"})
+
+
 def _write_strategy_tags(target_date: str) -> None:
     """R1:快照建成後產生 reports/strategy_tags/<date>.json 落地 sidecar。
 
@@ -94,19 +114,35 @@ def _write_strategy_tags(target_date: str) -> None:
     不動 schema、不 bump minor(單一 bump 紀律);viewer 讀此檔渲染徽章,不新增
     render-time 引擎 import。Schema 2.0 時遷入快照 obs_*。
 
+    涵蓋 core.strategies.ALL_STRATEGIES 全部五支(A/B/A2/B2/A3,見 _STRATEGY_TAG_KEYS
+    docstring)。每筆 strategies[k] 附 research 布林欄位(v3=True,其餘 False),讓
+    viewer 據以區隔「研究中」樣式,不必自行猜測哪支是研究版。
+
     切片=全歷史 ≤ target_date(對齊 viewer 全歷史 golden 與回測 snaps[:i+1])。
     永不因標示產生失敗而中斷 pipeline —— 快照本身(唯一事實來源)已寫入。
     """
     try:
-        from core.strategies import STRATEGY_A, STRATEGY_B, strategy_tags_for_date
+        from core.strategies import ALL_STRATEGIES, strategy_tags_for_date
+        # 前推守門:_STRATEGY_TAG_KEYS 必須完整覆蓋 ALL_STRATEGIES,否則新增/移除
+        # 策略會被本 sidecar 靜默漏掉(徽章與回測集不同步)——寧可整段 skip(見下
+        # except)也不要漏標一支。
+        assert set(_STRATEGY_TAG_KEYS.values()) == set(ALL_STRATEGIES), (
+            f"_STRATEGY_TAG_KEYS 與 ALL_STRATEGIES 不同步: "
+            f"缺 {set(ALL_STRATEGIES) - set(_STRATEGY_TAG_KEYS.values())}, "
+            f"多 {set(_STRATEGY_TAG_KEYS.values()) - set(ALL_STRATEGIES)}")
         chain = _load_chain_upto(target_date)
-        strategies = {"A": STRATEGY_A, "B": STRATEGY_B}
+        strategies = {k: ALL_STRATEGIES[name] for k, name in _STRATEGY_TAG_KEYS.items()}
         tags = strategy_tags_for_date(chain, strategies)
         payload = {
             "date": target_date,
             "generated_from": "core.strategies.would_enter (single source of truth)",
-            "strategies": {k: {"name": v.name, "zh": v.zh, "kind": v.kind}
-                           for k, v in strategies.items()},
+            "strategies": {
+                k: {
+                    "name": v.name, "zh": v.zh, "kind": v.kind,
+                    "research": k in _STRATEGY_TAG_RESEARCH,
+                }
+                for k, v in strategies.items()
+            },
             "tags": tags,
         }
         STRATEGY_TAGS_DIR.mkdir(parents=True, exist_ok=True)

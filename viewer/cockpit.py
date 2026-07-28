@@ -150,6 +150,10 @@ h1, h2, h3, h4 { font-family: 'SF Pro Display','Helvetica Neue',sans-serif !impo
 .dt-num   { font-family:monospace; }
 .dt-note  { font-size:10px !important;color:#4A6A8A;text-align:right;margin:0 0 2px 0; }
 .dt-empty { font-size:12px !important;color:#52B788;margin:4px 0 8px 0; }
+/* 逐筆明細表(模擬績效 tab)— 欄位多、卡片窄,橫向捲動不撐破版面(Yonki 2026-07-28)。 */
+.dt-table-scroll { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; margin:6px 0; }
+.dt-table-scroll table.dt-table { width:max-content; min-width:100%; }
+.dt-table-scroll td, .dt-table-scroll th { white-space:nowrap; }
 .scd-pill.dt-sm { font-size:11px !important;padding:1px 8px;gap:5px;margin:1px 3px 1px 0; }
 
 /* ── Regime banner ── */
@@ -365,6 +369,9 @@ div[data-testid="stExpander"] { border: 1px solid #1F2D3D !important; border-rad
 .gc-badge-qualified { background:#0A1F12;color:#52B788;border:1px solid #2E6B4A; }
 .gc-badge-new       { background:#160F22;color:#9E8AC8;border:1px solid #4A3880; }
 .gc-strat-badge { display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:800;letter-spacing:.02em;background:#101A22;color:var(--scd-gold,#EBC92F);border:1px solid #EBC92F55;margin-left:4px;cursor:help; }
+/* 研究待審策略(v3;4.3 非上線)— 視覺上與已上線四支明顯區隔:虛線框＋降彩度中性色，
+   不得沿用金色實框(那是已上線徽章的正當性語言);「研究中」字樣直接烙進徽章文字。 */
+.gc-strat-badge-research { display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.02em;background:transparent;color:var(--scd-neutral,#8B949E);border:1px dashed var(--scd-neutral,#8B949E);opacity:.85;margin-left:4px;cursor:help; }
 .gc-state  { display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;font-weight:600; }
 .gc-price  { margin-left:auto;font-size:15px;font-weight:700;font-family:monospace; }
 /* Row 2: divider */
@@ -450,6 +457,18 @@ def _load_market_pulse() -> dict:
     return {}
 
 
+# 徽章 glyph/術語 key 對應(唯一權威 = tools/run_pipeline.py 的 _STRATEGY_TAG_KEYS;
+# 這裡只是呈現映射,C12)。v2 用上標 ² 疊在既有 glyph 上,v3(A3)用 ³ —— 一眼可辨
+# 版本而不必新造符號。
+_TAG_META: dict[str, tuple[str, str]] = {   # label → (glyph, term-key)
+    "A":  ("Ⓐ",  "strat_chip"),
+    "B":  ("Ⓑ",  "strat_momentum"),
+    "A2": ("Ⓐ²", "strat_chip_v2"),
+    "B2": ("Ⓑ²", "strat_momentum_v2"),
+    "A3": ("Ⓐ³", "strat_chip_v3"),
+}
+
+
 @st.cache_data(ttl=120, show_spinner=False)
 def _strategy_tags_load(date: str) -> dict:
     """讀 reports/strategy_tags/<date>.json 的 tags(Part 1 sidecar,R1)。
@@ -464,6 +483,27 @@ def _strategy_tags_load(date: str) -> dict:
         return {}
     try:
         return json.loads(p.read_text(encoding="utf-8")).get("tags", {})
+    except Exception:
+        return {}
+
+
+@st.cache_data(ttl=120, show_spinner=False)
+def _strategy_tags_meta_load(date: str) -> dict:
+    """讀 reports/strategy_tags/<date>.json 的 strategies 中繼資料(R1 sidecar)。
+
+    回傳 {label: {"name":..., "zh":..., "kind":..., "research": bool}}。viewer 靠
+    payload 裡的 research 旗標決定徽章樣式(研究待審=虛線降彩度+「研究中」字樣),
+    不自行判斷哪支策略是研究版 —— 單一事實來源是 tools/run_pipeline.py 寫入的
+    _STRATEGY_TAG_RESEARCH。舊格式 sidecar(2-策略/無 research 欄)一律視為
+    research=False(.get 預設),不影響既有徽章顯示。
+    """
+    if not date:
+        return {}
+    p = _AI_STOCK / "reports" / "strategy_tags" / f"{date}.json"
+    if not p.is_file():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8")).get("strategies", {})
     except Exception:
         return {}
 
@@ -2018,18 +2058,23 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
     active_date   = snaps[-1].get("date", "")
     intel         = _intel_load(active_date)  # may be None
 
-    # ── Part 1: strategy tags (Ⓐ 籌碼錨定 / Ⓑ 動能延續) — sidecar, display-only ──
+    # ── Part 1: strategy tags (Ⓐ 籌碼錨定 / Ⓑ 動能延續 / v2 / v3研究中) — sidecar, display-only ──
     # 讀 reports/strategy_tags/<date>.json(R1);決定論、來源＝共用 would_enter。
-    # viewer 只渲染,不算/不裝、不影響 tier/score/gates。
-    strategy_tag_map = _strategy_tags_load(active_date)   # {ticker: {tags, rejections}}
-    _TAG_META = {   # label → (glyph, term-key)
-        "A": ("Ⓐ", "strat_chip"),
-        "B": ("Ⓑ", "strat_momentum"),
-    }
+    # viewer 只渲染,不算/不裝、不影響 tier/score/gates。五支 key 對應見
+    # tools/run_pipeline.py _STRATEGY_TAG_KEYS(單一權威來源);_TAG_META(模組層)
+    # 是本檔的呈現映射(glyph/術語 key),不判斷邏輯本身。
+    strategy_tag_map  = _strategy_tags_load(active_date)       # {ticker: {tags, rejections}}
+    strategy_meta_map = _strategy_tags_meta_load(active_date)  # {label: {..., research}}
+    _RESEARCH_TAG_LABELS = {k for k, v in strategy_meta_map.items() if v.get("research")}
 
     def _strategy_badges_html(ticker: str) -> str:
         """卡片策略徽章 HTML(tier 徽章之後、轉弱 pill 之前)。未符合任何策略者回空字串
-        (不顯示灰色空徽章)。滑鼠懸停顯示未取得策略的未通過原因。"""
+        (不顯示灰色空徽章)。研究待審策略(_RESEARCH_TAG_LABELS,來源=sidecar 的
+        research 旗標)改用虛線降彩度樣式並烙印「研究中」,不得與已上線四支同款式
+        ——研究中的策略不該在介面上取得事實上的正當性。滑鼠懸停顯示:(a) 該策略
+        自身的一句進場邏輯(來源 viewer/terms.py definition_zh,逐字取自
+        core/strategies.py would_enter 的真實判斷條件);(b) 該標的對『未取得』的
+        其他策略的未通過原因。"""
         info = strategy_tag_map.get(ticker)
         if not info or not info.get("tags"):
             return ""
@@ -2038,14 +2083,20 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
         for lab in info["tags"]:
             glyph, tkey = _TAG_META.get(lab, ("", None))
             name = _L(tkey) if tkey else lab
+            own_logic = _D(tkey) if tkey else ""
             # tooltip: this ticker's rejection reasons for the OTHER strategy
             other_tips = "；".join(
                 f'{_TAG_META.get(k, ("", None))[0]} ✗ {"、".join(v)}'
                 for k, v in sorted(rej.items()) if v
             )
-            title = f' title="{other_tips}"' if other_tips else ""
-            spans.append(
-                f'<span class="gc-strat-badge"{title}>{glyph} {name}</span>')
+            tip_parts = [p for p in (own_logic, other_tips) if p]
+            title = f' title="{" ｜ ".join(tip_parts)}"' if tip_parts else ""
+            if lab in _RESEARCH_TAG_LABELS:
+                spans.append(
+                    f'<span class="gc-strat-badge-research"{title}>{glyph} {name} · 研究中</span>')
+            else:
+                spans.append(
+                    f'<span class="gc-strat-badge"{title}>{glyph} {name}</span>')
         return "".join(spans)
 
     def _tag_count(ticker: str) -> int:
@@ -3771,6 +3822,108 @@ def _load_backtest_payload(strategy: str) -> dict | None:
         return None
 
 
+# ── 逐筆明細(Part C,Yonki 2026-07-28)─────────────────────────────────────
+# 呈現映射(C12):逐字對應 core/paper_trading.py 裡真實出現過的 reason 賦值
+# (weakening/weakening_tp2/trailing_stop/fii_reversal/main_force_sell/tp1/
+# vel_reduce/atr_stop/hard_break/entry_stop/W3_hardstop/end_of_data)。未知碼
+# 一律 fallback 回原始碼(不吞、不臆測),避免未來新增出場原因被本表靜默吃掉。
+_EXIT_REASON_ZH: dict[str, str] = {
+    "weakening":       "轉弱出場",
+    "weakening_tp2":   "轉弱出場(全出/TP2)",
+    "trailing_stop":   "移動停利",
+    "fii_reversal":    "外資連續反向",
+    "main_force_sell": "主力連續賣超",
+    "tp1":             "TP1減碼(獲利了結一半)",
+    "vel_reduce":      "速度轉負減碼",
+    "atr_stop":        "ATR止損",
+    "hard_break":      "S1硬熔斷止損",
+    "entry_stop":      "S2進場價止損",
+    "W3_hardstop":     "W3結構破位止損",
+    "end_of_data":     "資料結束(未平倉)",
+}
+
+
+def _fmt_trade_pct(v) -> str:
+    if v is None:
+        return "—"
+    try:
+        return f"{float(v) * 100:+.2f}%"
+    except (TypeError, ValueError):
+        return "—"
+
+
+def _fmt_trade_price(v) -> str:
+    if v is None:
+        return "—"
+    try:
+        return f"{float(v):.2f}"
+    except (TypeError, ValueError):
+        return "—"
+
+
+def _trade_row_html(t: dict) -> str:
+    ret = t.get("return_pct")
+    ret_col = ("#52B788" if isinstance(ret, (int, float)) and ret > 0
+               else "#E05C7A" if isinstance(ret, (int, float)) and ret < 0
+               else "#8B949E")
+    reason_code = t.get("exit_reason") or "—"
+    reason_zh = _EXIT_REASON_ZH.get(reason_code, reason_code)
+    hold = t.get("holding_days")
+    return (
+        f'<tr>'
+        f'<td><span class="dt-ticker">{t.get("ticker", "—")}</span> '
+        f'<span class="dt-name">{t.get("name", "")}</span></td>'
+        f'<td class="dt-num">{t.get("entry_date") or "—"}</td>'
+        f'<td class="dt-num">{_fmt_trade_price(t.get("entry_price"))}</td>'
+        f'<td class="dt-num">{t.get("exit_date") or "—"}</td>'
+        f'<td class="dt-num">{_fmt_trade_price(t.get("exit_price"))}</td>'
+        f'<td class="dt-num" style="color:{ret_col};font-weight:700;">{_fmt_trade_pct(ret)}</td>'
+        f'<td class="dt-num">{_fmt_trade_pct(t.get("excess_return_pct"))}</td>'
+        f'<td class="dt-num">{hold if hold is not None else "—"}</td>'
+        f'<td>{reason_zh}</td>'
+        f'</tr>'
+    )
+
+
+_TRADE_TABLE_HEADERS = ["標的", "進場日", "進場價", "出場日", "出場價", "報酬%", "超額%", "持有(日)", "出場原因"]
+
+
+def _render_trade_table(trades: list[dict]) -> None:
+    """逐筆明細(Part C)。純渲染 reports/backtest/<strategy>_latest.json 的 trades
+    陣列 —— 不重算、不組裝判斷輸入(viewer 三紅線之「不算」「不裝」)。
+
+    樣本門檻(_BACKTEST_MIN_TRADES)只藏『統計量』(勝率/平均報酬等聚合指標);
+    逐筆清單不受此限,一律照顯示 —— 小樣本時,誠實的呈現是攤開讓人自己看,而不是
+    給一個可能被噪音主導的平均數(Yonki 2026-07-28 裁示)。表格橫向捲動
+    (.dt-table-scroll)避免撐破卡片版面;必須先看『模擬成交』提示 —— 這是隔日
+    價位撮合的回測結果,不是真實成交紀錄。
+    """
+    if not trades:
+        return
+    st.markdown(
+        '<div style="font-size:11px;color:#8FA6BC;background:#0F1620;border:1px solid #1A2232;'
+        'border-radius:6px;padding:5px 10px;margin:8px 0 6px 0;">'
+        '🧪 <b>模擬成交</b> — 回測以隔日價位撮合,非真實成交紀錄、非投資建議'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    head_html = "".join(f"<th>{h}</th>" for h in _TRADE_TABLE_HEADERS)
+    # 顯示序=最新交易優先(純呈現排序,不影響任何統計/計算)。
+    ordered = list(reversed(trades))
+
+    def _tbl(rs: list[dict]) -> str:
+        return (f'<div class="dt-table-scroll"><table class="dt-table">'
+                f'<thead><tr>{head_html}</tr></thead>'
+                f'<tbody>{"".join(_trade_row_html(t) for t in rs)}</tbody></table></div>')
+
+    max_rows = 10
+    st.markdown(_tbl(ordered[:max_rows]), unsafe_allow_html=True)
+    if len(ordered) > max_rows:
+        with st.expander(f"展開全部逐筆明細({len(ordered)} 筆)"):
+            st.markdown(_tbl(ordered[max_rows:]), unsafe_allow_html=True)
+
+
 def _render_backtest(snaps: list[dict]) -> None:
     """模擬績效 tab — 每日 pipeline 跑完自動刷新;樣本不足顯示進度。"""
     _section_header("📈", "模擬績效", "Backtest Performance")
@@ -3778,8 +3931,9 @@ def _render_backtest(snaps: list[dict]) -> None:
         f'<div style="font-size:12px;color:#6B8EAA;margin:-6px 0 14px 0;">'
         f'資料來源:每日 pipeline 自動跑 <code>tools.run_backtest</code> '
         f'寫入 <code>reports/backtest/&lt;strategy&gt;_latest.json</code>。'
-        f'樣本 ≥ <b>{_BACKTEST_MIN_TRADES}</b> 筆才顯示績效,'
-        f'否則只顯示累積進度(避免小樣本噪音誤導決策)。</div>',
+        f'樣本 ≥ <b>{_BACKTEST_MIN_TRADES}</b> 筆才顯示『統計量』(勝率/平均報酬等,'
+        f'避免小樣本噪音誤導決策);<b>逐筆明細不受此限,一律照樣顯示</b>——'
+        f'小樣本時攤開清單比給一個平均數更誠實。逐筆為回測模擬撮合,非真實成交。</div>',
         unsafe_allow_html=True,
     )
 
@@ -3828,6 +3982,8 @@ def _render_backtest(snaps: list[dict]) -> None:
                     f'</div>',
                     unsafe_allow_html=True,
                 )
+                # 統計量藏起來了,但逐筆照顯示 —— 小樣本時攤開清單比平均數更誠實。
+                _render_trade_table(payload.get("trades") or [])
                 continue
 
             # 樣本達標 → 顯示 KPI
@@ -3890,6 +4046,8 @@ def _render_backtest(snaps: list[dict]) -> None:
                 f'</div>',
                 unsafe_allow_html=True,
             )
+            # 統計量之後緊接逐筆 —— 讓上面的聚合數字可以被點開稽核。
+            _render_trade_table(payload.get("trades") or [])
 
     # 詳版 report.html 入口
     report_path = _AI_STOCK / "reports" / "backtest" / "report.html"

@@ -133,6 +133,28 @@ TERMS: dict[str, Term] = {
         "strategy_tags.B", "landed", "sidecar",
         "策略 B 動能延續:連買達門檻、3日速度與加速度皆正、外資同向(來源 would_enter)。",
     ),
+    "strat_chip_v2": Term(
+        "strat_chip_v2", "籌碼錨定 v2", "",
+        "strategy_tags.A2", "landed", "sidecar",
+        "策略 A v2 分批:進場條件與 A 相同(進黃金名單且現價/主力成本 ≤ 1.05);"
+        "進場後於回貼成本帶(現價/成本 1.00–1.02)分批加碼,主力顯著賣超或"
+        "3日速度轉負連2日則分批減碼(TP1)。",
+    ),
+    "strat_momentum_v2": Term(
+        "strat_momentum_v2", "動能延續 v2", "",
+        "strategy_tags.B2", "landed", "sidecar",
+        "策略 B v2 分批:進場條件與 B 相同(連買達門檻、3日速度與加速度皆正、"
+        "外資同向);進場後於速度轉正且主力買超創新高時每 3 日加碼(上限 2 單位),"
+        "速度轉負連2日則分批減碼。",
+    ),
+    "strat_chip_v3": Term(
+        "strat_chip_v3", "籌碼錨定 v3", "",
+        "strategy_tags.A3", "landed", "sidecar",
+        "策略 A v3(研究待審,非上線):成本閘門放寬至研究層上界(BACKTEST_COST_CAP)"
+        "換取收緊動能否決權——需 3日速度>0、加速度≥0、外資同向、轉弱嚴重度=none"
+        "四關全過才進場;出場改用三重止損,不做加碼/減碼(來源 would_enter,"
+        "core/strategies.py Part 4.3)。",
+    ),
     "strat_consensus": Term(
         "strat_consensus", "雙策略共識", "檔",
         "strategy_tags.consensus", "render-time", "sidecar",
