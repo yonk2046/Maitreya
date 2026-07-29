@@ -360,19 +360,24 @@ div[data-testid="stExpander"] { border: 1px solid #1F2D3D !important; border-rad
 .gc-card.gc-qualified { border-left-color:#52B788; }
 .gc-card.gc-new       { border-left-color:#9E8AC8;box-shadow:0 0 0 1px #3A2870; }
 /* Row 1: header */
-.gc-head { display:flex;align-items:center;gap:8px;margin-bottom:8px; }
-.gc-ticker { font-size:18px;font-weight:800;color:#7EB8D4;font-family:monospace; }
-.gc-name   { font-size:13px;color:#8B949E; }
-.gc-badge  { display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:800;letter-spacing:.04em; }
+.gc-head { display:flex;align-items:center;gap:8px;margin-bottom:6px; }
+.gc-ticker { font-size:18px;font-weight:800;color:#7EB8D4;font-family:monospace;white-space:nowrap; }
+.gc-name   { font-size:13px;color:#8B949E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+/* 徽章列 ── 一律橫式 pill,排滿自動換下一排。
+   ⚠️ 每顆 badge 都必須 white-space:nowrap:中文可在任意字元斷行,若容器擠壓
+   (舊版 .gc-head 無 flex-wrap,七個元素硬擠一行)就會逐字折成直排。
+   2026-07-29 實際發生:五支策略徽章全部變成直式文字柱。 */
+.gc-badges { display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-bottom:8px; }
+.gc-badge  { display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:800;letter-spacing:.04em;white-space:nowrap; }
 .gc-badge-prime     { background:#1F1508;color:#D4A84B;border:1px solid #6A5020; }
 .gc-badge-strong    { background:#0A1520;color:#7EB8D4;border:1px solid #253A52; }
 .gc-badge-qualified { background:#0A1F12;color:#52B788;border:1px solid #2E6B4A; }
 .gc-badge-new       { background:#160F22;color:#9E8AC8;border:1px solid #4A3880; }
-.gc-strat-badge { display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:800;letter-spacing:.02em;background:#101A22;color:var(--scd-gold,#EBC92F);border:1px solid #EBC92F55;margin-left:4px;cursor:help; }
+.gc-strat-badge { display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:800;letter-spacing:.02em;background:#101A22;color:var(--scd-gold,#EBC92F);border:1px solid #EBC92F55;white-space:nowrap;cursor:help; }
 /* 研究待審策略(v3;4.3 非上線)— 視覺上與已上線四支明顯區隔:虛線框＋降彩度中性色，
    不得沿用金色實框(那是已上線徽章的正當性語言);「研究中」字樣直接烙進徽章文字。 */
-.gc-strat-badge-research { display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.02em;background:transparent;color:var(--scd-neutral,#8B949E);border:1px dashed var(--scd-neutral,#8B949E);opacity:.85;margin-left:4px;cursor:help; }
-.gc-state  { display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;font-weight:600; }
+.gc-strat-badge-research { display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.02em;background:transparent;color:var(--scd-neutral,#8B949E);border:1px dashed var(--scd-neutral,#8B949E);opacity:.85;white-space:nowrap;cursor:help; }
+.gc-state  { display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;font-weight:600;white-space:nowrap; }
 .gc-price  { margin-left:auto;font-size:15px;font-weight:700;font-family:monospace; }
 /* Row 2: divider */
 .gc-divider { border:none;border-top:1px solid #1F2D3D;margin:6px 0; }
@@ -2676,18 +2681,19 @@ def _render_golden(snaps: list[dict], show_near_miss: bool = True) -> None:  # n
         # ── LAYER 1: Fixed-height card HTML ──────────────────────────────
         card_html = (
             f'<div class="{card_cls}"{card_style}>'
-            # Row 1: header
+            # Row 1a: 識別列 —— 代號/名稱/狀態/價格,永遠單行不換
             f'<div class="gc-head">'
             f'<span class="gc-ticker">{e.ticker}</span>'
             f'<span class="gc-name">{e.name}</span>'
-            f'<span class="{badge_cls}">{badge_txt}</span>'
-            # Part 1: 策略徽章(tier 徽章之後、轉弱 pill 之前)
-            + _strategy_badges_html(e.ticker)
             + f'<span class="gc-state" style="background:{state_col}20;color:{state_col};border:1px solid {state_col}50;">'
             f'{e.sm_state_zh}{days_txt}</span>'
-            + (f'<span style="margin-left:2px;">{cat_html}</span>' if cat_html else "")
             + f'<span class="gc-price" style="color:{chg_col};">{price_s} <span style="font-size:12px;">{chg_s}</span></span>'
             f'</div>'
+            # Row 1b: 徽章列 —— tier + 策略徽章 + 分類,一律橫式 pill,排滿換下一排
+            f'<div class="gc-badges">'
+            f'<span class="{badge_cls}">{badge_txt}</span>'
+            + _strategy_badges_html(e.ticker)
+            + f'</div>'
             # Divider
             f'<hr class="gc-divider">'
             # Row 2: key metrics grid (3-column, 6 items)
