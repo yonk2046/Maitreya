@@ -2,50 +2,50 @@
   "strategy": "chip_anchored_v2",
   "date_range": [
     "2026-05-08",
-    "2026-07-28"
+    "2026-07-29"
   ],
-  "trade_count": 24,
+  "trade_count": 25,
   "summary": {
-    "trades": 24,
-    "win_rate": 0.5833,
-    "avg_return": -0.0032,
-    "median_return": 0.0068,
+    "trades": 25,
+    "win_rate": 0.56,
+    "avg_return": -0.003,
+    "median_return": 0.0061,
     "sharpe_per_trade": -0.05,
-    "avg_holding_days": 7.08,
+    "avg_holding_days": 6.84,
     "max_drawdown": -0.0288,
     "worst_single_trade": -0.2379,
     "exit_reasons": {
-      "weakening_tp2": 16,
+      "weakening_tp2": 17,
       "tp1": 6,
       "trailing_stop": 1,
       "end_of_data": 1
     },
     "net": {
-      "win_rate": 0.5833,
-      "avg_return": -0.0079,
-      "median_return": 0.0021,
+      "win_rate": 0.56,
+      "avg_return": -0.0077,
+      "median_return": 0.0013,
       "sharpe_per_trade": -0.13
     },
     "realized": {
-      "trades": 23,
-      "win_rate": 0.5652,
-      "avg_return": -0.0036,
-      "median_return": 0.0061,
+      "trades": 24,
+      "win_rate": 0.5833,
+      "avg_return": -0.0031,
+      "median_return": 0.0072,
       "net": {
-        "win_rate": 0.5652,
-        "avg_return": -0.0083,
-        "median_return": 0.0013
+        "win_rate": 0.5833,
+        "avg_return": -0.0078,
+        "median_return": 0.0025
       }
     },
     "unrealized": {
       "trades": 1,
-      "win_rate": 1.0,
-      "avg_return": 0.0076,
-      "median_return": 0.0076,
+      "win_rate": 0.0,
+      "avg_return": 0.0,
+      "median_return": 0.0,
       "net": {
-        "win_rate": 1.0,
-        "avg_return": 0.0028,
-        "median_return": 0.0028
+        "win_rate": 0.0,
+        "avg_return": -0.0047,
+        "median_return": -0.0047
       }
     },
     "independent_tickers": 17,
@@ -179,15 +179,20 @@
         "drawdown": -0.0271
       },
       {
-        "date": "2026-07-28",
-        "equity": 988827.11,
-        "drawdown": -0.0268
+        "date": "2026-07-29",
+        "equity": 989042.96,
+        "drawdown": -0.0266
+      },
+      {
+        "date": "2026-07-29",
+        "equity": 988571.96,
+        "drawdown": -0.0271
       }
     ],
     "alpha": {
-      "trades_with_benchmark": 24,
-      "trades_total": 24,
-      "avg_excess_return": -0.0103,
+      "trades_with_benchmark": 25,
+      "trades_total": 25,
+      "avg_excess_return": -0.0098,
       "period_buy_hold_return": 0.078,
       "note": "avg_excess_return = 策略平均報酬 − 同期(進場↔出場)大盤買入持有報酬(逐筆);period_buy_hold_return = 整段回測期間(date_range)大盤買入持有報酬,供對照——回答「策略總報酬是 alpha 還是 beta」看兩者相對大小。"
     },
@@ -197,12 +202,17 @@
         "Capital Waiting": {
           "trades": 6,
           "win_rate": 1.0,
-          "avg_return": 0.016
+          "avg_return": 0.0163
         },
         "Mild Risk-Off": {
           "trades": 3,
           "win_rate": 0.3333,
           "avg_return": -0.0047
+        },
+        "Risk-Off / Retreat": {
+          "trades": 1,
+          "win_rate": 0.0,
+          "avg_return": 0.0
         },
         "unlabeled": {
           "trades": 15,
@@ -610,19 +620,39 @@
       "name": "三商壽",
       "entry_date": "2026-07-20",
       "entry_price": 9.23,
-      "exit_date": "2026-07-28",
-      "exit_price": 9.3,
-      "return_pct": 0.0076,
-      "exit_reason": "end_of_data",
-      "holding_days": 6,
+      "exit_date": "2026-07-29",
+      "exit_price": 9.32,
+      "return_pct": 0.0098,
+      "exit_reason": "weakening_tp2",
+      "holding_days": 7,
       "units": 1.0,
       "benchmark_return_pct": 0.0566,
-      "excess_return_pct": -0.049,
+      "excess_return_pct": -0.0468,
       "regime": {
         "breadth": 0.3494,
         "regime": "Capital Waiting",
         "regime_zh": "資金觀望",
         "temperature_level": "warm"
+      }
+    },
+    {
+      "ticker": "2609",
+      "name": "陽明",
+      "entry_date": "2026-07-29",
+      "entry_price": 50.6,
+      "exit_date": "2026-07-29",
+      "exit_price": 50.6,
+      "return_pct": 0.0,
+      "exit_reason": "end_of_data",
+      "holding_days": 0,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": 0.0,
+      "regime": {
+        "breadth": 0.2248,
+        "regime": "Risk-Off / Retreat",
+        "regime_zh": "全面撤退",
+        "temperature_level": "extreme"
       }
     }
   ],
