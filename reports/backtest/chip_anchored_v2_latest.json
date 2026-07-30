@@ -2,53 +2,54 @@
   "strategy": "chip_anchored_v2",
   "date_range": [
     "2026-05-08",
-    "2026-07-29"
+    "2026-07-30"
   ],
-  "trade_count": 25,
+  "trade_count": 29,
   "summary": {
-    "trades": 25,
-    "win_rate": 0.56,
-    "avg_return": -0.003,
-    "median_return": 0.0061,
-    "sharpe_per_trade": -0.05,
-    "avg_holding_days": 6.84,
-    "max_drawdown": -0.0288,
+    "trades": 29,
+    "win_rate": 0.4828,
+    "avg_return": -0.0061,
+    "median_return": 0.0,
+    "sharpe_per_trade": -0.11,
+    "avg_holding_days": 6.86,
+    "max_drawdown": -0.0389,
     "worst_single_trade": -0.2379,
     "exit_reasons": {
       "weakening_tp2": 17,
       "tp1": 6,
       "trailing_stop": 1,
-      "end_of_data": 1
+      "atr_stop": 1,
+      "end_of_data": 4
     },
     "net": {
-      "win_rate": 0.56,
-      "avg_return": -0.0077,
-      "median_return": 0.0013,
-      "sharpe_per_trade": -0.13
+      "win_rate": 0.4828,
+      "avg_return": -0.0108,
+      "median_return": -0.0047,
+      "sharpe_per_trade": -0.19
     },
     "realized": {
-      "trades": 24,
-      "win_rate": 0.5833,
-      "avg_return": -0.0031,
-      "median_return": 0.0072,
+      "trades": 25,
+      "win_rate": 0.56,
+      "avg_return": -0.0034,
+      "median_return": 0.0061,
       "net": {
-        "win_rate": 0.5833,
-        "avg_return": -0.0078,
-        "median_return": 0.0025
+        "win_rate": 0.56,
+        "avg_return": -0.0081,
+        "median_return": 0.0013
       }
     },
     "unrealized": {
-      "trades": 1,
+      "trades": 4,
       "win_rate": 0.0,
-      "avg_return": 0.0,
-      "median_return": 0.0,
+      "avg_return": -0.0225,
+      "median_return": -0.0118,
       "net": {
         "win_rate": 0.0,
-        "avg_return": -0.0047,
-        "median_return": -0.0047
+        "avg_return": -0.0272,
+        "median_return": -0.0165
       }
     },
-    "independent_tickers": 17,
+    "independent_tickers": 19,
     "disclosure": "頂層 avg_return/win_rate/median 含全部交易(含 end_of_data 未實現部位);realized/unrealized 已分離(3.4)——未實現不得混入已實現統計。信賴區間一律以 independent_tickers(獨立標的數)計,非交易筆數。",
     "cost_model": {
       "fee_rate": 0.000855,
@@ -184,15 +185,35 @@
         "drawdown": -0.0266
       },
       {
-        "date": "2026-07-29",
-        "equity": 988571.96,
-        "drawdown": -0.0271
+        "date": "2026-07-30",
+        "equity": 981940.82,
+        "drawdown": -0.0336
+      },
+      {
+        "date": "2026-07-30",
+        "equity": 979116.72,
+        "drawdown": -0.0364
+      },
+      {
+        "date": "2026-07-30",
+        "equity": 977464.52,
+        "drawdown": -0.038
+      },
+      {
+        "date": "2026-07-30",
+        "equity": 976993.52,
+        "drawdown": -0.0385
+      },
+      {
+        "date": "2026-07-30",
+        "equity": 976522.52,
+        "drawdown": -0.0389
       }
     ],
     "alpha": {
-      "trades_with_benchmark": 25,
-      "trades_total": 25,
-      "avg_excess_return": -0.0098,
+      "trades_with_benchmark": 29,
+      "trades_total": 29,
+      "avg_excess_return": -0.0109,
       "period_buy_hold_return": 0.078,
       "note": "avg_excess_return = 策略平均報酬 − 同期(進場↔出場)大盤買入持有報酬(逐筆);period_buy_hold_return = 整段回測期間(date_range)大盤買入持有報酬,供對照——回答「策略總報酬是 alpha 還是 beta」看兩者相對大小。"
     },
@@ -200,24 +221,24 @@
       "note": "進場當日落地體制(obs_market_regime.regime_label_en)分組毛平均報酬;unlabeled = 該進場日快照無 obs_market_*(內部 pulse 僅 7/08 起)。R5:讀落地值,不重算。",
       "groups": {
         "Capital Waiting": {
-          "trades": 6,
-          "win_rate": 1.0,
-          "avg_return": 0.0163
+          "trades": 8,
+          "win_rate": 0.75,
+          "avg_return": 0.0122
         },
         "Mild Risk-Off": {
-          "trades": 3,
-          "win_rate": 0.3333,
-          "avg_return": -0.0047
+          "trades": 4,
+          "win_rate": 0.25,
+          "avg_return": -0.0094
         },
         "Risk-Off / Retreat": {
           "trades": 1,
           "win_rate": 0.0,
-          "avg_return": 0.0
+          "avg_return": -0.0119
         },
         "unlabeled": {
-          "trades": 15,
-          "win_rate": 0.4667,
-          "avg_return": -0.0105
+          "trades": 16,
+          "win_rate": 0.4375,
+          "avg_return": -0.014
         }
       }
     }
@@ -640,8 +661,63 @@
       "name": "陽明",
       "entry_date": "2026-07-29",
       "entry_price": 50.6,
-      "exit_date": "2026-07-29",
-      "exit_price": 50.6,
+      "exit_date": "2026-07-30",
+      "exit_price": 50.0,
+      "return_pct": -0.0119,
+      "exit_reason": "atr_stop",
+      "holding_days": 1,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": -0.0119,
+      "regime": {
+        "breadth": 0.2248,
+        "regime": "Risk-Off / Retreat",
+        "regime_zh": "全面撤退",
+        "temperature_level": "extreme"
+      }
+    },
+    {
+      "ticker": "2885",
+      "name": "元大金",
+      "entry_date": "2026-07-07",
+      "entry_price": 67.6,
+      "exit_date": "2026-07-30",
+      "exit_price": 63.1,
+      "return_pct": -0.0666,
+      "exit_reason": "end_of_data",
+      "holding_days": 16,
+      "units": 1.0,
+      "benchmark_return_pct": -0.0138,
+      "excess_return_pct": -0.0528,
+      "regime": null
+    },
+    {
+      "ticker": "2881",
+      "name": "富邦金",
+      "entry_date": "2026-07-15",
+      "entry_price": 127.0,
+      "exit_date": "2026-07-30",
+      "exit_price": 124.0,
+      "return_pct": -0.0236,
+      "exit_reason": "end_of_data",
+      "holding_days": 11,
+      "units": 1.0,
+      "benchmark_return_pct": -0.0171,
+      "excess_return_pct": -0.0065,
+      "regime": {
+        "breadth": 0.8284,
+        "regime": "Mild Risk-Off",
+        "regime_zh": "偏弱整理",
+        "temperature_level": "stable"
+      }
+    },
+    {
+      "ticker": "2884",
+      "name": "玉山金",
+      "entry_date": "2026-07-30",
+      "entry_price": 37.7,
+      "exit_date": "2026-07-30",
+      "exit_price": 37.7,
       "return_pct": 0.0,
       "exit_reason": "end_of_data",
       "holding_days": 0,
@@ -649,10 +725,30 @@
       "benchmark_return_pct": 0.0,
       "excess_return_pct": 0.0,
       "regime": {
-        "breadth": 0.2248,
-        "regime": "Risk-Off / Retreat",
-        "regime_zh": "全面撤退",
-        "temperature_level": "extreme"
+        "breadth": 0.2072,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "hot"
+      }
+    },
+    {
+      "ticker": "2886",
+      "name": "兆豐金",
+      "entry_date": "2026-07-30",
+      "entry_price": 51.5,
+      "exit_date": "2026-07-30",
+      "exit_price": 51.5,
+      "return_pct": 0.0,
+      "exit_reason": "end_of_data",
+      "holding_days": 0,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": 0.0,
+      "regime": {
+        "breadth": 0.2072,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "hot"
       }
     }
   ],
