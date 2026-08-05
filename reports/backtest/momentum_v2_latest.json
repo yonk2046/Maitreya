@@ -2,30 +2,30 @@
   "strategy": "momentum_v2",
   "date_range": [
     "2026-05-08",
-    "2026-08-04"
+    "2026-08-05"
   ],
-  "trade_count": 28,
+  "trade_count": 33,
   "summary": {
-    "trades": 28,
-    "win_rate": 0.5357,
-    "avg_return": -0.0061,
-    "median_return": 0.0044,
-    "sharpe_per_trade": -0.07,
-    "avg_holding_days": 8.61,
-    "max_drawdown": -0.0649,
+    "trades": 33,
+    "win_rate": 0.4848,
+    "avg_return": -0.0071,
+    "median_return": 0.0,
+    "sharpe_per_trade": -0.08,
+    "avg_holding_days": 8.15,
+    "max_drawdown": -0.0735,
     "worst_single_trade": -0.3466,
     "exit_reasons": {
       "weakening_tp2": 18,
       "fii_reversal": 2,
       "vel_reduce": 4,
       "trailing_stop": 2,
-      "end_of_data": 2
+      "end_of_data": 7
     },
     "net": {
-      "win_rate": 0.5,
-      "avg_return": -0.0108,
-      "median_return": -0.0003,
-      "sharpe_per_trade": -0.12
+      "win_rate": 0.4545,
+      "avg_return": -0.0118,
+      "median_return": -0.0047,
+      "sharpe_per_trade": -0.14
     },
     "realized": {
       "trades": 26,
@@ -39,17 +39,17 @@
       }
     },
     "unrealized": {
-      "trades": 2,
-      "win_rate": 0.5,
-      "avg_return": 0.0057,
-      "median_return": 0.0057,
+      "trades": 7,
+      "win_rate": 0.2857,
+      "avg_return": -0.0075,
+      "median_return": 0.0,
       "net": {
-        "win_rate": 0.5,
-        "avg_return": 0.0009,
-        "median_return": 0.0009
+        "win_rate": 0.2857,
+        "avg_return": -0.0122,
+        "median_return": -0.0047
       }
     },
-    "independent_tickers": 19,
+    "independent_tickers": 21,
     "disclosure": "頂層 avg_return/win_rate/median 含全部交易(含 end_of_data 未實現部位);realized/unrealized 已分離(3.4)——未實現不得混入已實現統計。信賴區間一律以 independent_tickers(獨立標的數)計,非交易筆數。",
     "cost_model": {
       "fee_rate": 0.000855,
@@ -195,20 +195,45 @@
         "drawdown": -0.0649
       },
       {
-        "date": "2026-08-04",
-        "equity": 963060.29,
-        "drawdown": -0.0642
+        "date": "2026-08-05",
+        "equity": 955737.58,
+        "drawdown": -0.0714
       },
       {
-        "date": "2026-08-04",
-        "equity": 962589.29,
-        "drawdown": -0.0647
+        "date": "2026-08-05",
+        "equity": 956039.08,
+        "drawdown": -0.0711
+      },
+      {
+        "date": "2026-08-05",
+        "equity": 956473.67,
+        "drawdown": -0.0706
+      },
+      {
+        "date": "2026-08-05",
+        "equity": 954967.42,
+        "drawdown": -0.0721
+      },
+      {
+        "date": "2026-08-05",
+        "equity": 954496.42,
+        "drawdown": -0.0726
+      },
+      {
+        "date": "2026-08-05",
+        "equity": 954025.42,
+        "drawdown": -0.073
+      },
+      {
+        "date": "2026-08-05",
+        "equity": 953554.42,
+        "drawdown": -0.0735
       }
     ],
     "alpha": {
-      "trades_with_benchmark": 28,
-      "trades_total": 28,
-      "avg_excess_return": -0.0112,
+      "trades_with_benchmark": 33,
+      "trades_total": 33,
+      "avg_excess_return": -0.0126,
       "period_buy_hold_return": 0.078,
       "note": "avg_excess_return = 策略平均報酬 − 同期(進場↔出場)大盤買入持有報酬(逐筆);period_buy_hold_return = 整段回測期間(date_range)大盤買入持有報酬,供對照——回答「策略總報酬是 alpha 還是 beta」看兩者相對大小。"
     },
@@ -216,19 +241,24 @@
       "note": "進場當日落地體制(obs_market_regime.regime_label_en)分組毛平均報酬;unlabeled = 該進場日快照無 obs_market_*(內部 pulse 僅 7/08 起)。R5:讀落地值,不重算。",
       "groups": {
         "Capital Waiting": {
-          "trades": 5,
-          "win_rate": 0.8,
-          "avg_return": 0.0043
+          "trades": 7,
+          "win_rate": 0.7143,
+          "avg_return": -0.0043
         },
         "Mild Risk-Off": {
           "trades": 1,
           "win_rate": 0.0,
           "avg_return": -0.0295
         },
+        "Mild Risk-On": {
+          "trades": 3,
+          "win_rate": 0.0,
+          "avg_return": 0.0
+        },
         "Neutral / Consolidating": {
           "trades": 4,
           "win_rate": 0.5,
-          "avg_return": 0.0026
+          "avg_return": -0.0006
         },
         "unlabeled": {
           "trades": 18,
@@ -677,18 +707,58 @@
       }
     },
     {
+      "ticker": "3576",
+      "name": "聯合再生",
+      "entry_date": "2026-07-16",
+      "entry_price": 17.7,
+      "exit_date": "2026-08-05",
+      "exit_price": 16.6,
+      "return_pct": -0.0621,
+      "exit_reason": "end_of_data",
+      "holding_days": 14,
+      "units": 1.0,
+      "benchmark_return_pct": -0.017,
+      "excess_return_pct": -0.0451,
+      "regime": {
+        "breadth": 0.3438,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "stable"
+      }
+    },
+    {
+      "ticker": "2002",
+      "name": "中鋼",
+      "entry_date": "2026-07-20",
+      "entry_price": 18.55,
+      "exit_date": "2026-08-05",
+      "exit_price": 18.75,
+      "return_pct": 0.0108,
+      "exit_reason": "end_of_data",
+      "holding_days": 12,
+      "units": 0.5,
+      "benchmark_return_pct": 0.0566,
+      "excess_return_pct": -0.0458,
+      "regime": {
+        "breadth": 0.3494,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "warm"
+      }
+    },
+    {
       "ticker": "2610",
       "name": "華航",
       "entry_date": "2026-08-03",
       "entry_price": 22.0,
-      "exit_date": "2026-08-04",
-      "exit_price": 22.25,
-      "return_pct": 0.0114,
+      "exit_date": "2026-08-05",
+      "exit_price": 22.2,
+      "return_pct": 0.0091,
       "exit_reason": "end_of_data",
-      "holding_days": 1,
+      "holding_days": 2,
       "units": 1.0,
       "benchmark_return_pct": 0.0,
-      "excess_return_pct": 0.0114,
+      "excess_return_pct": 0.0091,
       "regime": {
         "breadth": 0.5989,
         "regime": "Neutral / Consolidating",
@@ -701,8 +771,28 @@
       "name": "長榮航",
       "entry_date": "2026-08-04",
       "entry_price": 43.3,
-      "exit_date": "2026-08-04",
-      "exit_price": 43.3,
+      "exit_date": "2026-08-05",
+      "exit_price": 42.85,
+      "return_pct": -0.0104,
+      "exit_reason": "end_of_data",
+      "holding_days": 1,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": -0.0104,
+      "regime": {
+        "breadth": 0.5536,
+        "regime": "Neutral / Consolidating",
+        "regime_zh": "中性整理",
+        "temperature_level": "warm"
+      }
+    },
+    {
+      "ticker": "2301",
+      "name": "光寶科",
+      "entry_date": "2026-08-05",
+      "entry_price": 233.5,
+      "exit_date": "2026-08-05",
+      "exit_price": 233.5,
       "return_pct": 0.0,
       "exit_reason": "end_of_data",
       "holding_days": 0,
@@ -710,9 +800,49 @@
       "benchmark_return_pct": 0.0,
       "excess_return_pct": 0.0,
       "regime": {
-        "breadth": 0.5536,
-        "regime": "Neutral / Consolidating",
-        "regime_zh": "中性整理",
+        "breadth": 0.634,
+        "regime": "Mild Risk-On",
+        "regime_zh": "溫和偏多",
+        "temperature_level": "warm"
+      }
+    },
+    {
+      "ticker": "2324",
+      "name": "仁寶",
+      "entry_date": "2026-08-05",
+      "entry_price": 36.0,
+      "exit_date": "2026-08-05",
+      "exit_price": 36.0,
+      "return_pct": 0.0,
+      "exit_reason": "end_of_data",
+      "holding_days": 0,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": 0.0,
+      "regime": {
+        "breadth": 0.634,
+        "regime": "Mild Risk-On",
+        "regime_zh": "溫和偏多",
+        "temperature_level": "warm"
+      }
+    },
+    {
+      "ticker": "2344",
+      "name": "華邦電",
+      "entry_date": "2026-08-05",
+      "entry_price": 145.0,
+      "exit_date": "2026-08-05",
+      "exit_price": 145.0,
+      "return_pct": 0.0,
+      "exit_reason": "end_of_data",
+      "holding_days": 0,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": 0.0,
+      "regime": {
+        "breadth": 0.634,
+        "regime": "Mild Risk-On",
+        "regime_zh": "溫和偏多",
         "temperature_level": "warm"
       }
     }
