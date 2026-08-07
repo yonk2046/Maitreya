@@ -2,54 +2,54 @@
   "strategy": "chip_anchored_v2",
   "date_range": [
     "2026-05-08",
-    "2026-08-06"
+    "2026-08-07"
   ],
-  "trade_count": 31,
+  "trade_count": 37,
   "summary": {
-    "trades": 31,
-    "win_rate": 0.4839,
-    "avg_return": -0.0218,
-    "median_return": -0.0023,
-    "sharpe_per_trade": -0.26,
-    "avg_holding_days": 9.55,
-    "max_drawdown": -0.0654,
+    "trades": 37,
+    "win_rate": 0.4595,
+    "avg_return": -0.0168,
+    "median_return": 0.0,
+    "sharpe_per_trade": -0.22,
+    "avg_holding_days": 8.62,
+    "max_drawdown": -0.0672,
     "worst_single_trade": -0.3185,
     "exit_reasons": {
-      "weakening_tp2": 20,
+      "weakening_tp2": 21,
       "tp1": 7,
       "trailing_stop": 1,
       "atr_stop": 2,
-      "end_of_data": 1
+      "end_of_data": 6
     },
     "net": {
-      "win_rate": 0.4839,
-      "avg_return": -0.0264,
-      "median_return": -0.007,
-      "sharpe_per_trade": -0.32
+      "win_rate": 0.4595,
+      "avg_return": -0.0214,
+      "median_return": -0.0047,
+      "sharpe_per_trade": -0.28
     },
     "realized": {
-      "trades": 30,
-      "win_rate": 0.5,
+      "trades": 31,
+      "win_rate": 0.4839,
       "avg_return": -0.0215,
-      "median_return": 0.0013,
+      "median_return": -0.0023,
       "net": {
-        "win_rate": 0.5,
+        "win_rate": 0.4839,
         "avg_return": -0.0261,
-        "median_return": -0.0035
+        "median_return": -0.007
       }
     },
     "unrealized": {
-      "trades": 1,
-      "win_rate": 0.0,
-      "avg_return": -0.0307,
-      "median_return": -0.0307,
+      "trades": 6,
+      "win_rate": 0.3333,
+      "avg_return": 0.0074,
+      "median_return": 0.0,
       "net": {
-        "win_rate": 0.0,
-        "avg_return": -0.0353,
-        "median_return": -0.0353
+        "win_rate": 0.3333,
+        "avg_return": 0.0027,
+        "median_return": -0.0047
       }
     },
-    "independent_tickers": 19,
+    "independent_tickers": 21,
     "disclosure": "頂層 avg_return/win_rate/median 含全部交易(含 end_of_data 未實現部位);realized/unrealized 已分離(3.4)——未實現不得混入已實現統計。信賴區間一律以 independent_tickers(獨立標的數)計,非交易筆數。",
     "cost_model": {
       "fee_rate": 0.000855,
@@ -215,15 +215,45 @@
         "drawdown": -0.0619
       },
       {
-        "date": "2026-08-06",
-        "equity": 949670.83,
-        "drawdown": -0.0654
+        "date": "2026-08-07",
+        "equity": 952726.49,
+        "drawdown": -0.0624
+      },
+      {
+        "date": "2026-08-07",
+        "equity": 950321.23,
+        "drawdown": -0.0647
+      },
+      {
+        "date": "2026-08-07",
+        "equity": 947813.12,
+        "drawdown": -0.0672
+      },
+      {
+        "date": "2026-08-07",
+        "equity": 950091.93,
+        "drawdown": -0.0649
+      },
+      {
+        "date": "2026-08-07",
+        "equity": 950956.75,
+        "drawdown": -0.0641
+      },
+      {
+        "date": "2026-08-07",
+        "equity": 950485.75,
+        "drawdown": -0.0646
+      },
+      {
+        "date": "2026-08-07",
+        "equity": 950014.75,
+        "drawdown": -0.065
       }
     ],
     "alpha": {
-      "trades_with_benchmark": 31,
-      "trades_total": 31,
-      "avg_excess_return": -0.0253,
+      "trades_with_benchmark": 37,
+      "trades_total": 37,
+      "avg_excess_return": -0.0197,
       "period_buy_hold_return": 0.078,
       "note": "avg_excess_return = 策略平均報酬 − 同期(進場↔出場)大盤買入持有報酬(逐筆);period_buy_hold_return = 整段回測期間(date_range)大盤買入持有報酬,供對照——回答「策略總報酬是 alpha 還是 beta」看兩者相對大小。"
     },
@@ -231,14 +261,19 @@
       "note": "進場當日落地體制(obs_market_regime.regime_label_en)分組毛平均報酬;unlabeled = 該進場日快照無 obs_market_*(內部 pulse 僅 7/08 起)。R5:讀落地值,不重算。",
       "groups": {
         "Capital Waiting": {
-          "trades": 6,
-          "win_rate": 1.0,
-          "avg_return": 0.0163
+          "trades": 8,
+          "win_rate": 0.75,
+          "avg_return": 0.0098
         },
         "Mild Risk-Off": {
-          "trades": 6,
-          "win_rate": 0.3333,
-          "avg_return": -0.0065
+          "trades": 8,
+          "win_rate": 0.5,
+          "avg_return": 0.0044
+        },
+        "Neutral / Consolidating": {
+          "trades": 2,
+          "win_rate": 0.0,
+          "avg_return": 0.0
         },
         "Risk-Off / Retreat": {
           "trades": 1,
@@ -776,18 +811,138 @@
       "name": "台泥",
       "entry_date": "2026-07-31",
       "entry_price": 24.45,
-      "exit_date": "2026-08-06",
-      "exit_price": 23.7,
-      "return_pct": -0.0307,
-      "exit_reason": "end_of_data",
-      "holding_days": 4,
+      "exit_date": "2026-08-07",
+      "exit_price": 23.95,
+      "return_pct": -0.0204,
+      "exit_reason": "weakening_tp2",
+      "holding_days": 5,
       "units": 1.0,
       "benchmark_return_pct": 0.0,
-      "excess_return_pct": -0.0307,
+      "excess_return_pct": -0.0204,
       "regime": {
         "breadth": 0.8252,
         "regime": "Mild Risk-Off",
         "regime_zh": "偏弱整理",
+        "temperature_level": "warm"
+      }
+    },
+    {
+      "ticker": "2884",
+      "name": "玉山金",
+      "entry_date": "2026-07-30",
+      "entry_price": 37.7,
+      "exit_date": "2026-08-07",
+      "exit_price": 37.7,
+      "return_pct": 0.0,
+      "exit_reason": "end_of_data",
+      "holding_days": 6,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": 0.0,
+      "regime": {
+        "breadth": 0.2072,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "hot"
+      }
+    },
+    {
+      "ticker": "2886",
+      "name": "兆豐金",
+      "entry_date": "2026-07-30",
+      "entry_price": 51.5,
+      "exit_date": "2026-08-07",
+      "exit_price": 50.5,
+      "return_pct": -0.0194,
+      "exit_reason": "end_of_data",
+      "holding_days": 6,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": -0.0194,
+      "regime": {
+        "breadth": 0.2072,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "hot"
+      }
+    },
+    {
+      "ticker": "2618",
+      "name": "長榮航",
+      "entry_date": "2026-07-31",
+      "entry_price": 41.6,
+      "exit_date": "2026-08-07",
+      "exit_price": 43.7,
+      "return_pct": 0.0505,
+      "exit_reason": "end_of_data",
+      "holding_days": 5,
+      "units": 0.5,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": 0.0505,
+      "regime": {
+        "breadth": 0.8252,
+        "regime": "Mild Risk-Off",
+        "regime_zh": "偏弱整理",
+        "temperature_level": "warm"
+      }
+    },
+    {
+      "ticker": "5880",
+      "name": "合庫金",
+      "entry_date": "2026-07-31",
+      "entry_price": 26.1,
+      "exit_date": "2026-08-07",
+      "exit_price": 26.45,
+      "return_pct": 0.0134,
+      "exit_reason": "end_of_data",
+      "holding_days": 5,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": 0.0134,
+      "regime": {
+        "breadth": 0.8252,
+        "regime": "Mild Risk-Off",
+        "regime_zh": "偏弱整理",
+        "temperature_level": "warm"
+      }
+    },
+    {
+      "ticker": "2408",
+      "name": "南亞科",
+      "entry_date": "2026-08-07",
+      "entry_price": 441.0,
+      "exit_date": "2026-08-07",
+      "exit_price": 441.0,
+      "return_pct": 0.0,
+      "exit_reason": "end_of_data",
+      "holding_days": 0,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": 0.0,
+      "regime": {
+        "breadth": 0.4593,
+        "regime": "Neutral / Consolidating",
+        "regime_zh": "中性整理",
+        "temperature_level": "warm"
+      }
+    },
+    {
+      "ticker": "2892",
+      "name": "第一金",
+      "entry_date": "2026-08-07",
+      "entry_price": 35.8,
+      "exit_date": "2026-08-07",
+      "exit_price": 35.8,
+      "return_pct": 0.0,
+      "exit_reason": "end_of_data",
+      "holding_days": 0,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": 0.0,
+      "regime": {
+        "breadth": 0.4593,
+        "regime": "Neutral / Consolidating",
+        "regime_zh": "中性整理",
         "temperature_level": "warm"
       }
     }
