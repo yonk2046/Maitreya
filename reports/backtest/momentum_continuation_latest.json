@@ -2,29 +2,29 @@
   "strategy": "momentum_continuation",
   "date_range": [
     "2026-05-08",
-    "2026-08-11"
+    "2026-08-12"
   ],
-  "trade_count": 24,
+  "trade_count": 26,
   "summary": {
-    "trades": 24,
-    "win_rate": 0.5417,
-    "avg_return": -0.0066,
-    "median_return": 0.0044,
-    "sharpe_per_trade": -0.07,
-    "avg_holding_days": 9.42,
-    "max_drawdown": -0.0561,
+    "trades": 26,
+    "win_rate": 0.6154,
+    "avg_return": -0.0011,
+    "median_return": 0.008,
+    "sharpe_per_trade": -0.01,
+    "avg_holding_days": 10.38,
+    "max_drawdown": -0.0553,
     "worst_single_trade": -0.3466,
     "exit_reasons": {
       "weakening": 19,
       "fii_reversal": 2,
       "trailing_stop": 2,
-      "end_of_data": 1
+      "end_of_data": 3
     },
     "net": {
-      "win_rate": 0.5,
-      "avg_return": -0.0112,
-      "median_return": -0.0003,
-      "sharpe_per_trade": -0.12
+      "win_rate": 0.5769,
+      "avg_return": -0.0059,
+      "median_return": 0.0032,
+      "sharpe_per_trade": -0.06
     },
     "realized": {
       "trades": 23,
@@ -38,17 +38,17 @@
       }
     },
     "unrealized": {
-      "trades": 1,
-      "win_rate": 0.0,
-      "avg_return": -0.0204,
-      "median_return": -0.0204,
+      "trades": 3,
+      "win_rate": 1.0,
+      "avg_return": 0.0357,
+      "median_return": 0.0083,
       "net": {
-        "win_rate": 0.0,
-        "avg_return": -0.025,
-        "median_return": -0.025
+        "win_rate": 1.0,
+        "avg_return": 0.0309,
+        "median_return": 0.0036
       }
     },
-    "independent_tickers": 18,
+    "independent_tickers": 19,
     "disclosure": "頂層 avg_return/win_rate/median 含全部交易(含 end_of_data 未實現部位);realized/unrealized 已分離(3.4)——未實現不得混入已實現統計。信賴區間一律以 independent_tickers(獨立標的數)計,非交易筆數。",
     "cost_model": {
       "fee_rate": 0.000855,
@@ -179,15 +179,25 @@
         "drawdown": -0.0536
       },
       {
-        "date": "2026-08-11",
-        "equity": 973023.42,
-        "drawdown": -0.0561
+        "date": "2026-08-12",
+        "equity": 984140.78,
+        "drawdown": -0.0453
+      },
+      {
+        "date": "2026-08-12",
+        "equity": 984499.9,
+        "drawdown": -0.0449
+      },
+      {
+        "date": "2026-08-12",
+        "equity": 984789.32,
+        "drawdown": -0.0446
       }
     ],
     "alpha": {
-      "trades_with_benchmark": 24,
-      "trades_total": 24,
-      "avg_excess_return": -0.0103,
+      "trades_with_benchmark": 26,
+      "trades_total": 26,
+      "avg_excess_return": -0.0037,
       "period_buy_hold_return": 0.078,
       "note": "avg_excess_return = 策略平均報酬 − 同期(進場↔出場)大盤買入持有報酬(逐筆);period_buy_hold_return = 整段回測期間(date_range)大盤買入持有報酬,供對照——回答「策略總報酬是 alpha 還是 beta」看兩者相對大小。"
     },
@@ -205,9 +215,9 @@
           "avg_return": -0.0295
         },
         "Mild Risk-On": {
-          "trades": 1,
-          "win_rate": 0.0,
-          "avg_return": -0.0204
+          "trades": 2,
+          "win_rate": 1.0,
+          "avg_return": 0.008
         },
         "Neutral / Consolidating": {
           "trades": 2,
@@ -215,9 +225,9 @@
           "avg_return": -0.0006
         },
         "unlabeled": {
-          "trades": 15,
-          "win_rate": 0.5333,
-          "avg_return": -0.008
+          "trades": 16,
+          "win_rate": 0.5625,
+          "avg_return": -0.0018
         }
       }
     }
@@ -615,18 +625,53 @@
       }
     },
     {
+      "ticker": "1326",
+      "name": "台化",
+      "entry_date": "2026-06-17",
+      "entry_price": 53.7,
+      "exit_date": "2026-08-12",
+      "exit_price": 58.6,
+      "return_pct": 0.0912,
+      "exit_reason": "end_of_data",
+      "holding_days": 38,
+      "units": 1.0,
+      "benchmark_return_pct": -0.0224,
+      "excess_return_pct": 0.1136,
+      "regime": null
+    },
+    {
+      "ticker": "2324",
+      "name": "仁寶",
+      "entry_date": "2026-08-05",
+      "entry_price": 36.0,
+      "exit_date": "2026-08-12",
+      "exit_price": 36.3,
+      "return_pct": 0.0083,
+      "exit_reason": "end_of_data",
+      "holding_days": 5,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": 0.0083,
+      "regime": {
+        "breadth": 0.634,
+        "regime": "Mild Risk-On",
+        "regime_zh": "溫和偏多",
+        "temperature_level": "warm"
+      }
+    },
+    {
       "ticker": "2002",
       "name": "中鋼",
       "entry_date": "2026-08-10",
       "entry_price": 19.65,
-      "exit_date": "2026-08-11",
-      "exit_price": 19.25,
-      "return_pct": -0.0204,
+      "exit_date": "2026-08-12",
+      "exit_price": 19.8,
+      "return_pct": 0.0076,
       "exit_reason": "end_of_data",
-      "holding_days": 1,
+      "holding_days": 2,
       "units": 1.0,
       "benchmark_return_pct": 0.0,
-      "excess_return_pct": -0.0204,
+      "excess_return_pct": 0.0076,
       "regime": {
         "breadth": 0.6898,
         "regime": "Mild Risk-On",
