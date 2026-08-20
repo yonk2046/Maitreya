@@ -2,16 +2,16 @@
   "strategy": "chip_anchored_v2",
   "date_range": [
     "2026-05-08",
-    "2026-08-19"
+    "2026-08-20"
   ],
-  "trade_count": 37,
+  "trade_count": 38,
   "summary": {
-    "trades": 37,
-    "win_rate": 0.4865,
-    "avg_return": -0.0121,
-    "median_return": 0.0,
+    "trades": 38,
+    "win_rate": 0.5,
+    "avg_return": -0.0125,
+    "median_return": 0.0013,
     "sharpe_per_trade": -0.14,
-    "avg_holding_days": 9.27,
+    "avg_holding_days": 9.26,
     "max_drawdown": -0.0673,
     "worst_single_trade": -0.3185,
     "exit_reasons": {
@@ -19,13 +19,13 @@
       "tp1": 8,
       "trailing_stop": 1,
       "atr_stop": 4,
-      "end_of_data": 1
+      "end_of_data": 2
     },
     "net": {
-      "win_rate": 0.4865,
-      "avg_return": -0.0168,
-      "median_return": -0.0047,
-      "sharpe_per_trade": -0.19
+      "win_rate": 0.5,
+      "avg_return": -0.0172,
+      "median_return": -0.0035,
+      "sharpe_per_trade": -0.2
     },
     "realized": {
       "trades": 36,
@@ -39,17 +39,17 @@
       }
     },
     "unrealized": {
-      "trades": 1,
-      "win_rate": 0.0,
-      "avg_return": 0.0,
-      "median_return": 0.0,
+      "trades": 2,
+      "win_rate": 0.5,
+      "avg_return": -0.0133,
+      "median_return": -0.0133,
       "net": {
-        "win_rate": 0.0,
-        "avg_return": -0.0047,
-        "median_return": -0.0047
+        "win_rate": 0.5,
+        "avg_return": -0.0179,
+        "median_return": -0.0179
       }
     },
-    "independent_tickers": 21,
+    "independent_tickers": 22,
     "disclosure": "頂層 avg_return/win_rate/median 含全部交易(含 end_of_data 未實現部位);realized/unrealized 已分離(3.4)——未實現不得混入已實現統計。信賴區間一律以 independent_tickers(獨立標的數)計,非交易筆數。",
     "cost_model": {
       "fee_rate": 0.000855,
@@ -245,15 +245,20 @@
         "drawdown": -0.0584
       },
       {
-        "date": "2026-08-19",
-        "equity": 956257.8,
-        "drawdown": -0.0589
+        "date": "2026-08-20",
+        "equity": 952709.19,
+        "drawdown": -0.0624
+      },
+      {
+        "date": "2026-08-20",
+        "equity": 953142.13,
+        "drawdown": -0.0619
       }
     ],
     "alpha": {
-      "trades_with_benchmark": 37,
-      "trades_total": 37,
-      "avg_excess_return": -0.015,
+      "trades_with_benchmark": 38,
+      "trades_total": 38,
+      "avg_excess_return": -0.0153,
       "period_buy_hold_return": 0.078,
       "note": "avg_excess_return = 策略平均報酬 − 同期(進場↔出場)大盤買入持有報酬(逐筆);period_buy_hold_return = 整段回測期間(date_range)大盤買入持有報酬,供對照——回答「策略總報酬是 alpha 還是 beta」看兩者相對大小。"
     },
@@ -262,13 +267,18 @@
       "groups": {
         "Capital Waiting": {
           "trades": 8,
-          "win_rate": 0.875,
-          "avg_return": 0.0132
+          "win_rate": 1.0,
+          "avg_return": 0.0144
         },
         "Mild Risk-Off": {
           "trades": 8,
           "win_rate": 0.25,
           "avg_return": -0.0171
+        },
+        "Mild Risk-On": {
+          "trades": 1,
+          "win_rate": 0.0,
+          "avg_return": -0.0356
         },
         "Neutral / Consolidating": {
           "trades": 2,
@@ -927,18 +937,38 @@
       }
     },
     {
+      "ticker": "2002",
+      "name": "中鋼",
+      "entry_date": "2026-08-10",
+      "entry_price": 19.65,
+      "exit_date": "2026-08-20",
+      "exit_price": 18.95,
+      "return_pct": -0.0356,
+      "exit_reason": "end_of_data",
+      "holding_days": 8,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": -0.0356,
+      "regime": {
+        "breadth": 0.6898,
+        "regime": "Mild Risk-On",
+        "regime_zh": "溫和偏多",
+        "temperature_level": "warm"
+      }
+    },
+    {
       "ticker": "2609",
       "name": "陽明",
       "entry_date": "2026-08-19",
       "entry_price": 55.1,
-      "exit_date": "2026-08-19",
-      "exit_price": 55.1,
-      "return_pct": 0.0,
+      "exit_date": "2026-08-20",
+      "exit_price": 55.6,
+      "return_pct": 0.0091,
       "exit_reason": "end_of_data",
-      "holding_days": 0,
+      "holding_days": 1,
       "units": 1.0,
       "benchmark_return_pct": 0.0,
-      "excess_return_pct": 0.0,
+      "excess_return_pct": 0.0091,
       "regime": {
         "breadth": 0.3438,
         "regime": "Capital Waiting",
