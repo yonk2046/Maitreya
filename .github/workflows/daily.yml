@@ -81,10 +81,6 @@ jobs:
       - name: Verify index
         if: steps.guard.outputs.skip != 'true'
         run: make verify-index
-      - name: Run fast tests
-        if: steps.guard.outputs.skip != 'true'
-        continue-on-error: true  # visibility only; must not block data commit
-        run: make test-fast
       - name: Commit data and reports
         if: steps.guard.outputs.skip != 'true'
         run: |
@@ -98,3 +94,15 @@ jobs:
             git pull --rebase origin main
             git push
           fi
+      # ⚠️ 測試必須排在 commit 之後(2026-09-15 事故)。
+      # 原本排在 commit 之前,靠 continue-on-error 保證「不擋資料」—— 但
+      # continue-on-error 只管「步驟失敗」,管不到 job 層的 timeout-minutes:
+      # 測試跑超過 30 分鐘時整個 job 被取消,後面的 commit 直接 skipped。
+      # 9/2、9/7–9/11、9/14 共 7 個交易日:pipeline 成功、verify 通過、
+      # 快照已建好,全部卡在這一步被砍,資料隨 runner 銷毀。
+      # 放在 commit 之後 → 無論測試跑多久、卡不卡住,資料都已經落地。
+      - name: Run fast tests
+        if: steps.guard.outputs.skip != 'true'
+        continue-on-error: true  # visibility only
+        timeout-minutes: 15      # 步驟自己先逾時,不拖到 job 上限;失敗顯示在此步而非整個 job cancelled
+        run: make test-fast
