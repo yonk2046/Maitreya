@@ -39,6 +39,8 @@ Viewer 停在舊資料。canary 開了 8 張警報 issue(#3 08-31、#4 09-02、#
 | `4555161` | 11 個完整語料回測測試標 `@pytest.mark.slow`;`make test-fast` 排除;新增 `tests/conftest.py` | fast path 15–29 分 → **~30 秒**(544 passed / 14 failed,見 §6 待辦 T5) |
 | 守門員 | `tests/test_workflow_commit_order.py`(測試不得排在 push 前、需有步驟逾時);`tests/test_slow_marker_guard.py`(讀 `_load_snapshots(` 未標 slow 即紅) | 兩者皆紅綠證明過 |
 | 使用者操作 | Mac:`brew install gh` + `gh auth login`(OAuth token,**無強制到期**);cron-job.org 兩個 job 換新 **classic PAT** | 模擬 launchd 乾淨環境 `git fetch` 成功;兩 job Test run 204 |
+| **當晚實戰驗收** | 9/15 18:05 雲端 run #283 + 19:00 launchd | 快照 18:14 落地(完整、39 檔);富邦主力榜抽 4 檔收盤價吻合 TWSE 9/15;測試步驟 **40 秒**;launchd fetch 成功、rebase 推進 main、exit 0(雲端已建 → 跳過)。9/1 以來首次三條路皆健康 |
+| `3d67801` `2e416a1` | launchd log 停止 git 追蹤 + `.gitignore` | 見 §8 / FAILURE-MODE-INDEX F-16 |
 | 本機 | 丟棄卡住的 8/31 本機 commit(origin 已有完整版,本機若保留會讓 19:00 rebase 衝突中止) | 備份於 `backup/stranded-0831-mac`(→ `8b7da17`) |
 
 ---
@@ -147,7 +149,7 @@ Viewer 停在舊資料。canary 開了 8 張警報 issue(#3 08-31、#4 09-02、#
 - `main` == `origin/main`(`4555161` 起,之後會有今晚的 data commits)。
 - 分支:`backup/stranded-0831-mac`(本機 8/31 快照備份,可刪);`claude/sleepy-nobel-3d007c`(含未套用的 `34bd7d1`,見 T4);`claude/eloquent-goldwasser-cf8f57`(舊)。
 - worktree:`.claude/worktrees/sleepy-nobel-3d007c`(**7 月的舊碼**,勿在其中做事)、`.claude/worktrees/vigorous-diffie-47efd7`(舊)。
-- `reports/_daily_logs/launchd.{err,out}.log` 慣例上保持 dirty,不 commit。
+- `reports/_daily_logs/launchd.{err,out}.log` **2026-09-15 起不再被 git 追蹤**(`3d67801`+`2e416a1`,守門員 `tests/test_launchd_logs_untracked.py`)。以前追蹤時永遠 dirty,`git rebase --autostash` 會換掉檔案,導致 **6/23–9/15 期間 rebase 之後的所有 launchd 輸出都遺失**(FAILURE-MODE-INDEX F-16)。從 9/16 起本機 log 應完整;若又只剩 starting/python 兩行,先查這條。
 - **session scratchpad(`/private/tmp/claude-501/...`)是暫時的**,重要產出必須移出或 commit。
 
 ---

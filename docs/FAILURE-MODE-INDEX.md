@@ -115,8 +115,9 @@
 | F-13 | 憑證到期讓兩條路同週倒 | M | launchd exit 128;cron-job.org 401 | Mac keychain 憑證與 cron-job PAT 皆有期限且無人追蹤 | Mac 改 `gh` OAuth(無強制到期);**cron-job PAT *(待補:到期日記錄+heartbeat)*** | ~9/1、9/4 |
 | F-14 | 警報發了卻沒人處理 | P | issue 堆了 8 張 | 警報沒說「不處理明天就永久遺失」 | *(待補:警報文字寫出不可逆代價)* | 9 月 |
 | F-15 | 子代理在錯的目錄工作 | P | 回報成功但主 checkout 毫無變化;測試數對不上 | 子代理 cwd 預設為 session 起始目錄(可能是舊 worktree) | *(流程:交辦寫死 `cd && pwd`、git 一律 `-C`)* | 9/15 |
+| F-16 | 本機備援的 log 在 rebase 後全部消失 | M | `launchd.out.log` 只有 starting/python;exit 0 卻看不到任何結果訊息 | log 檔被 git 追蹤且永遠 dirty,`git rebase --autostash` 換掉檔案,launchd 寫進已刪除的舊檔;`git add reports/` 還會把它們掃進資料 commit | `tests/test_launchd_logs_untracked.py`(`3d67801`+`2e416a1`) | 6/23–9/15 全期 |
 
-七列有守門員(含部分),八列留白——**留白的列就是接下來要做的事,不必再開會決定**。
+八列有守門員(含部分),八列留白——**留白的列就是接下來要做的事,不必再開會決定**。
 優先序見 `MAITREYA_HANDOFF_20260915.md` §6;F-9 pipeline 端與 F-12 有日期壓力(2026-11 底前)。
 
 ---
