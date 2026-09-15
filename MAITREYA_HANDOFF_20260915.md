@@ -146,7 +146,7 @@ Viewer 停在舊資料。canary 開了 8 張警報 issue(#3 08-31、#4 09-02、#
 
 ## 8. Git 狀態(2026-09-15 下午)
 
-- `main` == `origin/main`(`4555161` 起,之後會有今晚的 data commits)。
+- `main` == `origin/main`。9/15 當日最後一個人工 commit 為本檔更新之後的那一筆;今日完整序列:`cca570b` → `4555161` → `76ba9ea` → `7211ec7` → `a2b35b6`(9/15 快照)→ `3d67801` → `2e416a1` → `e535370`。之後的 `data: daily pipeline` 為排程自動產生。
 - 分支:`backup/stranded-0831-mac`(本機 8/31 快照備份,可刪);`claude/sleepy-nobel-3d007c`(含未套用的 `34bd7d1`,見 T4);`claude/eloquent-goldwasser-cf8f57`(舊)。
 - worktree:`.claude/worktrees/sleepy-nobel-3d007c`(**7 月的舊碼**,勿在其中做事)、`.claude/worktrees/vigorous-diffie-47efd7`(舊)。
 - `reports/_daily_logs/launchd.{err,out}.log` **2026-09-15 起不再被 git 追蹤**(`3d67801`+`2e416a1`,守門員 `tests/test_launchd_logs_untracked.py`)。以前追蹤時永遠 dirty,`git rebase --autostash` 會換掉檔案,導致 **6/23–9/15 期間 rebase 之後的所有 launchd 輸出都遺失**(FAILURE-MODE-INDEX F-16)。從 9/16 起本機 log 應完整;若又只剩 starting/python 兩行,先查這條。
