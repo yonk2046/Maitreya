@@ -367,7 +367,26 @@ def _is_iso_date(s: str) -> bool:
         return False
 
 
-def _gather_lookback(target_date: str, window: int, index: dict) -> dict[str, str]:
+def _gather_lookback(target_date: str, window: int, index: dict,
+                     recorded: dict | None = None) -> dict[str, str]:
+    """Prior snapshots to feed a replay of `target_date`.
+
+    `recorded` = the replayed snapshot's own `environment.lookback_snapshots`
+    (the priors that actually existed when it was built). When present, the
+    window is intersected with those DATES, so a snapshot inserted into the index
+    later — e.g. a date rescued and back-built after its successors already exist —
+    cannot leak into the history of snapshots built without it (C10 as-was).
+
+    Only the date SET is taken from the record; hashes still come from the index
+    (unchanged behaviour). Verified 2026-09-15 with main()'s window (20): every
+    current-schema (full-replay) snapshot has a recorded date set equal to the
+    recomputed one, so this is a no-op for existing verification. 2026-07-13 differs
+    only in hashes (its priors were rebuilt on 7/14) and keeps today's behaviour.
+    Nine schema-1.4.0 dates (5/14–5/27) do differ, but frozen epochs take the legacy
+    hash check in main() and never reach full_replay_hash. `recorded is None`
+    → recompute from the window exactly as before; `{}` means the snapshot was built
+    with no priors and replays with none.
+    """
     import datetime as dt
     tgt = dt.date.fromisoformat(target_date)
     out: dict[str, str] = {}
@@ -381,6 +400,8 @@ def _gather_lookback(target_date: str, window: int, index: dict) -> dict[str, st
         days_ago = (tgt - d).days
         if 0 < days_ago <= window:
             out[key] = entry["current_hash"]
+    if recorded is not None:
+        out = {k: v for k, v in out.items() if k in recorded}
     return out
 
 
@@ -403,7 +424,9 @@ def full_replay_hash(
     """
     yaml_cfg, recorded_params = _resolve_replay_config(on_disk_snap, cfg_fallback)
     adapter_out = _replay_adapter(d, on_disk_snap, repo_root)
-    lookback = _gather_lookback(d, window, index)
+    lookback = _gather_lookback(
+        d, window, index,
+        recorded=(on_disk_snap.get("environment") or {}).get("lookback_snapshots"))
     prior_snap_objects = _load_snap_objects(lookback, REPORTS_DIR)
     snap_obs_landing = bool(on_disk_snap.get("obs_landing", True))
     with _params_as_recorded(recorded_params):
