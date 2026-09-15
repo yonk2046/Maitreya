@@ -119,7 +119,7 @@ Viewer 停在舊資料。canary 開了 8 張警報 issue(#3 08-31、#4 09-02、#
 |---|---|---|---|
 | **T1** | **回測引擎:撮合價改用 TWSE 按日期真實開盤 + 消除每日重算整段歷史** | **2026-11 底前**(12 月會撞牆) | 兩件一起做、一次重定基準;需黃金基準測試防無聲改數字;記入 EXEC-PLAN |
 | T2 | `derive_trading_date` 過午夜與 15–18 點兩個破洞 + clock matrix 補格 | 盡快 | 會影響正式快照日期標籤 |
-| T3 | cron-job.org heartbeat / 警報文字寫出不可逆代價 | 下次 PAT 到期前 | classic PAT 到期日請 Yonki 記錄在 §7 |
+| T3 | cron-job.org heartbeat / 警報文字寫出不可逆代價 | **2026-12-14 前**(建議 12 月第一週換發) | 到期日已記錄於 §7。⚠️ 與 R13 回測步驟撞牆窗口(2026-12 ~ 2027-01)重疊 |
 | T4 | 把 `34bd7d1`(backfill 不再洩漏/覆寫 `data/history/`)套到 main 並在現行測試集重驗 | — | 修法在舊分支 `claude/sleepy-nobel-3d007c`;兩個檔 7/7 後未改,可乾淨 cherry-pick |
 | T5 | 14 顆讀 gitignored `data/today.json` 的測試改用 `reports/_raw_archive` WORM fixture | — | 完成後才能移除 daily.yml 測試步驟的 `continue-on-error` |
 | T6 | slow 測試的定期全量執行(本機 `make test` 或週排程) | T1 完成後 | 立方成長未修前 CI 跑不完 |
@@ -137,7 +137,7 @@ Viewer 停在舊資料。canary 開了 8 張警報 issue(#3 08-31、#4 09-02、#
 | 本機 Python | `/usr/bin/python3`(3.9.6)。CI 為 3.11。 |
 | Mac GitHub 憑證 | `gh`(Homebrew,`/opt/homebrew/bin/gh`)OAuth 登入,scopes `repo, workflow, gist, read:org`,token 存 keyring。**無強制到期。** 查帳單需另加 `user` scope。 |
 | launchd | `~/Library/LaunchAgents/com.maitreya.daily.plist` → `deploy/daily_and_push.sh`,週一至五 19:00;plist PATH 含 `/opt/homebrew/bin`。Mac 需開機且未睡眠。 |
-| cron-job.org | **兩個 job**,皆 POST `workflow_dispatch` 到 `daily.yml`(ref main):**08:35** 與 **18:05**。Header `Authorization: Bearer <token>`(`Bearer` 後一個空格,token 原樣貼上)。2026-09-15 換成 **classic PAT**。**到期日:__________(請 Yonki 補填)**。Test run 應回 **204**;401=token 錯/過期,403=權限不足,404=URL 錯或看不到私有 repo,422=body 缺 `{"ref":"main"}`。 |
+| cron-job.org | **兩個 job**,皆 POST `workflow_dispatch` 到 `daily.yml`(ref main):**08:35** 與 **18:05**。Header `Authorization: Bearer <token>`(`Bearer` 後一個空格,token 原樣貼上)。2026-09-15 換成 **classic PAT**。**到期日:2026-12-14(一)**(9/15 建立,90 天期)。Test run 應回 **204**;401=token 錯/過期,403=權限不足,404=URL 錯或看不到私有 repo,422=body 缺 `{"ref":"main"}`。 |
 | Viewer | https://maitreya-jcfdybhhdp3pfkgsst8vjv.streamlit.app/(私有需登入,頁腳顯示部署 commit) |
 | Actions 用量 | 9 月至 9/15:daily.yml 31 趟約 755 分鐘 + canary ~25 分。私有 repo 免費額度每月 2,000。 |
 | canary | `.github/workflows/canary.yml`,週一至五 21:30,缺快照開 issue。**跑在 GHA 上 —— GHA 本身出事時它也會沉默。** |

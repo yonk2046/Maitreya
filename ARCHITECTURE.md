@@ -154,7 +154,7 @@ core/market_context.temporal_enrich ──► 窗口欄位寫進快照
 fetch market pulse → `make daily` → `make verify-index` → **commit + push** → `make test-fast`。
 測試必須排在 commit 之後:`continue-on-error` 管不到 job 層 `timeout-minutes`,排在前面時測試逾時會連帶 skip 掉 commit(9 月 7 個交易日的資料就是這樣丟的)。
 
-- **兩條真正準時的路都依賴會過期的憑證。** cron-job.org 的 PAT 到期日必須記錄並在到期前換發(FORWARD-RISK-REGISTER R2 已實際發生於 2026-09-04)。
+- **兩條真正準時的路都依賴會過期的憑證。** cron-job.org 的 PAT **2026-12-14(一)到期**,必須在到期前換發(FORWARD-RISK-REGISTER R2 已實際發生於 2026-09-04)。
 - **pipeline 內回測步驟成本立方成長**(chip_anchored 每支 9/4 已達 ~85 秒),且排在 commit 之前 —— 推估 2026-12 ~ 2027-01 撐破 job 30 分鐘上限。見 FORWARD-RISK-REGISTER R13。
 - **1.8.1 兩段式快照**：晚班（20:00）T86 不可得時不再整段跳過，改建 `fii_pending=true` 的 partial 快照（價格+分點齊全，外資待補）；隔晨 08:35 班次偵測到 partial + 新鮮 T86 到手 → 自動重建、透過 supersede 鏈補完為完整快照。viewer 顯示待補橫幅（`fii_pending` 為 true 時）。
 - **排程變更記錄**：2026-07-10 Yonki 把 cron-job.org dispatch 由 ~19:05 移前到 18:05（launchd 主排程維持 19:00 未動，plist 為準）。~~18:05 dispatch 在雲端因當日 T86 被 CDN 擋、必被 fii gate 跳過~~(2026-09-15 更正:8 月起雲端 18:05 可建完整快照)。仍有效的警告:Fubon ZGK 結算窗口約 18:00–18:30,**任何在此之前抓富邦的執行,拿到的可能是前一交易日的主力榜**。

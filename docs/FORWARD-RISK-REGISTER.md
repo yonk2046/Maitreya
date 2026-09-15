@@ -28,7 +28,7 @@ run」，沒有就在 workflow summary 標紅（一個 step，不用新服務）
 
 > **事後(2026-09-15)**:預判完全命中,但①②都沒做。實際損害比預判大,因為同一週 Mac 憑證也失效、
 > 且 GHA 原生 20:00 備援落在過午夜會解錯日期 —— 所謂「備援還在」並不成立。已換發新 **classic PAT**
-> (兩個 job 共用),**到期日須記錄於 `MAITREYA_HANDOFF_20260915.md` §7**。heartbeat 仍未做,
+> (兩個 job 共用),**新 PAT 到期日 2026-12-14(一)**(記錄於 `MAITREYA_HANDOFF_20260915.md` §7)。heartbeat 仍未做,
 > 列 FAILURE-MODE-INDEX F-7。
 
 ## R3【結構型，已量化】repo 即資料庫的增長天花板
@@ -194,6 +194,6 @@ Phase 3 viewer 改版頻繁時這個困惑會反覆發生。
 | Phase 3 | R3 中期止血（sidecar 停產）、R7（隨 market 家族搬家順帶） |
 | 8 月內 | ~~R2 PAT 換發＋heartbeat~~(未做,9/4 已發生;9/15 換發,heartbeat 仍待辦)、R10 pin |
 | **2026-11 底前** | **R13 回測引擎增量化 + R14 撮合價改真實開盤(一起做、一次重定基準)** |
-| 下次 PAT 到期前 | R2 heartbeat + 到期日記錄 |
+| **2026-12-14 前**(建議 12 月第一週) | R2:PAT 換發 + heartbeat。⚠️ 與 R13 撞牆窗口(2026-12 ~ 2027-01)重疊,兩件同週發生會同時失去雲端觸發與 pipeline |
 | 持續 | R15 Actions 額度監看、R16 action 升級 |
 | 2.0 | R3 storage split |
