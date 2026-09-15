@@ -1,6 +1,6 @@
-# 失效模式索引（Failure Mode Index）— 架構導案
+# 失效模式索引（Failure Mode Index）
 
-> **狀態**：導案（proposal），**尚未核准落地**。2026-07-28 起草。
+> **狀態**:**已落地**(2026-07-28 核准,`b599b90`)。最後更新 2026-09-15:新增 9 月斷更事故與 F-8 ~ F-15。
 > **地位**：憲法（ARCHITECTURE_BLUEPRINT）之下。與 FORWARD-RISK-REGISTER 互補——
 > 登記簿寫「**還沒發生**、預判會發生」，本檔寫「**已經發生過**、必須不再發生」。
 > **紅線**：本檔不新增規範、不改判斷參數。它只做一件事——把已發生的事故按「軸」歸位，
@@ -50,10 +50,14 @@
 | 2026-07-25 pointer 降級 | 11:52 late cron | 週六 | | TWSE 回空 → cached | |
 | 2026-07-28 C-2 戳記失效 | 08:35 盤前 | | T+1 補跑 | 分點屬前一 session | |
 | 幽靈 commit | cron 漂移進盤中 | | GHA | | |
-| R2（未發生，登記簿） | | | cron-job.org PAT 到期靜默死 | | |
+| **2026-09-01 ~ 09-14 斷更 7 個交易日** | 測試逾時 | | GHA + Mac 憑證 + cron-job PAT 同週倒 | | **P** 警報未處理 |
+| **2026-09-04 快照混日**(9/8 01:42 建) | 過午夜 | 週末後首日 | GHA 原生 20:00 延遲 | 富邦只給最新一天 | |
+| **快照 `open` 普遍落後一天**(5 月至今) | 18–19 點建置 | | | STOCK_DAY_ALL 晚上落後 | |
+| R2(2026-09-04 **已發生**) | | | cron-job.org PAT 到期靜默死 | | |
 
-**七件裡有五件落在 T/D/M/U。** 另外兩件是 P（程序紀律）與 S（模組級狀態）。
-這不是巧合，是上一節那個洞的形狀。
+**十件裡有八件落在 T/D/M/U。** 另外兩件是 P（程序紀律）與 S（模組級狀態）。
+這不是巧合，是上一節那個洞的形狀。9 月的三件全部是 T 或 U 軸 —— 時間與上游的
+「資料屬於哪一天」依然是本系統最脆弱的地方。
 
 ---
 
@@ -99,12 +103,21 @@
 | F-1 | 降級抓取覆寫 latest pointer | T·D·U | 看板「現在大盤」變成隔夜值 | 抓取失敗仍無條件寫檔 | `tests/test_market_pulse.py` | 7/25 |
 | F-2 | 執行日冒充資料日 | T·M | 昨日分點頂著今天的戳過鮮度閘門 | `date.today()` ≠ session date | `tests/test_branch_session_date.py` | 7/28 |
 | F-3 | monkeypatch 視窗內 lazy import | S | 「加了 print 就變綠」 | from-import binding 綁到 patch 值 | `tests/test_replay_as_was_params.py` | 7/24 |
-| F-4 | cron 漂移進盤中 | T·M | 幽靈 commit／盤中快照 | GHA cron 慣性延遲 3–4h | *(待補)* | 多次 |
+| F-4 | cron 漂移進盤中 | T·M | 幽靈 commit／盤中快照 | GHA cron 慣性延遲 **4–5h**(08:35→~13:00) | `_intraday_guard_disposition`(`tests/test_daily.py`)擋住盤中;**但 T+1 補班因此形同虛設,未解** | 多次;9 月每日 |
 | F-5 | 缺席被當證據 | D·U | 假日建出殭屍快照 | T86 缺席≠放假 | `_trading_day_oracle` fail-closed | 7/10 |
 | F-6 | 判斷參數未走修正案 | P | 隔日回測數字無聲改變 | 變更未獨立成案＋verify | *(待補：pre-push 檢查)* | 7/16–17 |
-| F-7 | 主觸發靜默死亡 | M | 表面正常，實際降級 | PAT 到期無人通知 | *(待補：heartbeat)* | R2 預判 |
+| F-7 | 主觸發靜默死亡 | M | 表面正常，實際降級 | PAT 到期無人通知 | *(待補：heartbeat)* —— **2026-09-04 已實際發生** | 9/4 |
+| F-8 | 測試逾時連帶丟棄已建好的資料 | M | Actions 顯示 cancelled;快照建好卻沒上 GitHub | 測試排在 commit 前;`continue-on-error` 管不到 job 層逾時 | `tests/test_workflow_commit_order.py`(`cca570b`) | 9/2、9/7–9/11、9/14 |
+| F-9 | 回測成本隨快照數立方成長 | T | CI 測試 15–29 分鐘;未來 pipeline 本身逾時 | `run_backtest` 每日呼叫 `golden.run(snaps[:i+1])` 不快取 | 測試端:`tests/test_slow_marker_guard.py`(`4555161`);**pipeline 端 *(待補)*,推估 2026-12 ~ 2027-01 撞牆** | 8/25 起 |
+| F-10 | 過午夜建置解出錯的交易日 | T·M | 快照日期與內容不符;缺一天、多一天 | `derive_trading_date` 只在同日 ≥15:00 採用今天,凌晨退回 TWSE 落後日期 | *(待補:clock matrix 過午夜格)* | 9/7 晚班建成 9/4 |
+| F-11 | 「只給最新一天」來源與「按日期」來源混用 | T·U | 同一筆紀錄 `open` 是 A 日、`current_price` 是 B 日 | 富邦/Sinotrade/STOCK_DAY_ALL 無日期參數;`tradingDate` 由同一解析器標記,ingest 守門員看不出 | *(待補)* | 9/4 |
+| F-12 | 快照 `open` 落後一天 → 回測 look-ahead | T·U | 回測進場價 = 訊號日當天早上的開盤 | STOCK_DAY_ALL OpenAPI 晚上落後;`_fill_price` 讀下一份快照的 `open` | *(待補:撮合改用按日期真實開盤)* | 5 月至今,91% 成交價非真實開盤 |
+| F-13 | 憑證到期讓兩條路同週倒 | M | launchd exit 128;cron-job.org 401 | Mac keychain 憑證與 cron-job PAT 皆有期限且無人追蹤 | Mac 改 `gh` OAuth(無強制到期);**cron-job PAT *(待補:到期日記錄+heartbeat)*** | ~9/1、9/4 |
+| F-14 | 警報發了卻沒人處理 | P | issue 堆了 8 張 | 警報沒說「不處理明天就永久遺失」 | *(待補:警報文字寫出不可逆代價)* | 9 月 |
+| F-15 | 子代理在錯的目錄工作 | P | 回報成功但主 checkout 毫無變化;測試數對不上 | 子代理 cwd 預設為 session 起始目錄(可能是舊 worktree) | *(流程:交辦寫死 `cd && pwd`、git 一律 `-C`)* | 9/15 |
 
-四列有守門員，三列留白——**那三列就是接下來要做的事，不必再開會決定**。
+七列有守門員(含部分),八列留白——**留白的列就是接下來要做的事,不必再開會決定**。
+優先序見 `MAITREYA_HANDOFF_20260915.md` §6;F-9 pipeline 端與 F-12 有日期壓力(2026-11 底前)。
 
 ---
 

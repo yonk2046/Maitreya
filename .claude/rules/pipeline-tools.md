@@ -15,3 +15,12 @@ paths: ["tools/**/*.py"]
   「時刻 T／日型 D／執行者 M／上游 U」歸軸，每列指名可執行守門員。`make test` 固定在
   「執行的那一刻」，測不到這四軸——那是「改一改隔天壞掉」的固定形狀。守門員＝
   `tests/test_clock_matrix.py`（凍結時鐘＋產物不變式）。
+- **「只給最新一天」的來源**(富邦 ZGK_D/ZGK_F、Sinotrade 分點、TWSE STOCK_DAY_ALL OpenAPI)**晚建/補建必混日**:
+  過午夜或次日才建前一日快照時,這些欄位會是較新的日期,而 T86/MI_MARGN 是按日期抓的正確日期(9/4 事故)。
+  **15:00–18:00 與過午夜不得建前一日快照。** 要救前一日資料,窗口是次日盤後到 ~18:00 結算前,且**逐頁驗證頁面日期**
+  (各檔換日時間不同)。救援品存 repo 外(`/Users/yoncky/SCD engine/_rescue/`),避免被 `git add data/ reports/` 掃進去。
+- **CI 測試必須排在 commit 之後**(`tests/test_workflow_commit_order.py` 守門):`continue-on-error` 管不到 job 層逾時,
+  排在前面會連帶丟棄已建好的快照(9 月斷更 7 天)。在 14 顆讀 `data/today.json` 的測試改用 WORM fixture 之前,
+  **不要移除測試步驟的 `continue-on-error`**(否則原生 08:35 cron 盤中落地時每天假紅)。
+- 讀完整語料跑回測的測試必須標 `@pytest.mark.slow`(`tests/test_slow_marker_guard.py` 守門);回測成本隨快照數立方成長。
+- 最新交接 = repo 根目錄 `MAITREYA_HANDOFF_20260915.md`;觸發器正本 = `ARCHITECTURE.md §5`(實測版)。

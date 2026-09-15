@@ -14,7 +14,7 @@
 
 ## 1. 「滯後」原始定義的出處
 
-`MAITREYA_HANDOFF_20260706.md` §1B（commit `488a7f7`+`deaed2a`）：
+`docs/handoffs/MAITREYA_HANDOFF_20260706.md` §1B（commit `488a7f7`+`deaed2a`）：
 
 > HiNetCDN 對 datacenter IP（GitHub 機器）的「當日」T86 回 HTTP 307（無 Location），昨日的（已進快取）誰都拿得到；系統靜默退回抓昨日 → **7/02 快照 fii=7/01 數據、7/03 快照 fii=7/02 數據**（實測 7/03 聯電 -12,538=7/02 值，實際當天 +35,293，方向相反）。
 

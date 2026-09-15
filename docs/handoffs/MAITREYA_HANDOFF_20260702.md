@@ -1,5 +1,8 @@
 # Maitreya 交接文件 — 2026/07/02（change_pct + 分級改名 · 完整整合版）
 
+> ⛔ **已被取代(2026-09-15)**:最新交接文件為 repo 根目錄的 `MAITREYA_HANDOFF_20260915.md`。本檔僅供考古;其中觸發器角色、「雲端抓不到當日 T86」、T+1 補班「必成功」等描述**已不符現況**,以 `ARCHITECTURE.md §5` 為準。
+
+
 > 交接對象：任何下一個 AI session（Claude Cowork / Cursor / Claude Code）
 > Repo：`yonk2046/Maitreya` · Viewer：Streamlit Cloud 自動部署（`viewer/cockpit.py`）
 > 本機路徑：`/Users/yoncky/SCD engine/Ai stock/`

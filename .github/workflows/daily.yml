@@ -1,26 +1,17 @@
 name: Maitreya Daily Pipeline
-# BACKUP writer (OPS-1, 2026-06-12). The PRIMARY writer is the local
-# launchd job (deploy/daily_and_push.sh) at 19:00 Asia/Taipei. This
-# workflow runs one hour later and SKIPS itself when the primary already
-# committed today's snapshot — the two pipelines no longer race on main.
-# 2026-07-03: the guard now applies to ALL triggers (schedule + dispatch).
-# A cron-job.org trigger fires workflow_dispatch daily at ~18:05; without
-# the guard it re-ran the full pipeline even when a snapshot was already
-# published (supersede churn / half-baked data-only commits).
+# 觸發器角色以 ARCHITECTURE.md §5(2026-09-15 實測版)為準。摘要:
+#   - 事實主力 = cron-job.org 18:05 的 workflow_dispatch(雲端 IP 目前可取得
+#     當日 T86,8 月起建出完整快照)。cron-job.org 另有 08:35 T+1 補班 job。
+#   - 本機 launchd 19:00 為備援;雲端已 commit 當日快照時跳過。
+#   - 下方兩條原生 cron 名義上是備援,但 GHA 排程慣性延遲 4–5 小時:
+#     20:00 實際落在隔日 00–02 點(過午夜日期解析會錯,9/7 建成 9/4),
+#     08:35 實際落在 ~13:00(被 intraday guard 擋掉)。不可依賴。
+# The "Skip if today's snapshot is already published" guard applies to ALL
+# triggers (2026-07-03), so concurrent triggers never double-publish.
 on:
   schedule:
-    # cron-job.org 08:35/18:05 為主力觸發;本檔下方兩條 cron 為延遲備援。
-    # 盤中誤點(GHA cron 慣性延遲 3-4 小時落在台北 09:00-14:00)由
-    # tools/daily.py 的 intraday_guard 擋下。
-    - cron: '0 12 * * 1-5'   # 20:00 Asia/Taipei (primary runs 19:00)
-    # 2026-07-06: T+1 morning catch-up (08:35 Taipei, Tue-Sat covers Mon-Fri
-    # sessions). HiNetCDN 307-blocks *same-day* T86 for datacenter IPs even
-    # late evening, so when the Mac is off the evening runs can never build a
-    # fresh snapshot. By next morning the resource is CDN-cached everywhere →
-    # this run builds YESTERDAY's snapshot reliably (date resolution, Fubon
-    # rankings and STOCK_DAY_ALL all naturally point at the prior session in
-    # the morning). Skips itself when the snapshot already exists.
-    - cron: '35 0 * * 2-6'   # 08:35 Asia/Taipei next morning
+    - cron: '0 12 * * 1-5'   # 設定 20:00 台北;實測落地 00:00–02:00(隔日)
+    - cron: '35 0 * * 2-6'   # 設定 08:35 台北;實測落地 ~13:00(盤中,被 guard 擋)
   workflow_dispatch:
 env:
   TZ: Asia/Taipei

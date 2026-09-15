@@ -19,12 +19,17 @@
   出現頻率會比過去高，是新常態不是 bug。
 - 驗收照 P2-EXECUTION-PLAYBOOK G0 清單，基線計數以當日實跑為準（已改相對表述）。
 
-## R2【日期型：2026-09-04】cron-job.org PAT 到期＝主觸發靜默死亡
+## R2【日期型：2026-09-04】cron-job.org PAT 到期＝主觸發靜默死亡 —— ✅ **已於 2026-09-04 實際發生**
 
 18:05 dispatch 用的 PAT 到期後，cron-job.org 會收到 401 但**沒有人會被通知**——pipeline 表面正常
 （GHA 20:00 備援還在），實際主觸發已死，所有快照悄悄變成 20:00 的 partial-first 模式。
 **方向**：①到期前換發（放行事曆）；②便宜的 heartbeat：GHA 每日檢查「過去 24h 有無 dispatch 觸發的
 run」，沒有就在 workflow summary 標紅（一個 step，不用新服務）。
+
+> **事後(2026-09-15)**:預判完全命中,但①②都沒做。實際損害比預判大,因為同一週 Mac 憑證也失效、
+> 且 GHA 原生 20:00 備援落在過午夜會解錯日期 —— 所謂「備援還在」並不成立。已換發新 **classic PAT**
+> (兩個 job 共用),**到期日須記錄於 `MAITREYA_HANDOFF_20260915.md` §7**。heartbeat 仍未做,
+> 列 FAILURE-MODE-INDEX F-7。
 
 ## R3【結構型，已量化】repo 即資料庫的增長天花板
 
@@ -134,6 +139,33 @@ Phase 3 viewer 改版頻繁時這個困惑會反覆發生。
 
 ---
 
+## R13【日期型：約 2026-12 ~ 2027-01】pipeline 回測步驟撐破 job 30 分鐘上限(2026-09-15 新增)
+
+`core/paper_trading.py::run_backtest()` 對 chip_anchored 策略每個交易日呼叫 `golden.run(snaps[:i+1])`
+不快取,成本隨快照數近**立方**成長。生產 log(CI)每支 chip_anchored 回測:6/29 ≈5s、7/28 ≈27s、
+8/21 ≈82s、9/4 ≈85s。`make daily` 內跑 swing + v2 兩支,**且排在 commit 之前** —— 撐破上限時會重演
+9 月事故(資料建好卻被整個 job 取消)。測試端已於 `4555161` 隔離,pipeline 端未處理。
+**方向**:回測引擎增量化(逐日更新狀態,不重算整段歷史),**與 R14 撮合價修正一起做**,一次重定基準。
+**期限**:2026-11 底前。
+
+## R14【已證實,影響所有回測數字】快照 `open` 落後一天 → 回測 look-ahead(2026-09-15 新增)
+
+`open` 取自 TWSE STOCK_DAY_ALL OpenAPI,18–19 點建置時 95.3% 仍為前一交易日。`_fill_price` 以下一份
+快照的 `open` 撮合 → 91.2% 成交價非真實進場日開盤(45% 為訊號日當天早上的價格)。以 TWSE 真實開盤
+重算,各策略毛報酬移動 −0.40 ~ +1.02pp,方向不一,單筆最大誤差 ~15pp。詳見 EXEC-PLAN §七。
+**方向**:撮合改用按日期查詢的真實日行情(不讀快照 `open`);正式快照屬 WORM 不改。
+
+## R15【接受型 → 需監看】GitHub Actions 分鐘數額度(2026-09-15 新增)
+
+私有 repo 免費額度每月 2,000 分鐘。9 月前半 daily.yml 31 趟約 755 分鐘(多數空燒在逾時的測試步驟)。
+`4555161` 後測試約 30 秒,但 R13 未修前 pipeline 本身每月仍會變貴。額度用盡時**所有** workflow 停止,
+含 canary。查詢需 `gh auth refresh -s user` 或 github.com/settings/billing。
+
+## R16【小,日期未定】GHA action 的 Node 20 淘汰(2026-09-15 新增)
+
+`actions/checkout@v4.2.2`、`actions/setup-python@v5.6.0` 目前被強制跑在 Node 24 並出警告。GitHub
+正式移除 Node 20 後可能失敗。**方向**:升級至支援 Node 24 的主版本。
+
 ## 補充裁定（fable 2026-07-11，後續模型直接執行不必重裁）
 
 | # | 裁定 | 執行時機 |
@@ -160,5 +192,8 @@ Phase 3 viewer 改版頻繁時這個困惑會反覆發生。
 | W2 | 補充裁定 B |
 | W3 | 補充裁定 A |
 | Phase 3 | R3 中期止血（sidecar 停產）、R7（隨 market 家族搬家順帶） |
-| 8 月內 | R2 PAT 換發＋heartbeat、R10 pin |
+| 8 月內 | ~~R2 PAT 換發＋heartbeat~~(未做,9/4 已發生;9/15 換發,heartbeat 仍待辦)、R10 pin |
+| **2026-11 底前** | **R13 回測引擎增量化 + R14 撮合價改真實開盤(一起做、一次重定基準)** |
+| 下次 PAT 到期前 | R2 heartbeat + 到期日記錄 |
+| 持續 | R15 Actions 額度監看、R16 action 升級 |
 | 2.0 | R3 storage split |

@@ -3,7 +3,7 @@
 > *彌勒觀市，不測，只記。*
 > **Maitreya**（彌勒）= TWSE 股票的決定論狀態偵測引擎（SCD = Stock Condition Detection）。
 >
-> 最後更新：2026-07-10（§5 改四觸發器表：補 08:35 T+1 補班、1.8.1 兩段式快照、cron-job dispatch 移 18:05；launchd 維持 19:00。原合併自舊 ARCHITECTURE.md 2026-05-30 + PROJECT_STATUS.md 2026-06-04）
+> 最後更新：2026-09-15（§5 觸發器表改為實測版：雲端 18:05 為事實主力、原生 cron 落地時間、測試排在 commit 後、憑證依賴、混日警告。前版 2026-07-10）
 > ⚠️ **Phase / 進度狀態一律以最新的 `MAITREYA_HANDOFF_*.md` 為準**——本文件只寫「不常變的結構性知識」，避免再次過期。
 > 🏛️ **架構規範正本＝`docs/ARCHITECTURE_BLUEPRINT.md`（憲法，2026-07-10 立）**——本文件描述現狀怎麼跑；目標架構、遷移路線、契約法以憲法為準。
 
@@ -138,15 +138,27 @@ core/market_context.temporal_enrich ──► 窗口欄位寫進快照
 
 ## 5. 部署與三條 pipeline 觸發器（OPS-1，唯一正本——README/RUNBOOK 只指到這裡，不重寫細節）
 
-| 觸發器 | 時間（台北） | 角色 |
-|---|---|---|
-| 本機 launchd `com.maitreya.daily` | **19:00**（交易日） | 主。Mac 開機時跑，台灣 IP 抓得到當日 T86；19:00 刻意設在 Fubon ZGK 結算（~18:00-18:30）之後 |
-| cron-job.org → `workflow_dispatch` | **18:05**（2026-07-10 Yonki 由 ~19:05 移前） | 雲端提早探測（strict 模式）。雲端 IP 抓不到當日 T86 → fii gate 乾淨跳過（無害）；實測 Actions run #67/#70/#73 連日 18:05 觸發 |
-| GHA `daily.yml` schedule | 20:00（GH cron 常遲到 1-3h，實測多在 22-23 點跑） | 備援。skip-guard：主已 commit 當日快照則跳過；T86 不可得時建 **partial** 快照（1.8.1） |
-| GHA `daily.yml` schedule | 隔日 08:35（同樣常遲到） | **T+1 補班**（2026-07-06 加）。HiNetCDN 對雲端 IP 307-block「當日」T86、只放行「昨日」——Mac 關機時晚班拿不到完整資料，這條隔晨抓「昨日」T86 必成功，1.8.1 起把晚班 partial 快照 supersede 補完 |
+> ⚠️ **2026-09-15 改為實測版。** 7/10 版的設計描述(launchd 為主、雲端抓不到當日 T86、原生 cron 只遲到 1–3h)已不符現況。
+> 以下「實際落地時間」取自 2026-08 ~ 09 Actions run 紀錄;事故經過見 `MAITREYA_HANDOFF_20260915.md`。
 
+| 觸發器 | 設定時間(台北) | **實際落地** | 實際角色 | 依賴的憑證 |
+|---|---|---|---|---|
+| cron-job.org → `workflow_dispatch`(job 1) | **18:05** | 準時 | **事實上的主力**。8/17–8/28 快照幾乎全由此建成,且為完整快照(`fii_pending=false`)—— 雲端 IP 目前**抓得到**當日 T86 | cron-job.org 內的 PAT(2026-09-15 起為 classic)|
+| cron-job.org → `workflow_dispatch`(job 2) | **08:35** | 準時 | T+1 補建昨日快照(唯一能準時落在盤前的補班) | 同上 |
+| 本機 launchd `com.maitreya.daily` | **19:00** | 準時(Mac 需開機未睡眠) | 備援:雲端 18:05 已 commit 則「nothing to do」;雲端漏掉時補建 | Mac 的 `gh` OAuth(無強制到期)|
+| GHA `daily.yml` schedule `0 12 * * 1-5` | 20:00 | **00:00–02:00(隔日)** | 名義備援。**過午夜後日期解析會錯**(9/7 晚班建成 9/4),不可信賴 | GITHUB_TOKEN |
+| GHA `daily.yml` schedule `35 0 * * 2-6` | 08:35 | **~13:00(盤中)** | 名義 T+1 補班。**幾乎必落在盤中 → intraday guard 擋掉**,實際上不起作用 | GITHUB_TOKEN |
+| GHA `canary.yml` | 21:30 | 延遲可至午夜 | 快照缺席即開 issue。**跑在 GHA 上 —— GHA 本身出事時會一起沉默** | GITHUB_TOKEN |
+
+**workflow 步驟順序(2026-09-15 起,`tests/test_workflow_commit_order.py` 守門)**:
+fetch market pulse → `make daily` → `make verify-index` → **commit + push** → `make test-fast`。
+測試必須排在 commit 之後:`continue-on-error` 管不到 job 層 `timeout-minutes`,排在前面時測試逾時會連帶 skip 掉 commit(9 月 7 個交易日的資料就是這樣丟的)。
+
+- **兩條真正準時的路都依賴會過期的憑證。** cron-job.org 的 PAT 到期日必須記錄並在到期前換發(FORWARD-RISK-REGISTER R2 已實際發生於 2026-09-04)。
+- **pipeline 內回測步驟成本立方成長**(chip_anchored 每支 9/4 已達 ~85 秒),且排在 commit 之前 —— 推估 2026-12 ~ 2027-01 撐破 job 30 分鐘上限。見 FORWARD-RISK-REGISTER R13。
 - **1.8.1 兩段式快照**：晚班（20:00）T86 不可得時不再整段跳過，改建 `fii_pending=true` 的 partial 快照（價格+分點齊全，外資待補）；隔晨 08:35 班次偵測到 partial + 新鮮 T86 到手 → 自動重建、透過 supersede 鏈補完為完整快照。viewer 顯示待補橫幅（`fii_pending` 為 true 時）。
-- **排程變更記錄**：2026-07-10 Yonki 把 cron-job.org dispatch 由 ~19:05 移前到 18:05（launchd 主排程維持 19:00 未動，plist 為準）。18:05 dispatch 在雲端因當日 T86 被 CDN 擋、必被 fii gate 跳過，無資料品質風險；唯若未來把 **launchd** 移到 18:30 前，才會撞 Fubon ZGK 結算窗口（~18:00-18:30），屆時分點資料可能未結算完——動 launchd 時間前先看這條。
+- **排程變更記錄**：2026-07-10 Yonki 把 cron-job.org dispatch 由 ~19:05 移前到 18:05（launchd 主排程維持 19:00 未動，plist 為準）。~~18:05 dispatch 在雲端因當日 T86 被 CDN 擋、必被 fii gate 跳過~~(2026-09-15 更正:8 月起雲端 18:05 可建完整快照)。仍有效的警告:Fubon ZGK 結算窗口約 18:00–18:30,**任何在此之前抓富邦的執行,拿到的可能是前一交易日的主力榜**。
+- **「只給最新一天」的來源(富邦 ZGK_D/ZGK_F、Sinotrade 分點、TWSE STOCK_DAY_ALL OpenAPI)與「按日期查詢」的來源(T86、MI_MARGN、MI_INDEX)混用時,晚建或補建必然混日。** 快照的 `tradingDate` 由 `derive_trading_date` 標記,ingest 日期守門員無法察覺這種混日(9/4 事故)。STOCK_DAY_ALL 在 18–19 點建置時 95% 仍是前一日 → 快照 `open` 普遍落後一天(見 EXEC-PLAN §七)。
 - **原則：同一時間只有一個來源在 push。** 改 code 後 commit+push，等排程自動跑，別手動觸發 Actions。
 - Viewer 部署：Streamlit Community Cloud，讀 GitHub repo，日常操作見 `RUNBOOK.md`。
 - **GitHub 是 source of truth**；本機/沙箱可能落後，push 前先 `git pull --rebase`。

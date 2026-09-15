@@ -1,17 +1,24 @@
 # Maitreya — 操作手冊 Runbook
 
-> 最後更新：2026-07-10（四觸發器表＋cron-job dispatch 18:05，去重複指向 ARCHITECTURE 正本；原 2026-07-02 併入 STREAMLIT_DEPLOY.md 精華）
+> 最後更新：2026-09-15（觸發器表改為實測版，與 ARCHITECTURE §5 對齊；新增「斷更時怎麼查」。前版 2026-07-10）
 
 ## 正常情況（不需要做任何事）
 
-每個交易日有四條觸發器（OPS-1，完整說明見 `ARCHITECTURE.md` §5）：
+每個交易日的觸發器（完整說明與實測落地時間見 `ARCHITECTURE.md` §5，**以該處為準**）：
 
 | | 時間（台灣） | 執行者 |
 |---|---|---|
-| **主** | 19:00 | 本機 launchd（Mac 要開機） |
-| 雲端探測 | 18:05 | cron-job.org dispatch；雲端抓不到當日 T86，必跳過（無害） |
-| **備** | 20:00（常遲到 1-3h） | GitHub Actions `daily.yml`（主已 commit 則跳過；抓不到 T86 建 partial） |
-| **T+1 補班** | 隔日 08:35 | GHA；晚班只建了 partial 快照時，補完 T86 |
+| **主力** | 18:05 | cron-job.org → GitHub Actions（可建完整快照） |
+| **備援** | 19:00 | 本機 launchd（Mac 要開機；雲端已建則跳過） |
+| **T+1 補班** | 隔日 08:35 | cron-job.org → GitHub Actions（補建昨日） |
+| 名義備援 | 20:00 / 08:35 | GHA 原生排程 —— 實際落在凌晨 / 盤中，**不可依賴** |
+
+## 斷更時怎麼查（2026-09-15 事故後補）
+
+1. **Actions 頁看最近一次 Daily Pipeline**:點進去看「Commit data and reports」那一步 —— **綠勾 = 資料已落地**,後面測試多久都無妨;若 run 顯示 cancelled,看是哪一步被砍。
+2. **cron-job.org 兩個 job 的 History**:HTTP 401 = PAT 過期(Test run 正常應為 204)。
+3. **本機** `reports/_daily_logs/launchd.err.log`:`could not read Username` = Mac 的 GitHub 憑證失效 → `gh auth login`。
+4. **GitHub Issues**:canary 會為缺席的交易日開 issue。**富邦主力榜與分點只提供當日 —— 收到警報當晚不處理,那一天的籌碼資料就永久遺失。**
 
 每次執行：
 1. 抓大盤脈搏（TAIEX / 台指期 / 三大法人）
