@@ -144,6 +144,7 @@ def test_v3_rejects_above_cost_cap():
 
 # ── v3 引擎不變量(真實快照)──────────────────────────────────────────────────
 
+@pytest.mark.slow
 def test_v3_engine_invariants_on_real_data():
     snaps = _load_snapshots()
     if len(snaps) < 2:
@@ -158,6 +159,7 @@ def test_v3_engine_invariants_on_real_data():
             assert t.return_pct < 0, f"{t.ticker} atr_stop 出場報酬 {t.return_pct} ≥ 0"  # 3.1
 
 
+@pytest.mark.slow
 def test_v3_deterministic_on_real_data():
     snaps = _load_snapshots()
     if len(snaps) < 2:

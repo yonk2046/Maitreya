@@ -135,6 +135,7 @@ def test_worst_single_trade_independent_from_max_drawdown():
     assert res.summary["max_drawdown"] != res.summary["worst_single_trade"]
 
 
+@pytest.mark.slow
 def test_max_drawdown_never_equals_a_single_trade_return_on_real_data():
     """2.2 驗收(全策略回歸,用真實已提交快照):新 max_drawdown 不應等於任何
     單筆報酬——修正舊版語意錯誤(舊版 chip v1 −19.42% 恰等於鴻海單筆、
@@ -176,6 +177,7 @@ def test_backtest_params_excluded_from_config_hash():
 # Real-data acceptance checkpoint (清單 2.1 / EXEC-PLAN R2)
 # ═══════════════════════════════════════════════════════════════════════════
 
+@pytest.mark.slow
 def test_chip_anchored_swing_net_return_acceptance_checkpoint():
     """驗收(B1 後重新基準化):chip_anchored_swing 全交易淨平均應約為 −1.0%。
 
@@ -206,6 +208,7 @@ def test_chip_anchored_swing_net_return_acceptance_checkpoint():
     assert real["trades"] + unreal["trades"] == res.summary["trades"]
 
 
+@pytest.mark.slow
 def test_determinism_same_snapshots_same_summary():
     snaps = _load_snapshots()
     if len(snaps) < 2:

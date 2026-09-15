@@ -101,8 +101,14 @@ jobs:
       # 9/2、9/7–9/11、9/14 共 7 個交易日:pipeline 成功、verify 通過、
       # 快照已建好,全部卡在這一步被砍,資料隨 runner 銷毀。
       # 放在 commit 之後 → 無論測試跑多久、卡不卡住,資料都已經落地。
+      # continue-on-error 暫時保留(2026-09-15):有 14 顆測試直接讀 gitignored 的
+      # 執行期檔 data/today.json(test_replay / test_config_extraction /
+      # test_adapter_contract / test_tdcc_adapter)。原生 08:35 cron 常延遲到盤中
+      # 才跑,守門員擋下 fetch → 沒有 today.json → 這 14 顆每天必紅。拿掉
+      # continue-on-error 會變成每天一封假警報,重演「警報太多被忽略」。
+      # 移除條件:那 14 顆改用 reports/_raw_archive 的 WORM fixture,不再依賴執行期檔。
       - name: Run fast tests
         if: steps.guard.outputs.skip != 'true'
-        continue-on-error: true  # visibility only
-        timeout-minutes: 15      # 步驟自己先逾時,不拖到 job 上限;失敗顯示在此步而非整個 job cancelled
+        continue-on-error: true
+        timeout-minutes: 10
         run: make test-fast

@@ -56,6 +56,7 @@ def _snap(date, stocks, **top):
 # 3.1 — atr_stop 出場報酬必為負(獲利結構止損改標 trailing_stop)
 # ═══════════════════════════════════════════════════════════════════════════
 
+@pytest.mark.slow
 def test_no_profitable_atr_stop_on_real_data():
     """驗收(3.1):所有策略中,exit_reason == 'atr_stop' 的出場報酬必須 < 0。
     獲利的結構移動止損已改標 trailing_stop。drift-robust(不鎖特定標的)。"""
@@ -71,6 +72,7 @@ def test_no_profitable_atr_stop_on_real_data():
                     f"(應改標 trailing_stop)")
 
 
+@pytest.mark.slow
 def test_profitable_structure_stop_relabeled_trailing_on_real_data():
     """B1 前 chip_v2 有兩筆獲利 atr_stop(2618 +6.32%、5880 +2.20%)。修正後:
     存活者(未被 3.3 冷卻期移除)改標 trailing_stop。這裡確認 chip_v2 不再有任何
@@ -88,6 +90,7 @@ def test_profitable_structure_stop_relabeled_trailing_on_real_data():
 # 3.2 — 加碼禁向下攤平
 # ═══════════════════════════════════════════════════════════════════════════
 
+@pytest.mark.slow
 def test_chip_v2_no_downward_averaging_hon_hai():
     """驗收(3.2):鴻海(2317)chip_v2 不再出現均價低於首次進場價的加碼。
     B1 前均價從 309 攤到 273.5;修正後所有 leg 均價應維持在首次進場價(~309)之上。
@@ -134,6 +137,7 @@ def test_cooldown_zero_disables_guard():
     assert (0 < 0) is False
 
 
+@pytest.mark.slow
 def test_no_same_price_wash_in_chip_strategies():
     """驗收(3.3):chip 策略不再有「同日同價、有實際持有」的洗單再進場。
     B1 前:chip_v1 三次、chip_v2 五次(共 8)。"""
@@ -187,6 +191,7 @@ def test_realized_unrealized_split_and_independent_tickers():
     assert "disclosure" in s
 
 
+@pytest.mark.slow
 def test_realized_excludes_inflating_unrealized_on_real_data():
     """驗收(3.4):真實快照上,momentum 全交易毛均 > 已實現毛均(未實現拉高),
     對應清單「+2.71%(已實現)膨脹到 +3.91%」的方向。語料凍結,見檔頭。"""
@@ -243,6 +248,7 @@ def test_enrich_with_regime_tags_trades_and_builds_table():
     assert groups["unlabeled"]["trades"] == 1
 
 
+@pytest.mark.slow
 def test_regime_enrichment_on_real_backtest():
     """整合:真實快照回測 → 每筆交易掛 regime 欄,summary.by_regime 有 groups。"""
     snaps = _load_snapshots()

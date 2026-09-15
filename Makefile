@@ -30,8 +30,8 @@ test: verify-registry  # run full pytest suite (registry + replay + contracts + 
 verify-registry:  # 憲法 Phase 0: canonical field registry CI 對拍（登記 vs 最新快照欄位集）
 	$(PY) -m pytest tests/test_field_registry.py -v
 
-test-fast:  # quick run, no -v
-	$(PY) -m pytest tests/ -q
+test-fast:  # quick run, no -v, skips @pytest.mark.slow (full-corpus backtests)
+	$(PY) -m pytest tests/ -q -m "not slow"
 
 backfill:  # ingest one date; DATE=YYYY-MM-DD required
 	@[ -n "$(DATE)" ] || (echo "usage: make backfill DATE=YYYY-MM-DD" && exit 2)
