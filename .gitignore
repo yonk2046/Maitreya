@@ -45,3 +45,10 @@ __pycache__/
 .DS_Store
 .claude/worktrees/
 .claude/settings.local.json
+
+# launchd 的 stdout/stderr(2026-09-15 起不再追蹤)。
+# 追蹤時它們永遠是 dirty,deploy/daily_and_push.sh 的 `git rebase --autostash` 會把檔案收起來再還原
+# → 換掉磁碟上的檔案,launchd 仍寫著已刪除的舊檔 → rebase 之後的所有輸出都消失。
+# 6/23–9/15 共 63 行 log 中除了 starting/python 之外一行都沒留下。另外 `git add reports/` 會把它們掃進資料 commit。
+reports/_daily_logs/launchd.out.log
+reports/_daily_logs/launchd.err.log
