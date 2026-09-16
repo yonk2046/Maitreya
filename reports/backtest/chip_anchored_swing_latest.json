@@ -2,51 +2,51 @@
   "strategy": "chip_anchored_swing",
   "date_range": [
     "2026-05-08",
-    "2026-09-15"
+    "2026-09-16"
   ],
-  "trade_count": 28,
+  "trade_count": 29,
   "summary": {
-    "trades": 28,
-    "win_rate": 0.5357,
-    "avg_return": -0.0064,
-    "median_return": 0.0054,
-    "sharpe_per_trade": -0.08,
-    "avg_holding_days": 10.14,
+    "trades": 29,
+    "win_rate": 0.5517,
+    "avg_return": -0.0028,
+    "median_return": 0.0061,
+    "sharpe_per_trade": -0.03,
+    "avg_holding_days": 9.93,
     "max_drawdown": -0.0645,
     "worst_single_trade": -0.3185,
     "exit_reasons": {
-      "weakening": 27,
+      "weakening": 28,
       "end_of_data": 1
     },
     "net": {
-      "win_rate": 0.5357,
-      "avg_return": -0.0111,
-      "median_return": 0.0007,
-      "sharpe_per_trade": -0.13
+      "win_rate": 0.5517,
+      "avg_return": -0.0075,
+      "median_return": 0.0013,
+      "sharpe_per_trade": -0.09
     },
     "realized": {
-      "trades": 27,
-      "win_rate": 0.5185,
-      "avg_return": -0.0096,
-      "median_return": 0.0048,
+      "trades": 28,
+      "win_rate": 0.5357,
+      "avg_return": -0.0068,
+      "median_return": 0.0054,
       "net": {
-        "win_rate": 0.5185,
-        "avg_return": -0.0143,
-        "median_return": 0.0001
+        "win_rate": 0.5357,
+        "avg_return": -0.0115,
+        "median_return": 0.0007
       }
     },
     "unrealized": {
       "trades": 1,
       "win_rate": 1.0,
-      "avg_return": 0.0791,
-      "median_return": 0.0791,
+      "avg_return": 0.1105,
+      "median_return": 0.1105,
       "net": {
         "win_rate": 1.0,
-        "avg_return": 0.0741,
-        "median_return": 0.0741
+        "avg_return": 0.1053,
+        "median_return": 0.1053
       }
     },
-    "independent_tickers": 19,
+    "independent_tickers": 20,
     "disclosure": "頂層 avg_return/win_rate/median 含全部交易(含 end_of_data 未實現部位);realized/unrealized 已分離(3.4)——未實現不得混入已實現統計。信賴區間一律以 independent_tickers(獨立標的數)計,非交易筆數。",
     "cost_model": {
       "fee_rate": 0.000855,
@@ -197,15 +197,20 @@
         "drawdown": -0.0546
       },
       {
-        "date": "2026-09-15",
-        "equity": 968860.63,
-        "drawdown": -0.0473
+        "date": "2026-09-16",
+        "equity": 967785.66,
+        "drawdown": -0.0484
+      },
+      {
+        "date": "2026-09-16",
+        "equity": 978319.42,
+        "drawdown": -0.038
       }
     ],
     "alpha": {
-      "trades_with_benchmark": 28,
-      "trades_total": 28,
-      "avg_excess_return": -0.0089,
+      "trades_with_benchmark": 29,
+      "trades_total": 29,
+      "avg_excess_return": -0.0052,
       "period_buy_hold_return": 0.078,
       "note": "avg_excess_return = 策略平均報酬 − 同期(進場↔出場)大盤買入持有報酬(逐筆);period_buy_hold_return = 整段回測期間(date_range)大盤買入持有報酬,供對照——回答「策略總報酬是 alpha 還是 beta」看兩者相對大小。"
     },
@@ -213,9 +218,9 @@
       "note": "進場當日落地體制(obs_market_regime.regime_label_en)分組毛平均報酬;unlabeled = 該進場日快照無 obs_market_*(內部 pulse 僅 7/08 起)。R5:讀落地值,不重算。",
       "groups": {
         "Capital Waiting": {
-          "trades": 6,
+          "trades": 7,
           "win_rate": 1.0,
-          "avg_return": 0.0149
+          "avg_return": 0.0286
         },
         "Mild Risk-Off": {
           "trades": 6,
@@ -225,7 +230,7 @@
         "Neutral / Consolidating": {
           "trades": 3,
           "win_rate": 0.6667,
-          "avg_return": 0.0721
+          "avg_return": 0.0685
         },
         "Risk-Off / Retreat": {
           "trades": 1,
@@ -733,19 +738,39 @@
       "name": "陽明",
       "entry_date": "2026-08-20",
       "entry_price": 55.6,
-      "exit_date": "2026-09-15",
-      "exit_price": 60.0,
-      "return_pct": 0.0791,
-      "exit_reason": "end_of_data",
-      "holding_days": 11,
+      "exit_date": "2026-09-16",
+      "exit_price": 59.4,
+      "return_pct": 0.0683,
+      "exit_reason": "weakening",
+      "holding_days": 12,
       "units": 1.0,
       "benchmark_return_pct": 0.0,
-      "excess_return_pct": 0.0791,
+      "excess_return_pct": 0.0683,
       "regime": {
         "breadth": 0.7197,
         "regime": "Neutral / Consolidating",
         "regime_zh": "中性整理",
         "temperature_level": "stable"
+      }
+    },
+    {
+      "ticker": "2883",
+      "name": "凱基金",
+      "entry_date": "2026-09-03",
+      "entry_price": 34.85,
+      "exit_date": "2026-09-16",
+      "exit_price": 38.7,
+      "return_pct": 0.1105,
+      "exit_reason": "end_of_data",
+      "holding_days": 3,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0,
+      "excess_return_pct": 0.1105,
+      "regime": {
+        "breadth": 0.1933,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "hot"
       }
     }
   ],
