@@ -12,6 +12,20 @@
 
 ---
 
+## 0.1 2026-09-22 更新(9/15 之後一週)—— 先讀這節
+
+| 事項 | 狀態 |
+|---|---|
+| replay 修正 `36f6652` | replay 只取快照**記錄的**前序日期集合。補插 9/14 **不再牽動 9/15 及之後的快照**,D2 不再有 cascade 與時間壓力。零影響證明:全部 current-schema 日期新舊結果相同;9 個不同者皆為 1.4.0 凍結 epoch(不做 full replay) |
+| 9/14 正式快照 | **尚未建**。計畫見 §3.2 末;須 Yonki 看過結果才推(D2) |
+| F-16 驗證 | ✅ 9/16 起 `launchd.out.log` 首次出現 rebase 之後的訊息(`already on origin/main — nothing to do`) |
+| **F-17 新事故(第二次)** | 9/17 Mac 夜間睡眠,run 拖到 9/18 04:26 才 commit;push 被拒後重試的 `git fetch` 遇 DNS 失敗 → `set -euo pipefail` **無聲中止** → 本機 `ae9ddce` 卡住 → 9/21 起每晚開頭 rebase 衝突,Mac 備援再度失效(與 8/31 同型)。**9/22 已清除**(備份 `backup/stranded-0917-mac`)。結構修正 = T9 |
+| canary #11(9/17)、#12(9/21) | 當晚 18:05 未建成;**隔日 08:35 cron-job.org T+1 補建完整**(`fii_pending=False`、`tradingDate` 一致;盤前抓取時「只給最新一天」的來源仍是前一交易日 → 無混日)。資料無損 |
+| run #296(9/18 晚班,紅) | 原生 20:00 cron 於 9/19 00:15 落地,解出 9/17 < 最新 9/18 → stale-fetch 守門員拒建(exit 3)。**這是 F-10 被擋下**,不是 bug |
+| 快照 | 9/15–9/18、9/21、9/22 皆在(5 個交易日全齊) |
+
+---
+
 ## 1. 事故:2026-09-01 ~ 09-14
 
 ### 1.1 使用者看到的
@@ -64,6 +78,14 @@ Viewer 停在舊資料。canary 開了 8 張警報 issue(#3 08-31、#4 09-02、#
 - 富邦 ZGK_D 外資:頁面空白(可由 T86 重建)
 - 抓取窗口:9/15 15:35–15:39。**這類「只給最新一天」的來源,前一日資料的救援窗口 = 次日盤後到 ~18:00 結算前,且各檔換日時間不同,必須逐頁驗日期。**
 
+
+**補建計畫(2026-09-15 擬定,尚未執行)**:在隔離 worktree 跑 `fetch_daily` 的**原組裝邏輯**,只替換資料來源 ——
+主力榜/分點用救回檔;T86、融資(MI_MARGN)、成交量排行(MI_INDEX20)、全市場行情與開盤(MI_INDEX ALLBUT0999)用 TWSE **按日期**端點
+改寫成 OpenAPI 格式餵給 `fetch_twse` 原解析器;外資榜用 T86 重建,**先用同法重建 9/15 並與富邦真 9/15 榜逐筆比對,吻合才用**。
+`derive_trading_date` 固定為 9/14,抓取時間照實記錄(不偽造)。然後 `run_pipeline --date 2026-09-14`。
+**不 commit `data/branches/` 與 `data/market_pulse.json`**(origin 上是更新的版本)。驗收:價格/主力榜對 TWSE 9/14 逐筆吻合、
+完整 replay 9/14 通過且 9/15 仍通過、測試全綠、變更範圍只含 9/14 的快照/封存/index/per-date pulse/strategy_tags。
+
 ### 3.3 9 月沙盒重建(不可用)
 舊 worktree 上跑過 `backfill_range` 9/1–9/14,但用的是 **7 月的 core/ingest**,且 `fetch_history` 不抓個股價/加權指數(全 0/null)。**視為無效,需在修正後重跑。**
 
@@ -106,7 +128,7 @@ Viewer 停在舊資料。canary 開了 8 張警報 issue(#3 08-31、#4 09-02、#
 | # | 問題 | 背景 |
 |---|---|---|
 | D1 | **9/4 混日快照**要不要走修正案重建? | 修正資料須依 FORWARD-RISK-REGISTER 裁定 C:兩版皆留、supersede 鏈 |
-| D2 | **9/14 救援資料**要不要組裝成正式快照? | 非標準流程組裝(富邦 ZGK_D 缺,需用 T86 補外資),修正案層級 |
+| D2 | **9/14 救援資料**要不要組裝成正式快照? | 非標準流程組裝(富邦 ZGK_D 缺,需用 T86 補外資),修正案層級。**`36f6652` 後補插不影響後續快照,無時間壓力**;原始資料在 `/Users/yoncky/SCD engine/_rescue/2026-09-14/` |
 | D3 | cron-job.org 要繼續用 classic PAT,還是換回 fine-grained(只開本 repo Actions)? | classic `repo` 範圍涵蓋所有私有 repo,放在第三方風險較大 |
 | D4 | 前推樣本外紀錄的缺口怎麼處理 | 凍結(7/28)後缺 7 天 + 9/4 混日;10 月底評估的 session 數會少 |
 | D5 | 8 張 canary issue(#3–#10)是否附事故說明後關閉 | 目前全部 open |
@@ -125,6 +147,8 @@ Viewer 停在舊資料。canary 開了 8 張警報 issue(#3 08-31、#4 09-02、#
 | T6 | slow 測試的定期全量執行(本機 `make test` 或週排程) | T1 完成後 | 立方成長未修前 CI 跑不完 |
 | T7 | GHA action 升級(checkout@v4.2.2、setup-python@v5.6.0 被強制跑 Node 24) | 低 | 警告,尚未失敗 |
 | T8 | 回測 JSON `limitations` 過時文字 | 隨 T1 | |
+| **T9** | **`deploy/daily_and_push.sh` 自癒**:(a) push 重試的 `git fetch`/rebase 失敗必須明講,不可被 `set -e` 無聲吞掉;(b) 開頭 rebase 衝突時,若本機獨有 commit 全是 `data: daily pipeline` 且其快照日 origin 已有 → 備份分支後丟棄(origin 先發布者為準)並繼續 | **盡快**(8/31、9/17 已發生兩次) | FAILURE-MODE-INDEX F-17;目前只能人工清除 |
+| T10 | 9/14 正式快照補建 | D2 核准後 | 計畫見 §3.2 末 |
 
 ---
 
@@ -144,10 +168,11 @@ Viewer 停在舊資料。canary 開了 8 張警報 issue(#3 08-31、#4 09-02、#
 
 ---
 
-## 8. Git 狀態(2026-09-15 下午)
+## 8. Git 狀態(2026-09-22)
 
 - `main` == `origin/main`。9/15 當日最後一個人工 commit 為本檔更新之後的那一筆;今日完整序列:`cca570b` → `4555161` → `76ba9ea` → `7211ec7` → `a2b35b6`(9/15 快照)→ `3d67801` → `2e416a1` → `e535370`。之後的 `data: daily pipeline` 為排程自動產生。
-- 分支:`backup/stranded-0831-mac`(本機 8/31 快照備份,可刪);`claude/sleepy-nobel-3d007c`(含未套用的 `34bd7d1`,見 T4);`claude/eloquent-goldwasser-cf8f57`(舊)。
+- 9/15 之後的人工 commit:`8c67b21`、`391c98e`(PAT 到期日)、`36f6652`(replay 前序依紀錄)。
+- 分支:`backup/stranded-0831-mac`、`backup/stranded-0917-mac`(兩次卡住的本機快照備份,origin 已有完整版,可刪);`claude/sleepy-nobel-3d007c`(含未套用的 `34bd7d1`,見 T4);`claude/eloquent-goldwasser-cf8f57`(舊)。
 - worktree:`.claude/worktrees/sleepy-nobel-3d007c`(**7 月的舊碼**,勿在其中做事)、`.claude/worktrees/vigorous-diffie-47efd7`(舊)。
 - `reports/_daily_logs/launchd.{err,out}.log` **2026-09-15 起不再被 git 追蹤**(`3d67801`+`2e416a1`,守門員 `tests/test_launchd_logs_untracked.py`)。以前追蹤時永遠 dirty,`git rebase --autostash` 會換掉檔案,導致 **6/23–9/15 期間 rebase 之後的所有 launchd 輸出都遺失**(FAILURE-MODE-INDEX F-16)。從 9/16 起本機 log 應完整;若又只剩 starting/python 兩行,先查這條。
 - **session scratchpad(`/private/tmp/claude-501/...`)是暫時的**,重要產出必須移出或 commit。
