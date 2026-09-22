@@ -162,12 +162,19 @@ def stale_backfill_candidates(universe, branches_dir, n=5):
 
 def build_branch_fetch_list(*, memory, tier_a, prior_golden, prior_high_net,
                             cross, fii_top, mf_top, fii_sell_top, mf_sell_top,
-                            stale_backfill=None, cap=40):
+                            stale_backfill=None, universe=None, cap=40):
     """Deterministic priority order for the capped daily branch-fetch list.
 
     Priority (first wins, so the names we actually act on survive the cap):
-      記憶體 anchors → Tier-A anchors → 最舊優先回補槽(≤5) → 昨日黃金名單 →
-      今日外資/主力賣超 → 昨日高累積買超 → 今日共現榜 → 今日外資/主力買超.
+      記憶體 anchors → Tier-A anchors → 今日快照宇宙(主力買超全榜) → 最舊優先回補槽(≤5) →
+      昨日黃金名單 → 今日外資/主力賣超 → 昨日高累積買超 → 今日共現榜 → 今日外資/主力買超.
+
+    universe (A5, 2026-09-22): every ticker that becomes a snapshot record today
+    must get same-day 分點 — without it sponsorship/cost abstain (C-2) and the
+    ticker cannot reach the golden layer. Before this, today's mainForceBuy
+    ranked LAST and the 40-cap cut it: only ~15 of ~25–45 universe tickers got
+    fresh branches per day (AUDIT-golden-list-20260922 §8 #1). Universe tickers
+    do NOT consume the `cap` slots, which keep their old meaning for the rest.
 
     賣超榜排在 prior_golden 之後、prior_high_net/cross 之前——它的用途是
     餵 avgSellCost/安全邊際(見 fetch_daily.py Step 7 註解),排太後面容易被
@@ -177,10 +184,12 @@ def build_branch_fetch_list(*, memory, tier_a, prior_golden, prior_high_net,
     stale_backfill_candidates),放在固定 anchors 之後、其他所有榜單之前，
     確保回補名額不被排名榜擠掉。
     """
-    ordered = (list(memory) + list(tier_a) + list(stale_backfill or [])
+    anchors = list(dict.fromkeys(list(memory) + list(tier_a)))
+    extra_universe = [t for t in dict.fromkeys(universe or []) if t not in anchors]
+    ordered = (anchors + extra_universe + list(stale_backfill or [])
                + list(prior_golden) + list(fii_sell_top) + list(mf_sell_top)
                + list(prior_high_net) + list(cross) + list(fii_top) + list(mf_top))
-    return list(dict.fromkeys(ordered))[:cap]
+    return list(dict.fromkeys(ordered))[:cap + len(extra_universe)]
 
 
 def emit(step, total, label, status="running", detail=""):
@@ -411,7 +420,7 @@ def run(dry_run=False, date_str=None):
         prior_golden=prior_golden, prior_high_net=prior_high_net,
         cross=cross[:10], fii_top=fii_top, mf_top=mf_top,
         fii_sell_top=fii_sell_top, mf_sell_top=mf_sell_top,
-        stale_backfill=stale_backfill, cap=40)
+        stale_backfill=stale_backfill, universe=mainforce_universe, cap=40)
 
     if not sino_tickers:
         emit(7, TOTAL_STEPS, "無三榜/雙榜共現股，跳過分點抓取", status="skip")

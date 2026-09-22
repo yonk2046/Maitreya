@@ -228,3 +228,22 @@ def test_branch_effective_date_none_for_corrupt_json(tmp_path):
     p = tmp_path / "bad.json"
     p.write_text("{not json", encoding="utf-8")
     assert _branch_effective_date(str(p)) is None
+
+
+def test_whole_snapshot_universe_gets_same_day_branches():
+    """A5 (2026-09-22): every mainForceBuy ticker (= snapshot universe) must be fetched,
+    even when rankings flood the list; the universe does not eat the 40 other slots."""
+    universe = [f"{6000 + i}" for i in range(45)]
+    flood = [f"{9000 + i}" for i in range(80)]
+    out = build_branch_fetch_list(**_kw(cross=flood, mf_top=universe[:10], universe=universe, cap=40))
+    assert set(universe) <= set(out)
+    assert len(out) == 40 + 45
+    for t in MEMORY_ANCHORS + TIER_A:
+        assert t in out
+
+
+def test_without_universe_behaves_as_before():
+    flood = [f"{9000 + i}" for i in range(50)]
+    assert build_branch_fetch_list(**_kw(cross=flood, cap=40)) == build_branch_fetch_list(
+        **_kw(cross=flood, cap=40, universe=None))
+    assert len(build_branch_fetch_list(**_kw(cross=flood, cap=40))) == 40
