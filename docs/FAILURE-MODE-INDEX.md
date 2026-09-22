@@ -110,7 +110,7 @@
 | F-8 | 測試逾時連帶丟棄已建好的資料 | M | Actions 顯示 cancelled;快照建好卻沒上 GitHub | 測試排在 commit 前;`continue-on-error` 管不到 job 層逾時 | `tests/test_workflow_commit_order.py`(`cca570b`) | 9/2、9/7–9/11、9/14 |
 | F-9 | 回測成本隨快照數立方成長 | T | CI 測試 15–29 分鐘;未來 pipeline 本身逾時 | `run_backtest` 每日呼叫 `golden.run(snaps[:i+1])` 不快取 | 測試端:`tests/test_slow_marker_guard.py`(`4555161`);**pipeline 端 *(待補)*,推估 2026-12 ~ 2027-01 撞牆** | 8/25 起 |
 | F-10 | 過午夜建置解出錯的交易日 | T·M | 快照日期與內容不符;缺一天、多一天 | `derive_trading_date` 只在同日 ≥15:00 採用今天,凌晨退回 TWSE 落後日期 | *(部分)* `tools/daily.py` stale-fetch 守門員擋住「解出日期 < 最新已提交」(9/19 run #296 實證);**擋不住解出日期仍高於最新的情形**(9/4 案)*(待補:clock matrix 過午夜格)* | 9/7 晚班建成 9/4;9/19 被擋 |
-| F-11 | 「只給最新一天」來源與「按日期」來源混用 | T·U | 同一筆紀錄 `open` 是 A 日、`current_price` 是 B 日 | 富邦/Sinotrade/STOCK_DAY_ALL 無日期參數;`tradingDate` 由同一解析器標記,ingest 守門員看不出 | *(待補)* | 9/4 |
+| F-11 | 「只給最新一天」來源與「按日期」來源混用 | T·U | 同一筆紀錄 `open` 是 A 日、`current_price` 是 B 日 | 富邦/Sinotrade/STOCK_DAY_ALL 無日期參數;`tradingDate` 由同一解析器標記,ingest 守門員看不出 | *(待補)* | 9/4(D1 裁定只註記不重建,列已知不可用日,見 EXEC-PLAN §7.4) |
 | F-12 | 快照 `open` 落後一天 → 回測 look-ahead | T·U | 回測進場價 = 訊號日當天早上的開盤 | STOCK_DAY_ALL OpenAPI 晚上落後;`_fill_price` 讀下一份快照的 `open` | *(待補:撮合改用按日期真實開盤)* | 5 月至今,91% 成交價非真實開盤 |
 | F-13 | 憑證到期讓兩條路同週倒 | M | launchd exit 128;cron-job.org 401 | Mac keychain 憑證與 cron-job PAT 皆有期限且無人追蹤 | Mac 改 `gh` OAuth(無強制到期);**cron-job PAT 到期日已記錄(**2026-12-14**);*(待補:heartbeat)*** | ~9/1、9/4 |
 | F-14 | 警報發了卻沒人處理 | P | issue 堆了 8 張 | 警報沒說「不處理明天就永久遺失」 | *(待補:警報文字寫出不可逆代價)* | 9 月 |
