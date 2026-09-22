@@ -23,6 +23,7 @@
 | canary #11(9/17)、#12(9/21) | 當晚 18:05 未建成;**隔日 08:35 cron-job.org T+1 補建完整**(`fii_pending=False`、`tradingDate` 一致;盤前抓取時「只給最新一天」的來源仍是前一交易日 → 無混日)。資料無損 |
 | run #296(9/18 晚班,紅) | 原生 20:00 cron 於 9/19 00:15 落地,解出 9/17 < 最新 9/18 → stale-fetch 守門員拒建(exit 3)。**這是 F-10 被擋下**,不是 bug |
 | 快照 | 9/15–9/18、9/21、9/22 皆在(5 個交易日全齊) |
+| **9/22 晚:黃金名單稽核 → 引擎修正弧開工** | 稽核 `docs/migration/AUDIT-golden-list-20260922.md`(系統看不到主力賣出;影子比對:修正讓系統不說錯話,但 4 個月內訊號無超額)。執行正本 `docs/migration/EXEC-PLAN-engine-correction-20260922.md`。**已上 main(`3aa1527`)**:A4 開盤/量/漲跌改 MI_INDEX 按日期、A5① 分點涵蓋全快照(兩者立即生效);A1–A3 在 `feature_flags.engine_correction_v1`(**false**,10/2 收盤後改 true、10/5 生效)。**9/23 18:05 後驗證**:`python3 "/Users/yoncky/SCD engine/_research/engine-correction/verify_a4a5.py" 2026-09-23` 應全 ✅ |
 | **D5 已完成(9/22)** | canary #3–#10 已逐張附結果(無損/永久遺失/混日/救援待 D2)後關閉;#1、#2、#11、#12 仍 open |
 | **D1 已決(9/22)** | 9/4 **只註記、不重建**,列已知不可用日(前推評估不計、T1 回測不在 9/4 撮合)。細節 EXEC-PLAN §7.4 |
 
