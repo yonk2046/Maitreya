@@ -383,8 +383,14 @@ def _assign_state(
     if failed:
         return S_FAILED
 
-    # Streak collapse: was ≥3, now 0 within COLLAPSE_WINDOW snapshots
-    if streak == 0 and appearances >= COLLAPSE_WINDOW + 1:
+    # Streak collapse: was ≥3, now 0 within COLLAPSE_WINDOW snapshots.
+    # correction: a day OFF the list is not a same-day hard collapse — a 1-day
+    # absence is usually rotation (market_context W3 absence weighting); absence
+    # is judged by W3 → DISTRIBUTING (debounced) and EXITED (3 absent) instead.
+    # Without this guard the absent placeholder (mfb 0) turned 1-day rotation into
+    # a hard FAILED that stuck through the ticker's return (review of 60ebcf7).
+    if (streak == 0 and appearances >= COLLAPSE_WINDOW + 1
+            and not (correction and records[-1].get("_absent"))):
         recent_mfb = [r.get("main_force_buy") or 0
                       for r in records[-(COLLAPSE_WINDOW + 1):-1]]
         if any(v > 0 for v in recent_mfb):

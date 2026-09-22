@@ -115,3 +115,41 @@ def test_example_config_ships_flag_off_until_go_live():
     assert (cfg.get("feature_flags") or {}).get("engine_correction_v1") is False, (
         "上線前旗標必須為 false;2026-10-02 收盤後才改 true(EXEC-PLAN-engine-correction-20260922)。"
         "上線時一併把本測試改為 True。")
+
+
+def test_one_day_absence_is_not_a_hard_structural_failure():
+    """審查 60ebcf7 #3:缺席佔位(mfb 0)曾觸發「連買崩塌→FAILED」(當日定案硬狀態),
+    1 日輪動就被判結構失敗且回榜後仍卡住。缺席改交給 W3/EXITED 判斷。"""
+    seq = [_snap("2026-09-01", "2330"), _snap("2026-09-02", "2330"), _snap("2026-09-03", "2330"),
+           _snap("2026-09-04")]
+    st = smod.run_all(seq, correction=True)["2330"].state
+    assert st != smod.S_FAILED
+    back = seq + [_snap("2026-09-07", "2330")]
+    assert smod.run_all(back, correction=True)["2330"].state != smod.S_FAILED
+
+
+def test_real_data_failed_while_buying_not_inflated():
+    """審查實測:7/13–9/22 在榜且主力買超卻顯示 FAILED 的股票日,舊 27 → 錯誤版 220。修正後不得暴增。"""
+    import datetime as dt
+    idx = json.loads((_ROOT / "reports" / "index.json").read_text())["snapshots"]
+    ds = sorted(d for d, e in idx.items() if "example" not in d and "example" not in e["current"])
+    snaps = {d: json.loads((_ROOT / "reports" / idx[d]["current"]).read_text()) for d in ds}
+    bad = {False: 0, True: 0}
+    for d in ds:
+        if not ("2026-08-01" <= d <= "2026-09-22"):
+            continue
+        d0 = dt.date.fromisoformat(d)
+        win = [snaps[x] for x in ds if 0 <= (d0 - dt.date.fromisoformat(x)).days <= 20]
+        today = {s["ticker"]: s for s in snaps[d]["stocks"]}
+        for corr in (False, True):
+            for t, ts in smod.run_all(win, correction=corr).items():
+                if t in today and (today[t].get("main_force_buy") or 0) > 0 and ts.state == smod.S_FAILED:
+                    bad[corr] += 1
+    assert bad[True] <= bad[False] * 1.5 + 5, bad
+
+
+def test_strategy_tags_accept_flag():
+    import inspect
+    from core import strategies
+    assert inspect.signature(strategies.strategy_tags_for_date).parameters["correction"].default is False
+    assert inspect.signature(strategies.would_enter).parameters["correction"].default is False

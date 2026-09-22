@@ -38,8 +38,8 @@
 | 預設 | `false`(上線:2026-10-02 收盤後改 `true`,10/5 起生效) |
 | 依據 | `docs/migration/AUDIT-golden-list-20260922.md` G1/G3/G9;執行正本 `EXEC-PLAN-engine-correction-20260922.md` |
 | 讀取點 | `core/ingest.py`(唯一讀取者;以參數 `correction` 傳入 `temporal_enrich`/`weakening_profile`/`obs_landing`→`state_machine.run_all`/`golden.run`/`funnel.run`,引擎預設 False) |
-| 影響欄位 | `stocks[].weakening`、`velocity_3d`、`acceleration`、`fii_consecutive_buy_days`、`obs_sm_*`、`obs_golden_*`、`obs_chip_grade` |
-| 行為 | ① 缺席不透明:掉出主力榜的日子以主力買超 0 計,中斷連買/速度(G3);② 快照轉弱用「前序 + 當天」判斷(G1,W3 不再亮在回榜日);③ 狀態機 CONFIRMED 廣度閘讀全市場 `market_pulse`,缺值不放行(G9) |
+| 影響欄位 | `stocks[].weakening`、`velocity_3d`、`acceleration`、`fii_consecutive_buy_days`、`obs_sm_*`、`obs_golden_*`、`obs_chip_grade`、`obs_market_temperature`(讀當日 obs_sm);sidecar `reports/strategy_tags/<date>.json`(讀該快照記錄的旗標) |
+| 行為 | ① 缺席不透明:掉出主力榜的日子以主力買超 0 計,中斷連買/速度(G3)。但**缺席不觸發當日定案的「連買崩塌→FAILED」**(1 日缺席多為輪動,交給 W3/EXITED);外資連買改嚴格計算,缺席日視為中斷(缺席日外資實為未知,**刻意保守**);② 快照轉弱用「前序 + 當天」判斷(G1,W3 不再亮在回榜日);③ 狀態機 CONFIRMED 廣度閘讀全市場 `market_pulse`,缺值不放行(G9) |
 | Replay 含義 | 旗標存在 yaml → 進 `config_snapshot.yaml` 與 `config_hash`;replay 用快照**記錄的** yaml,旗標出現前的快照自動走舊邏輯。**不可改用 engine_params 當開關**(`as_config_dict()` 會把新鍵帶進所有舊快照的 replay) |
 | 稽核 | 每次 ingest emit `FEATURE_FLAG_RESOLVED`(F4) |
 | 守門員 | `tests/test_engine_correction_v1.py` |

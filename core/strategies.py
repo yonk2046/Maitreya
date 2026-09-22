@@ -155,6 +155,8 @@ def would_enter(
     snapshots: list[dict],
     strategy: StrategyConfig,
     golden_result=None,
+    *,
+    correction: bool = False,
 ) -> tuple[bool, list[str]]:
     """回傳 (是否符合進場條件, 未通過原因清單)。
 
@@ -180,7 +182,7 @@ def would_enter(
     if strategy.kind == "chip_anchored":
         from core import golden as _golden   # lazy: heavy funnel/state engine
         if golden_result is None:
-            golden_result = _golden.run(snapshots)
+            golden_result = _golden.run(snapshots, correction=correction)
         golden_map = {e.ticker: e for e in (golden_result.prime + golden_result.strong)}
         ge = golden_map.get(ticker)
         if ge is None:
@@ -200,7 +202,7 @@ def would_enter(
             # 4.3 進場層2「動能否決權」:velocity_3d>0 且 acceleration>=0 且 外資同向
             # 且 轉弱 severity==none。收緊動能以擋掉崩跌股(與放寬成本閘門成對,4.1)。
             from core.market_context import temporal_enrich   # lazy(與 momentum 分支一致)
-            te = temporal_enrich(ticker, prior, rec)
+            te = temporal_enrich(ticker, prior, rec, correction=correction)
             if not ((te["velocity_3d"] or 0) > 0):
                 reasons.append("3日速度未轉正")
             if not ((te["acceleration"] or 0) >= 0):
@@ -214,7 +216,7 @@ def would_enter(
 
     # momentum — 逐條對應舊 _momentum_entry_ok
     from core.market_context import temporal_enrich   # lazy (matches engine import)
-    temporal = temporal_enrich(ticker, prior, rec)
+    temporal = temporal_enrich(ticker, prior, rec, correction=correction)
     reasons: list[str] = []
     if temporal["main_force_consecutive_days"] < strategy.entry_streak_min:
         reasons.append(
@@ -231,6 +233,8 @@ def would_enter(
 def strategy_tags_for_date(
     snapshots: list[dict],
     strategies: dict[str, StrategyConfig],
+    *,
+    correction: bool = False,
 ) -> dict[str, dict]:
     """回傳 {ticker: {"tags": ["A","B"], "rejections": {"A": [...原因]}}}。
 
@@ -249,7 +253,7 @@ def strategy_tags_for_date(
     golden_result = None
     if any(cfg.kind == "chip_anchored" for cfg in strategies.values()):
         from core import golden as _golden
-        golden_result = _golden.run(snapshots)
+        golden_result = _golden.run(snapshots, correction=correction)
 
     out: dict[str, dict] = {}
     for rec in decide.get("stocks", []):
@@ -261,7 +265,7 @@ def strategy_tags_for_date(
         for label in sorted(strategies):
             cfg = strategies[label]
             gr = golden_result if cfg.kind == "chip_anchored" else None
-            ok, reasons = would_enter(ticker, snapshots, cfg, golden_result=gr)
+            ok, reasons = would_enter(ticker, snapshots, cfg, golden_result=gr, correction=correction)
             if ok:
                 tags.append(label)
             else:

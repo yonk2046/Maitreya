@@ -132,7 +132,11 @@ def _write_strategy_tags(target_date: str) -> None:
             f"多 {set(_STRATEGY_TAG_KEYS.values()) - set(ALL_STRATEGIES)}")
         chain = _load_chain_upto(target_date)
         strategies = {k: ALL_STRATEGIES[name] for k, name in _STRATEGY_TAG_KEYS.items()}
-        tags = strategy_tags_for_date(chain, strategies)
+        # feature_flags.engine_correction_v1 as RECORDED by the snapshot just built
+        # (as-was; keeps the badges on the same semantics as that snapshot's obs_golden_*).
+        _flags = (((chain[-1] if chain else {}).get("config_snapshot") or {}).get("yaml") or {}).get("feature_flags") or {}
+        tags = strategy_tags_for_date(chain, strategies,
+                                      correction=bool(_flags.get("engine_correction_v1", False)))
         payload = {
             "date": target_date,
             "generated_from": "core.strategies.would_enter (single source of truth)",

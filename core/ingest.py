@@ -365,7 +365,8 @@ def ingest(
                  "took_effect_at": date,
                  "downstream_paths": ["stocks[].weakening", "stocks[].velocity_3d",
                                       "stocks[].acceleration", "stocks[].fii_consecutive_buy_days",
-                                      "obs_sm_*", "obs_golden_*", "obs_chip_grade"]},
+                                      "obs_sm_*", "obs_golden_*", "obs_chip_grade",
+                                      "obs_market_temperature", "reports/strategy_tags/<date>.json"]},
     })
 
     def _weakening_obj(_wp: dict) -> dict:
