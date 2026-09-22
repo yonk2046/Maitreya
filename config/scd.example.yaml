@@ -138,6 +138,9 @@ market_regime:
 # All flags default to OFF. Changing any flag → new config_hash → new snapshot.
 # Flag values enter config_hash; replay must match.
 feature_flags:
+  # 引擎修正 v1(AUDIT-golden-list-20260922 G1/G3/G9;docs/FEATURE_FLAGS.md §2.2)。
+  # 上線:2026-10-02(五)收盤後改 true → 2026-10-05 起的快照採新邏輯。舊快照依其記錄的 yaml replay,不受影響。
+  engine_correction_v1: false
   day_trader_exclusion: false
   day_trader_exclusion_branches:
     - "凱基-台北"

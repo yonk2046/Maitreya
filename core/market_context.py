@@ -31,6 +31,40 @@ from core import engine_params as _cfg
 
 
 # ===========================================================================
+# 0.  Per-ticker record sequence (feature_flags.engine_correction_v1, 2026-09-22)
+# ===========================================================================
+
+def ticker_records(
+    ticker: str,
+    snapshots: list[dict[str, Any]],
+    *,
+    absent_as_zero: bool = False,
+) -> list[dict[str, Any]]:
+    """Chronological records for one ticker across `snapshots`.
+
+    absent_as_zero=False (legacy): only snapshots where the ticker is present —
+      absent days are skipped, so a "streak" silently spans gaps (AUDIT G3).
+    absent_as_zero=True (engine_correction_v1): one record per snapshot; an absent
+      day becomes {"date", "main_force_buy": 0, "_absent": True} — "not among the
+      top main-force buyers" is evidence of no buying, so it breaks streaks.
+      Callers must count presence / feed sponsorship & breakout memory with
+      `present_only(records)`.
+    """
+    out: list[dict[str, Any]] = []
+    for snap in snapshots:
+        rec = next((s for s in snap.get("stocks", []) if s.get("ticker") == ticker), None)
+        if rec is not None:
+            out.append({**rec, "date": snap.get("date", "")})
+        elif absent_as_zero:
+            out.append({"date": snap.get("date", ""), "main_force_buy": 0, "_absent": True})
+    return out
+
+
+def present_only(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [r for r in records if not r.get("_absent")]
+
+
+# ===========================================================================
 # 1.  Accumulation Velocity  累積速度
 # ===========================================================================
 
@@ -210,12 +244,18 @@ def temporal_enrich(
     ticker: str,
     prior_snap_objects: list[dict[str, Any]] | None,
     today_rec: dict[str, Any],
+    *,
+    correction: bool = False,
 ) -> dict[str, Any]:
     """Return the temporal derived fields for one ticker.
 
     Reuses accumulation_velocity for velocity_3d / acceleration / main-force
     streak, then adds volume and FII series metrics. All inputs come from the
     prior snapshot chain plus today's record → deterministic and replay-safe.
+
+    correction (feature_flags.engine_correction_v1): velocity/acceleration and the
+    FII streak read the windowed series with absent days as 0 / break, instead of
+    silently skipping them (AUDIT G3).
     """
     # seq_present:只含 ticker 真的有出現的快照(用於 velocity/acceleration 等需「真資料」的計算)
     # seq_windowed:窗口內每個快照都有一格(缺日為 None,用於計算「窗口內買超天數」「窗口內累計」)
@@ -233,7 +273,12 @@ def temporal_enrich(
     seq_windowed.append(today_rec)
     seq_present.append(today_rec)
 
-    av = accumulation_velocity(ticker, seq_present)
+    if correction:
+        av = accumulation_velocity(ticker, [
+            {"main_force_buy": (r.get("main_force_buy") if r is not None else 0)}
+            for r in seq_windowed])
+    else:
+        av = accumulation_velocity(ticker, seq_present)
 
     # Volume series (oldest→newest, real values only)
     vols = [r.get("volume") for r in seq_present if r.get("volume") is not None]
@@ -251,7 +296,11 @@ def temporal_enrich(
 
     # FII consecutive net-buy days (tail) — 用 _tail_positive_streak(透明缺日語意,
     # 與既有定義一致;只用 present 序列以維持原本行為)
-    fii_streak = _tail_positive_streak([r.get("fii_net_buy") for r in seq_present])
+    if correction:
+        fii_streak = _strict_tail_streak(
+            [r.get("fii_net_buy") if r is not None else None for r in seq_windowed])
+    else:
+        fii_streak = _tail_positive_streak([r.get("fii_net_buy") for r in seq_present])
 
     # Main-force buy-super series (last 5 real obs) — F(n) > F(n-1)檢視用
     mf_trend = [r.get("main_force_buy") for r in seq_present[-5:]
@@ -713,6 +762,8 @@ def weakening_profile(
     ticker: str,
     snapshots: list[dict[str, Any]],
     branch_data: dict[str, Any] | None = None,
+    *,
+    correction: bool = False,
 ) -> dict[str, Any]:
     """Detect distribution / weakening behaviour for one ticker.
 
@@ -724,16 +775,24 @@ def weakening_profile(
       W5 branch_pressure  — sellVol > buyVol at branch level, or top buyers churning
 
     Severity: red (W3 or ≥3 flags) > orange (2) > yellow (1) > none (0).
+
+    correction (feature_flags.engine_correction_v1): an absent day counts as
+    main_force_buy 0 (breaks streaks) instead of None (transparent) — W3's
+    "had a streak ≥3" then means 3 truly consecutive snapshots (AUDIT G3).
+    Callers must pass a window whose LAST snapshot is the day being judged
+    (ingest used to pass the prior window only → W3 fired on the day a ticker
+    came BACK to the list; AUDIT G1).
     """
     if not snapshots:
         return _empty_weakening(ticker)
 
+    absent_mfb = 0 if correction else None
     records: list[dict[str, Any]] = []
     for snap in snapshots:
         rec = next((s for s in snap.get("stocks", []) if s.get("ticker") == ticker), None)
         records.append({
             "date":           snap.get("date", "?"),
-            "main_force_buy": rec.get("main_force_buy") if rec else None,
+            "main_force_buy": rec.get("main_force_buy") if rec else absent_mfb,
             "present":        rec is not None,
             "stock":          rec,
         })

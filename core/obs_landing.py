@@ -162,6 +162,7 @@ def compute_per_ticker_obs(
     prior_snaps: list[dict],
     *,
     dist_raw: dict[str, list] | None = None,
+    correction: bool = False,
 ) -> dict[str, dict[str, Any]]:
     """Compute the per-ticker O fields (obs_sm_*/obs_golden_*/obs_chip_grade/
     obs_dist_consistency) for the current (last) snapshot in `window`.
@@ -172,6 +173,8 @@ def compute_per_ticker_obs(
             history window.
         prior_snaps: the prior window only (window[:-1]) — used for the C10
             landed-series days_in_state counting.
+        correction: feature_flags.engine_correction_v1 (resolved by ingest from the
+            recorded yaml config) → sm/golden run with the corrected semantics.
         dist_raw: {"buy_list", "sell_list", "main_force_buy", "main_force_sell"}
             raw ranking lists for the day (from the adapter). None → distribution
             skipped (obs_dist_consistency stays null for every ticker).
@@ -185,8 +188,8 @@ def compute_per_ticker_obs(
     stock_map = {s["ticker"]: s for s in current.get("stocks", []) if s.get("ticker")}
 
     # ③ sm → ④ golden(golden 讀 ③ 的 sm_states,不重跑;#30)
-    sm_states = _sm.run_all(window)
-    golden_result = _golden.run(window, sm_states=sm_states)
+    sm_states = _sm.run_all(window, correction=correction)
+    golden_result = _golden.run(window, sm_states=sm_states, correction=correction)
 
     gate_passing: dict[str, Any] = {}
     for e in (golden_result.prime + golden_result.strong + golden_result.qualified):

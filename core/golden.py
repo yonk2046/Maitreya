@@ -447,7 +447,8 @@ def _latest_sector_rank(snapshots: list[dict]) -> list[str]:
 
 # ── Main public API ───────────────────────────────────────────────────────────
 
-def run(snapshots: list[dict], sm_states: dict | None = None) -> GoldenResult:
+def run(snapshots: list[dict], sm_states: dict | None = None, *,
+        correction: bool = False) -> GoldenResult:
     """
     Run the full Golden Layer v2 over all snapshots.
     Returns a GoldenResult with tickers ranked by conviction within each tier.
@@ -458,6 +459,9 @@ def run(snapshots: list[dict], sm_states: dict | None = None) -> GoldenResult:
         sm_states here so golden **改讀已落地 sm、不重跑 state_machine**（治
         NOTES #30 雙真相病 — golden.py 內部 sm_run_all 是唯一的重算來源）。
         None（viewer/CLI 舊路徑）→ 內部自行 run_all，行為 bit-identical。
+    correction: feature_flags.engine_correction_v1 — passed to funnel/state
+        machine (absent days break streaks, whole-market breadth gate). The
+        caller that supplies sm_states must have computed them with the same flag.
     """
     if not snapshots:
         return GoldenResult(date="—", snapshot_count=0)
@@ -466,9 +470,9 @@ def run(snapshots: list[dict], sm_states: dict | None = None) -> GoldenResult:
 
     # Run both upstream engines. sm_states is read from the pipeline's already-
     # landed state (no re-compute) when provided — see docstring / NOTES #30.
-    funnel_result: FunnelResult = funnel_run(snapshots)
+    funnel_result: FunnelResult = funnel_run(snapshots, correction=correction)
     if sm_states is None:
-        sm_states = sm_run_all(snapshots)
+        sm_states = sm_run_all(snapshots, correction=correction)
 
     # Build quick funnel lookup: ticker → CandidateRecord
     funnel_map = {}

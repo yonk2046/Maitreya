@@ -70,6 +70,8 @@ from core.market_context import (
     failed_breakout_memory,
     regime_shift,
     weakening_profile,
+    ticker_records,
+    present_only,
 )
 from core.sector_intelligence import (
     build_sector_map,
@@ -332,6 +334,7 @@ def _assign_state(
     breadth_series: list[float],   # market breadth per snap
     sm=None,
     weak_flags: frozenset[str] = frozenset(),  # weakening_profile flag codes for this window
+    correction: bool = False,                  # feature_flags.engine_correction_v1
 ) -> str:
     """
     Assign the RAW state for one ticker at the end of this window.
@@ -342,12 +345,15 @@ def _assign_state(
     weakening_profile flag codes (W1–W5) — the single source of truth for
     sell-side evidence.
     """
-    if not records:
+    # correction: `records` is windowed (absent days = mfb 0, _absent) → presence
+    # is counted on present records only; streak/velocity see the gaps (AUDIT G3).
+    present = present_only(records)
+    if not present:
         # Check if recently exited
         return S_UNDISCOVERED
 
-    appearances = len(records)
-    record_dates = {r.get("date", "") for r in records}
+    appearances = len(present)
+    record_dates = {r.get("date", "") for r in present}
 
     # Check EXITED: last ABSENT_EXITED snapshot dates all missing
     tail_dates = snapshot_dates[-ABSENT_EXITED:]
@@ -355,13 +361,16 @@ def _assign_state(
         return S_EXITED
 
     # Basic metrics
-    mfb_vals = [r.get("main_force_buy") for r in records if r.get("main_force_buy") is not None]
+    mfb_vals = [r.get("main_force_buy") for r in present if r.get("main_force_buy") is not None]
     if not mfb_vals:
         return S_DISCOVERED
+    # latest main-force value: today's (0 when absent) under correction; legacy =
+    # the last PRESENT value (which is how an absent ticker kept looking "buying").
+    mfb_latest = (records[-1].get("main_force_buy") or 0) if correction else mfb_vals[-1]
 
     acc  = accumulation_velocity(ticker, records)
-    sp   = sponsorship_persistence(ticker, records)
-    fb   = failed_breakout_memory(ticker, records)
+    sp   = sponsorship_persistence(ticker, present)
+    fb   = failed_breakout_memory(ticker, present)
     sector = sm.sector_of(ticker) if sm else "other"
 
     streak  = acc["streak"]
@@ -396,7 +405,6 @@ def _assign_state(
     # velocity computed from present-day records stays positive when the
     # ticker simply disappears, so it must trigger the branch directly.
     if was_strong and (vel_negative or accel_negative or "W3" in weak_flags):
-        mfb_latest = mfb_vals[-1]
         sell_evidence = (mfb_latest < 0) or bool({"W3", "W5"} & weak_flags)
         if sell_evidence:
             return S_DISTRIBUTING
@@ -422,7 +430,7 @@ def _assign_state(
         return S_STRENGTHENING
 
     # ── ACCUMULATING ──────────────────────────────────────────────────────
-    if streak >= STREAK_ACCUMULATING and mfb_vals and mfb_vals[-1] > 0:
+    if streak >= STREAK_ACCUMULATING and mfb_latest > 0:
         return S_ACCUMULATING
 
     # ── DISCOVERED ────────────────────────────────────────────────────────
@@ -507,6 +515,7 @@ def _raw_state_seq(
     breadth_series: list[float],
     sm=None,
     branch_data: dict | None = None,
+    correction: bool = False,
 ) -> list[tuple[str, str, int]]:
     """Per-snapshot RAW classification. Returns [(date, raw_state, streak)]."""
     seq: list[tuple[str, str, int]] = []
@@ -515,17 +524,13 @@ def _raw_state_seq(
         srh      = rank_history[:i]
         sbs      = breadth_series[:i]
         s_dates  = [s.get("date", "") for s in sub]
-        records  = [
-            {**s_rec, "date": snap.get("date", "")}
-            for snap in sub
-            for s_rec in snap.get("stocks", [])
-            if s_rec.get("ticker") == ticker
-        ]
+        records  = ticker_records(ticker, sub, absent_as_zero=correction)
         # Single source of truth for sell-side evidence (W flags)
-        weak = weakening_profile(ticker, sub, branch_data)
+        weak = weakening_profile(ticker, sub, branch_data, correction=correction)
         wf = frozenset(f.get("code", "") for f in weak.get("flags", []))
-        state = _assign_state(ticker, records, s_dates, srh, sbs, sm, weak_flags=wf)
-        streak = accumulation_velocity(ticker, records)["streak"] if records else 0
+        state = _assign_state(ticker, records, s_dates, srh, sbs, sm, weak_flags=wf,
+                              correction=correction)
+        streak = accumulation_velocity(ticker, records)["streak"] if present_only(records) else 0
         seq.append((snapshots[i - 1].get("date", ""), state, streak))
     return seq
 
@@ -636,12 +641,14 @@ def _build_state_history(
     breadth_series: list[float],
     sm=None,
     branch_data: dict | None = None,
+    correction: bool = False,
 ) -> tuple[list[str], list[StateTransition], str, list[dict[str, str]], int]:
     """
     Walk each snapshot window: raw classify → commit (debounce/veto).
     Returns (history_deduped, transitions, current_state, events, flips_30d).
     """
-    raw_seq = _raw_state_seq(ticker, snapshots, rank_history, breadth_series, sm, branch_data)
+    raw_seq = _raw_state_seq(ticker, snapshots, rank_history, breadth_series, sm, branch_data,
+                             correction=correction)
     committed, events = _commit_states(raw_seq)
 
     history: list[str] = []
@@ -709,9 +716,27 @@ def _days_and_entry(
     return len(snapshot_dates), snapshot_dates[0] if snapshot_dates else None
 
 
+# ── Market breadth for the CONFIRMED gate ────────────────────────────────────
+
+def _breadth_series(snapshots: list[dict], correction: bool) -> list[float]:
+    """Per-snapshot breadth for SM_BREADTH_CONFIRMED.
+
+    Legacy: market_context.regime_shift = share of the BUY-LIST with mfb > 0,
+    ≈ 1.0 by construction (#41) → the gate never binds (AUDIT G9).
+    correction (feature_flags.engine_correction_v1): whole-market advancers/total
+    from the WORM market_pulse per-date file (core.market_family.compute_breadth,
+    same source as obs_market_breadth). Missing/errored pulse → 0.0 (fail-closed:
+    no CONFIRMED without positive evidence of a healthy market).
+    """
+    if not correction:
+        return regime_shift(snapshots).get("breadth_series", [0.0] * len(snapshots))
+    from core.market_family import compute_breadth   # lazy: market_family imports this module
+    return [compute_breadth(s.get("date", ""))["breadth"] or 0.0 for s in snapshots]
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def compute(ticker: str, snapshots: list[dict]) -> TickerState:
+def compute(ticker: str, snapshots: list[dict], *, correction: bool = False) -> TickerState:
     """Compute the full TickerState for one ticker across all snapshots."""
     if not snapshots:
         return _empty_ticker_state(ticker, "")
@@ -719,31 +744,26 @@ def compute(ticker: str, snapshots: list[dict]) -> TickerState:
     name_map    = build_name_map(snapshots)
     sm          = build_sector_map(snapshots)
     rh          = _sector_rank_per_snap(snapshots, sm)
-    reg         = regime_shift(snapshots)
-    breadth_s   = reg.get("breadth_series", [0.0] * len(snapshots))
+    breadth_s   = _breadth_series(snapshots, correction)
     snap_dates  = [s.get("date", "") for s in snapshots]
 
-    # Build records
-    records = [
-        {**rec, "date": snap.get("date", "")}
-        for snap in snapshots
-        for rec in snap.get("stocks", [])
-        if rec.get("ticker") == ticker
-    ]
+    # Build records (windowed when correction)
+    records = ticker_records(ticker, snapshots, absent_as_zero=correction)
+    present = present_only(records)
 
     # Full history + transitions + current state (single committed pipeline —
     # current state IS the committed sequence tail, never diverges from history)
     history, transitions, state, events, flips = _build_state_history(
-        ticker, snapshots, rh, breadth_s, sm)
+        ticker, snapshots, rh, breadth_s, sm, correction=correction)
 
     # Days in state
     days_in, entered = _days_and_entry(transitions, state, snap_dates)
 
     # Metrics
-    mfb_vals = [r.get("main_force_buy") for r in records if r.get("main_force_buy") is not None]
+    mfb_vals = [r.get("main_force_buy") for r in present if r.get("main_force_buy") is not None]
     acc  = accumulation_velocity(ticker, records) if mfb_vals else {}
-    sp   = sponsorship_persistence(ticker, records)
-    fb   = failed_breakout_memory(ticker, records)
+    sp   = sponsorship_persistence(ticker, present)
+    fb   = failed_breakout_memory(ticker, present)
 
     # Risk
     risk_level, risk_factors = _compute_risk(state, acc, sp, fb, records, snap_dates)
@@ -778,18 +798,20 @@ def compute(ticker: str, snapshots: list[dict]) -> TickerState:
     )
 
 
-def run_all(snapshots: list[dict]) -> dict[str, TickerState]:
+def run_all(snapshots: list[dict], *, correction: bool = False) -> dict[str, TickerState]:
     """
     Compute TickerState for every ticker seen across all snapshots.
     Returns {ticker: TickerState}.
+
+    correction: feature_flags.engine_correction_v1 — absent days break streaks
+    (AUDIT G3) and the CONFIRMED breadth gate reads whole-market breadth (G9).
     """
     if not snapshots:
         return {}
 
     sm         = build_sector_map(snapshots)
     rh         = _sector_rank_per_snap(snapshots, sm)
-    reg        = regime_shift(snapshots)
-    breadth_s  = reg.get("breadth_series", [0.0] * len(snapshots))
+    breadth_s  = _breadth_series(snapshots, correction)
     snap_dates = [s.get("date", "") for s in snapshots]
     name_map   = build_name_map(snapshots)
 
@@ -803,21 +825,17 @@ def run_all(snapshots: list[dict]) -> dict[str, TickerState]:
     result: dict[str, TickerState] = {}
 
     for ticker in sorted(all_tickers):
-        records = [
-            {**rec, "date": snap.get("date", "")}
-            for snap in snapshots
-            for rec in snap.get("stocks", [])
-            if rec.get("ticker") == ticker
-        ]
+        records = ticker_records(ticker, snapshots, absent_as_zero=correction)
+        present = present_only(records)
 
         history, transitions, state, events, flips = _build_state_history(
-            ticker, snapshots, rh, breadth_s, sm)
+            ticker, snapshots, rh, breadth_s, sm, correction=correction)
         days_in, entered = _days_and_entry(transitions, state, snap_dates)
 
-        mfb_vals = [r.get("main_force_buy") for r in records if r.get("main_force_buy") is not None]
+        mfb_vals = [r.get("main_force_buy") for r in present if r.get("main_force_buy") is not None]
         acc  = accumulation_velocity(ticker, records) if mfb_vals else {}
-        sp   = sponsorship_persistence(ticker, records)
-        fb   = failed_breakout_memory(ticker, records)
+        sp   = sponsorship_persistence(ticker, present)
+        fb   = failed_breakout_memory(ticker, present)
         risk_level, risk_factors = _compute_risk(state, acc, sp, fb, records, snap_dates)
 
         result[ticker] = TickerState(

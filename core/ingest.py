@@ -350,21 +350,26 @@ def ingest(
             "data": {"affected_universe_size": len(universe)},
         })
 
-    # Build per-stock records
-    stocks = []
-    for ticker in universe:
-        raw = raw_per_ticker[ticker]
-        rec = _abstain_stock_record(ticker, raw, has_branches=raw.get("_branches_present", False))
+    # feature_flags.engine_correction_v1 (2026-09-22, AUDIT-golden-list G1/G3/G9).
+    # Read from the config this snapshot is built with — replay passes the
+    # snapshot's RECORDED yaml, so snapshots built before the flag existed replay
+    # with the legacy semantics (docs/FEATURE_FLAGS.md F3; never an engine_params
+    # switch — as_config_dict() would leak it into every old snapshot's replay).
+    correction = bool((config.get("feature_flags") or {}).get("engine_correction_v1", False))
+    audit_events.append({
+        "ticker": None,
+        "event": "FEATURE_FLAG_RESOLVED",
+        "reason": f"engine_correction_v1={correction}",
+        "step": "core.ingest.feature_flags",
+        "data": {"flag": "engine_correction_v1", "value": correction, "default": False,
+                 "took_effect_at": date,
+                 "downstream_paths": ["stocks[].weakening", "stocks[].velocity_3d",
+                                      "stocks[].acceleration", "stocks[].fii_consecutive_buy_days",
+                                      "obs_sm_*", "obs_golden_*", "obs_chip_grade"]},
+    })
 
-        # P5: weakening_profile — deterministic, uses prior snapshots + branch data
-        # prior_snap_objects is None on bootstrap (first few days); weakening_profile
-        # handles empty list gracefully by returning _empty_weakening().
-        _wp = weakening_profile(
-            ticker,
-            prior_snap_objects or [],
-            raw.get("_branch_raw"),  # full branch dict for W5; None if no branches file
-        )
-        rec["weakening"] = {
+    def _weakening_obj(_wp: dict) -> dict:
+        return {
             "severity":        _wp["severity"],    # "red"|"orange"|"yellow"|"none"
             "flags":           _wp["flags"],        # list of {code, zh, detail}
             "flag_count":      _wp["flag_count"],
@@ -375,11 +380,30 @@ def ingest(
             "snaps_since_seen": _wp.get("snaps_since_seen", 0),
         }
 
+    # Build per-stock records
+    stocks = []
+    for ticker in universe:
+        raw = raw_per_ticker[ticker]
+        rec = _abstain_stock_record(ticker, raw, has_branches=raw.get("_branches_present", False))
+
+        # P5: weakening_profile — deterministic, uses prior snapshots + branch data
+        # prior_snap_objects is None on bootstrap (first few days); weakening_profile
+        # handles empty list gracefully by returning _empty_weakening().
+        # Legacy: judged on the PRIOR window only (latest = yesterday) → W3 fired on
+        # the day a ticker came back (AUDIT G1). Under correction it is computed
+        # after the loop, on prior + today (see below).
+        if not correction:
+            rec["weakening"] = _weakening_obj(weakening_profile(
+                ticker,
+                prior_snap_objects or [],
+                raw.get("_branch_raw"),  # full branch dict for W5; None if no branches file
+            ))
+
         # P3b temporal enrichment — deterministic, same prior_snap_objects as
         # weakening (replay-safe). Populates the time-series fields gates + the
         # paper-trading engine consume. Does NOT activate scoring (tier/gates
         # still abstained below); this only fills observation fields.
-        _te = temporal_enrich(ticker, prior_snap_objects or [], rec)
+        _te = temporal_enrich(ticker, prior_snap_objects or [], rec, correction=correction)
         rec["velocity_3d"]                 = _te["velocity_3d"]
         rec["acceleration"]                = _te["acceleration"]
         # 1.8.0:三個明確命名的衍生欄位(取代過去單一含糊的 main_force_consecutive_days)
@@ -400,6 +424,16 @@ def ingest(
             rec["sync_streak"] = _te["sync_streak"]
 
         stocks.append(rec)
+
+    if correction:
+        # AUDIT G1: judge weakening on prior + TODAY (latest = the day being built).
+        _today_window = list(prior_snap_objects or []) + [{"date": date, "stocks": stocks}]
+        for rec in stocks:
+            rec["weakening"] = _weakening_obj(weakening_profile(
+                rec["ticker"], _today_window,
+                raw_per_ticker[rec["ticker"]].get("_branch_raw"),
+                correction=True,
+            ))
 
     # ══ O 態引擎管線 (obs_* 落地) ════════════════════════════════════════════
     # 呼叫順序 = 設計骨架(P2 §2c):breadth → regime → sm → golden → chip →
@@ -440,7 +474,7 @@ def ingest(
             "main_force_sell": _sr.get("main_force_sell_raw", []) or [],
         }
         per_ticker_obs = _obs_landing.compute_per_ticker_obs(
-            window, list(prior_snap_objects or []), dist_raw=dist_raw)
+            window, list(prior_snap_objects or []), dist_raw=dist_raw, correction=correction)
         for rec in stocks:
             obs = per_ticker_obs.get(rec["ticker"])
             if obs:

@@ -49,6 +49,8 @@ from core.market_context import (
     sponsorship_persistence,
     failed_breakout_memory,
     full_ticker_context,
+    ticker_records,
+    present_only,
 )
 from core.sector_intelligence import (
     build_sector_map,
@@ -304,30 +306,33 @@ def _assign_layer_single(
     snapshots: list[dict],
     rank_history: list[list[str]],
     sm=None,
+    *,
+    correction: bool = False,
 ) -> str:
-    """Assign funnel layer for one ticker given a snapshot window."""
+    """Assign funnel layer for one ticker given a snapshot window.
+
+    correction (feature_flags.engine_correction_v1): absent days break the
+    streak (ticker_records absent_as_zero) instead of being skipped (AUDIT G3).
+    """
     if sm is None:
         sm = build_sector_map(snapshots)
 
-    # Build per-ticker records
-    records: list[dict] = []
-    for snap in snapshots:
-        rec = next((s for s in snap.get("stocks", []) if s.get("ticker") == ticker), None)
-        if rec:
-            records.append({**rec, "date": snap.get("date", "")})
+    # Build per-ticker records (windowed when correction; present-only otherwise)
+    records = ticker_records(ticker, snapshots, absent_as_zero=correction)
+    present = present_only(records)
 
-    appearances = len(records)
+    appearances = len(present)
     if appearances < 2:
         return LAYER_DISCOVERY if appearances == 1 else LAYER_UNDISCOVERED
 
     # Check mfb data availability
-    mfb_vals = [r.get("main_force_buy") for r in records if r.get("main_force_buy") is not None]
+    mfb_vals = [r.get("main_force_buy") for r in present if r.get("main_force_buy") is not None]
     if not mfb_vals:
         return LAYER_DISCOVERY
 
     acc  = accumulation_velocity(ticker, records)
-    sp   = sponsorship_persistence(ticker, records)
-    fb   = failed_breakout_memory(ticker, records)
+    sp   = sponsorship_persistence(ticker, present)
+    fb   = failed_breakout_memory(ticker, present)
     ts   = sm.sector_of(ticker)
 
     streak  = acc["streak"]
@@ -360,10 +365,12 @@ def _assign_layer_single(
 
 # ── Main public API ───────────────────────────────────────────────────────────
 
-def run(snapshots: list[dict]) -> FunnelResult:
+def run(snapshots: list[dict], *, correction: bool = False) -> FunnelResult:
     """
     Run the full funnel over all snapshots.
     Returns a FunnelResult with tickers sorted by priority within each layer.
+
+    correction: feature_flags.engine_correction_v1 (see _assign_layer_single).
     """
     if not snapshots:
         return FunnelResult(date="—", snapshot_count=0)
@@ -389,18 +396,15 @@ def run(snapshots: list[dict]) -> FunnelResult:
     result = FunnelResult(date=date, snapshot_count=len(snapshots))
 
     for ticker in sorted(all_tickers):
-        # Build records for this ticker
-        records: list[dict] = []
-        for snap in snapshots:
-            rec = next((s for s in snap.get("stocks", []) if s.get("ticker") == ticker), None)
-            if rec:
-                records.append({**rec, "date": snap.get("date", "")})
+        # Build records for this ticker (windowed when correction)
+        records = ticker_records(ticker, snapshots, absent_as_zero=correction)
+        present = present_only(records)
 
-        if len(records) < 1:
+        if len(present) < 1:
             continue
 
         # Compute layer
-        layer = _assign_layer_single(ticker, snapshots, rh, sm)
+        layer = _assign_layer_single(ticker, snapshots, rh, sm, correction=correction)
         if layer == LAYER_UNDISCOVERED:
             continue  # don't surface undiscovered
 
@@ -408,7 +412,7 @@ def run(snapshots: list[dict]) -> FunnelResult:
         prior_layer = None
         if prev_snaps:
             prev_rh = rh[:-1] if len(rh) > 1 else rh
-            prior_layer = _assign_layer_single(ticker, prev_snaps, prev_rh, sm)
+            prior_layer = _assign_layer_single(ticker, prev_snaps, prev_rh, sm, correction=correction)
             if prior_layer == layer:
                 prior_layer = None  # no change
 
@@ -420,7 +424,7 @@ def run(snapshots: list[dict]) -> FunnelResult:
             srh  = rh[: i + 1]
             if not sub:
                 break
-            l_i = _assign_layer_single(ticker, sub, srh, sm)
+            l_i = _assign_layer_single(ticker, sub, srh, sm, correction=correction)
             if l_i == layer:
                 days_in += 1
                 entered = snapshots[i].get("date")
@@ -428,10 +432,10 @@ def run(snapshots: list[dict]) -> FunnelResult:
                 break
 
         # Metrics
-        mfb_vals = [r.get("main_force_buy") for r in records if r.get("main_force_buy") is not None]
+        mfb_vals = [r.get("main_force_buy") for r in present if r.get("main_force_buy") is not None]
         acc  = accumulation_velocity(ticker, records) if mfb_vals else {}
-        sp   = sponsorship_persistence(ticker, records)
-        fb   = failed_breakout_memory(ticker, records)
+        sp   = sponsorship_persistence(ticker, present)
+        fb   = failed_breakout_memory(ticker, present)
 
         # Days since last failure
         days_since_fail: int | None = None
