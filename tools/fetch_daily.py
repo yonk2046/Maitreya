@@ -548,6 +548,18 @@ def run(dry_run=False, date_str=None):
     # Resolve trading date from TWSE (authoritative) or fallback
     trading_date = derive_trading_date(twse_result if not twse_err else None)
 
+    # A4 (2026-09-22): open / volume / change for the RESOLVED session from TWSE
+    # MI_INDEX?date= — STOCK_DAY_ALL lags a day in the evening. Failure → None and
+    # the adapter keeps the STOCK_DAY_ALL maps (no worse than before).
+    quotes_by_date = None
+    if trading_date and len(trading_date) == 10:
+        from fetch_twse import fetch_quotes_by_date
+        quotes_by_date, _qbd_err = safe_fetch("twse_mi_index", fetch_quotes_by_date,
+                                              trading_date.replace("-", ""))
+        if _qbd_err:
+            print(f"[fetch_daily] MI_INDEX by-date failed ({_qbd_err}); "
+                  f"falling back to STOCK_DAY_ALL", file=sys.stderr)
+
     output = {
         "date": trading_date,          # 主要 date 欄 = 交易日 (e.g. 5/15 even when fetched on 5/17)
         "tradingDate": trading_date,   # 交易日（資料代表的日期）
@@ -561,6 +573,7 @@ def run(dry_run=False, date_str=None):
         "volRows": vol_rows,
         "openPrices": (twse_result.get("openPrices", {}) if not twse_err else {}),  # {code: 開盤價} 全市場, for backtest 次日開盤結算
         "marketQuotes": (twse_result.get("marketQuotes", {}) if not twse_err else {}),  # {code: {vol張, close, chgPct真%, chgAmt元}} 全市場 (A2 fix)
+        "quotesByDate": quotes_by_date,  # A4: {date yyyymmdd, openPrices, marketQuotes} 當日 session(MI_INDEX 按日期),adapter 優先
         "marketMeta": market_meta,
         "stage3Prefill": stage3_prefill,
         "crossSignals": cross,         # 三榜 + 雙榜共現

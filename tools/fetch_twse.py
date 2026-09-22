@@ -14,6 +14,65 @@ MI_MARGN_URL   = "https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN"
 STOCK_DAY_ALL_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 
 
+# A4 (2026-09-22): session-dated full-market quotes. STOCK_DAY_ALL (OpenAPI) only
+# serves "the latest day" and still shows the PREVIOUS session in the evening —
+# 95% of 18–19h snapshot `open` were yesterday's, and the same payload fed
+# market_volume/change_pct (AUDIT-golden-list-20260922 §8, EXEC-PLAN §7.1).
+MI_INDEX_BY_DATE_URL = ("https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX"
+                        "?date={date}&type=ALLBUT0999&response=json")
+
+
+def _parse_mi_index_quotes(data) -> tuple[dict[str, float], dict[str, dict]]:
+    """Pure: TWSE MI_INDEX(date=…) → ({code: open}, {code: {vol張, close, chgPct真%, chgAmt元}}).
+
+    Same shapes as _parse_open_map/_parse_market_quotes. ETFs (00xx) skipped; a
+    blank open ("--", suspended) is simply absent. The sign of the move lives in
+    the "漲跌(+/-)" column as HTML (<p style= color:green>-</p>).
+    """
+    open_map: dict[str, float] = {}
+    quotes: dict[str, dict] = {}
+    for t in (data or {}).get("tables") or []:
+        f = t.get("fields") or []
+        if not f or f[0] != "證券代號":
+            continue
+        need = ("開盤價", "收盤價", "成交股數", "漲跌(+/-)", "漲跌價差")
+        if not all(k in f for k in need):
+            continue
+        i = {k: f.index(k) for k in need}
+        for r in t.get("data") or []:
+            code = str(r[0]).strip()
+            if not code or code.startswith("00"):
+                continue
+            op = parse_float_safe(r[i["開盤價"]])
+            if op:
+                open_map[code] = op
+            close = parse_float_safe(r[i["收盤價"]])
+            if not close:
+                continue
+            chg = parse_float_safe(r[i["漲跌價差"]]) * (-1 if "-" in str(r[i["漲跌(+/-)"]]) else 1)
+            prev_close = close - chg
+            quotes[code] = {
+                "vol":    int(round(parse_int_safe(r[i["成交股數"]]) / 1000.0)),  # 張
+                "close":  close,
+                "chgPct": round(chg / prev_close * 100, 2) if prev_close else 0.0,
+                "chgAmt": chg,
+            }
+    return open_map, quotes
+
+
+def fetch_quotes_by_date(yyyymmdd: str) -> dict:
+    """Session-dated quotes for exactly `yyyymmdd`; raises unless TWSE confirms that date."""
+    log(f"[twse] fetching MI_INDEX {yyyymmdd} (session-dated open/close/volume)...")
+    data = http_get_json(MI_INDEX_BY_DATE_URL.format(date=yyyymmdd), timeout=30)
+    if data.get("stat") != "OK" or str(data.get("date")) != yyyymmdd:
+        raise ValueError(f"MI_INDEX {yyyymmdd}: stat={data.get('stat')} date={data.get('date')}")
+    open_map, quotes = _parse_mi_index_quotes(data)
+    if not open_map:
+        raise ValueError(f"MI_INDEX {yyyymmdd}: no open prices parsed")
+    log(f"[twse] MI_INDEX {yyyymmdd}: {len(open_map)} opens, {len(quotes)} quotes")
+    return {"date": yyyymmdd, "openPrices": open_map, "marketQuotes": quotes}
+
+
 def _parse_open_map(data) -> dict[str, float]:
     """Pure: TWSE STOCK_DAY_ALL rows → {code: opening_price}. ETFs (00xx) skipped."""
     out: dict[str, float] = {}

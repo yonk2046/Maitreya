@@ -437,6 +437,15 @@ def adapt_legacy(
     # chgPct was the NT$ move until the same-day fetch fix). Old raw archives
     # have no marketQuotes → both fall back to prior behaviour (replay-safe).
     market_quotes = today.get("marketQuotes") or {}
+    open_map = today.get("openPrices") or {}
+    # A4 (2026-09-22): session-dated quotes (TWSE MI_INDEX?date=) win when they
+    # belong to THIS snapshot's date. STOCK_DAY_ALL above is "latest day" and lags a
+    # session in the evening. Raw archives before A4 have no quotesByDate → the
+    # maps above are kept, so historical replay is unchanged.
+    _qbd = today.get("quotesByDate") or {}
+    if _qbd.get("date") and _qbd.get("date") == str(target_date).replace("-", ""):
+        market_quotes = _qbd.get("marketQuotes") or {}
+        open_map = _qbd.get("openPrices") or {}
     for ticker, ri in raw_inputs_per_ticker.items():
         mq = market_quotes.get(ticker)
         if mq and mq.get("vol"):
@@ -447,10 +456,9 @@ def adapt_legacy(
             ri["change_pct"] = mq["chgPct"]          # TWSE authoritative real %
 
     # --- Merge next-day-settlement OPEN price (P3b backtest, spec §1) ---
-    # today.json["openPrices"] = {code: 開盤價} full-market (STOCK_DAY_ALL).
-    # None for historical snapshots whose today.json predates this field →
-    # backtest falls back to close (documented limitation).
-    open_map = today.get("openPrices") or {}
+    # open_map resolved above: session-dated MI_INDEX (A4) when available, else
+    # today.json["openPrices"] (STOCK_DAY_ALL). None for historical snapshots whose
+    # today.json predates both → backtest falls back to close (documented limitation).
     for ticker, ri in raw_inputs_per_ticker.items():
         ri["open"] = open_map.get(ticker)
 
