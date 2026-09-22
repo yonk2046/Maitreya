@@ -1,6 +1,6 @@
 # 失效模式索引（Failure Mode Index）
 
-> **狀態**:**已落地**(2026-07-28 核准,`b599b90`)。最後更新 2026-09-22:新增 F-17;F-10 補記 stale-fetch 守門員實證。(2026-09-15:新增 9 月斷更事故與 F-8 ~ F-16。)
+> **狀態**:**已落地**(2026-07-28 核准,`b599b90`)。最後更新 2026-09-22:新增 F-17、F-18~F-21(黃金名單稽核);F-10 補記 stale-fetch 守門員實證。(2026-09-15:新增 9 月斷更事故與 F-8 ~ F-16。)
 > **地位**：憲法（ARCHITECTURE_BLUEPRINT）之下。與 FORWARD-RISK-REGISTER 互補——
 > 登記簿寫「**還沒發生**、預判會發生」，本檔寫「**已經發生過**、必須不再發生」。
 > **紅線**：本檔不新增規範、不改判斷參數。它只做一件事——把已發生的事故按「軸」歸位，
@@ -117,8 +117,12 @@
 | F-15 | 子代理在錯的目錄工作 | P | 回報成功但主 checkout 毫無變化;測試數對不上 | 子代理 cwd 預設為 session 起始目錄(可能是舊 worktree) | *(流程:交辦寫死 `cd && pwd`、git 一律 `-C`)* | 9/15 |
 | F-16 | 本機備援的 log 在 rebase 後全部消失 | M | `launchd.out.log` 只有 starting/python;exit 0 卻看不到任何結果訊息 | log 檔被 git 追蹤且永遠 dirty,`git rebase --autostash` 換掉檔案,launchd 寫進已刪除的舊檔;`git add reports/` 還會把它們掃進資料 commit | `tests/test_launchd_logs_untracked.py`(`3d67801`+`2e416a1`) | 6/23–9/15 全期 |
 | F-17 | 本機 commit 卡住 → 之後每晚 rebase 衝突,Mac 備援無聲失效 | M·U | `launchd.out.log`:`push rejected … retrying` 後就沒下文;隔幾天出現 `rebase onto origin/main failed`;`git status` 顯示 ahead 1 | Mac 夜間睡眠讓 run 拖到清晨,push 被拒 → 重試的 `git fetch` 遇網路失敗 → `set -euo pipefail` 無聲中止;本機 data commit 與 origin 同日快照衝突 | *(待補:腳本自癒,handoff T9)*;目前人工清除並留 `backup/stranded-*` 分支 | 8/31、9/17 |
+| F-18 | 快照轉弱用前一天資料、「主力消失(W3)」方向相反 | T·S | W3 只在股票**回到**主力榜那天亮;策略在買盤回來那天出場 | `core/ingest.py:362` 以不含當天的 `prior_snap_objects` 算 weakening | *(待補)* | 5 月至今;120 次轉弱出場中 118 次(AUDIT-golden-list-20260922 G1) |
+| F-19 | 「主力買超」只算買方,系統看不到主力淨賣 | U·S | `main_force_buy` 幾乎全為正;賣方證據邏輯永不觸發 | 取 `totalBuyVol`(買方前 15 大),不扣 `totalSellVol`;無分點時取富邦買超榜(亦只有正數) | *(待補)* | 2,662 筆僅 2 筆 < 0;在榜時淨額本就為正(驗證過的 592 筆僅 1% 淨賣),賣壓在榜外:掉榜股 81% 淨賣卻無紀錄(同上 G2) |
+| F-20 | 缺席被當透明 → 連買=累計上榜天數;掉榜股仍掛黃金 | S | 黃金名單出現今天不在榜的 PRIME;連買天數異常大 | funnel/state machine/accumulation_velocity 只收有出現的日子 | *(待補)* | 黃金條目 28% 當天不在榜(同上 G3/G4) |
+| F-21 | 三份不同的黃金名單(畫面全歷史/快照 20 天窗口/回測全歷史) | S·P | 畫面與快照 `obs_golden_*` 對不上;前推紀錄記的不是畫面看到的 | `viewer/cockpit.py:1988` 用全部快照重算 | *(待補)* | 45 天中 24 天不同(同上 G5) |
 
-九列有守門員(含部分),八列留白——**留白的列就是接下來要做的事,不必再開會決定**。
+九列有守門員(含部分),十二列留白——**留白的列就是接下來要做的事,不必再開會決定**。
 優先序見 `MAITREYA_HANDOFF_20260915.md` §6;F-9 pipeline 端與 F-12 有日期壓力(2026-11 底前)。
 
 ---
