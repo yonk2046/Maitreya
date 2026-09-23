@@ -560,14 +560,22 @@ def run(dry_run=False, date_str=None):
     # A4 (2026-09-22): open / volume / change for the RESOLVED session from TWSE
     # MI_INDEX?date= — STOCK_DAY_ALL lags a day in the evening. Failure → None and
     # the adapter keeps the STOCK_DAY_ALL maps (no worse than before).
-    quotes_by_date = None
+    quotes_by_date = margin_by_date = None
     if trading_date and len(trading_date) == 10:
-        from fetch_twse import fetch_quotes_by_date
+        from fetch_twse import fetch_quotes_by_date, fetch_margin_by_date
         quotes_by_date, _qbd_err = safe_fetch("twse_mi_index", fetch_quotes_by_date,
                                               trading_date.replace("-", ""))
         if _qbd_err:
             print(f"[fetch_daily] MI_INDEX by-date failed ({_qbd_err}); "
                   f"falling back to STOCK_DAY_ALL", file=sys.stderr)
+        # A5② per-stock margin (MI_MARGN?date=): the market-total marketMeta above is
+        # NOT per stock, which is why margin_balance/margin_change were hardcoded None
+        # (registry: "pending, 恆 None") and W4 散戶接盤 never fired.
+        margin_by_date, _mbd_err = safe_fetch("twse_margin", fetch_margin_by_date,
+                                              trading_date.replace("-", ""))
+        if _mbd_err:
+            print(f"[fetch_daily] MI_MARGN by-date failed ({_mbd_err}); per-stock margin absent",
+                  file=sys.stderr)
 
     output = {
         "date": trading_date,          # 主要 date 欄 = 交易日 (e.g. 5/15 even when fetched on 5/17)
@@ -582,6 +590,7 @@ def run(dry_run=False, date_str=None):
         "volRows": vol_rows,
         "openPrices": (twse_result.get("openPrices", {}) if not twse_err else {}),  # {code: 開盤價} 全市場, for backtest 次日開盤結算
         "marketQuotes": (twse_result.get("marketQuotes", {}) if not twse_err else {}),  # {code: {vol張, close, chgPct真%, chgAmt元}} 全市場 (A2 fix)
+        "marginByDate": margin_by_date,  # A5②: {date yyyymmdd, rows{code:{balance,change}}} 個股融資(張)
         "quotesByDate": quotes_by_date,  # A4: {date yyyymmdd, openPrices, marketQuotes} 當日 session(MI_INDEX 按日期),adapter 優先
         "marketMeta": market_meta,
         "stage3Prefill": stage3_prefill,

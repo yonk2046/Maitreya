@@ -326,7 +326,20 @@ def temporal_enrich(
     # 缺日(seq_windowed 的 None)視為 level 0 → 中斷連續(與 resonance 一致)。
     sync_streak = _sync_streak_from_window(seq_windowed)
 
+    # A5② (correction): 10 日內「價跌融資增/減」天數 —— W4 散戶接盤的輸入。
+    # 個股融資自 feature_flags.engine_correction_v1 起才落地,故起步幾天計數必然偏低
+    # (誠實:沒有的歷史不回填,C10)。
+    pdm_up = pdm_down = None
+    if correction:
+        recent = [r for r in seq_windowed[-10:] if r is not None]
+        pdm_up = sum(1 for r in recent
+                     if (r.get("change_pct") or 0) < 0 and (r.get("margin_change") or 0) > 0)
+        pdm_down = sum(1 for r in recent
+                       if (r.get("change_pct") or 0) < 0 and (r.get("margin_change") or 0) < 0)
+
     return {
+        "price_down_margin_up_days_10d":   pdm_up,
+        "price_down_margin_down_days_10d": pdm_down,
         "velocity_3d":                 av["velocity_3d"],
         "acceleration":                av["acceleration"],
         "sync_streak":                 sync_streak,

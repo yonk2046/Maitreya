@@ -22,6 +22,44 @@ MI_INDEX_BY_DATE_URL = ("https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX"
                         "?date={date}&type=ALLBUT0999&response=json")
 
 
+MI_MARGN_BY_DATE_URL = ("https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN"
+                        "?date={date}&selectType=ALL&response=json")
+
+
+def _parse_margin_by_stock(data) -> dict[str, dict]:
+    """Pure: TWSE MI_MARGN(date=…, selectType=ALL) 融資融券彙總 → {code: {balance, change}}(張).
+
+    Row layout: 0 代號 1 名稱 | 融資 2 買進 3 賣出 4 現金償還 5 前日餘額 6 今日餘額 7 限額 |
+    融券 8..13 | 14 資券互抵 15 註記. Only 融資 (margin long) is used — that is the
+    retail-leverage signal W4 reads. ETFs (00xx) skipped, as in the other parsers.
+    """
+    out: dict[str, dict] = {}
+    for t in (data or {}).get("tables") or []:
+        f = t.get("fields") or []
+        if not f or f[0] != "代號" or len(f) < 8:
+            continue
+        for r in t.get("data") or []:
+            code = str(r[0]).strip()
+            if not code or code.startswith("00") or len(r) < 7:
+                continue
+            prev, today = parse_int_safe(r[5]), parse_int_safe(r[6])
+            out[code] = {"balance": today, "change": today - prev}
+    return out
+
+
+def fetch_margin_by_date(yyyymmdd: str) -> dict:
+    """Per-stock 融資餘額 for exactly `yyyymmdd`; raises unless TWSE confirms that date."""
+    log(f"[twse] fetching MI_MARGN {yyyymmdd} (per-stock margin)...")
+    data = http_get_json(MI_MARGN_BY_DATE_URL.format(date=yyyymmdd), timeout=30)
+    if data.get("stat") != "OK" or str(data.get("date")) != yyyymmdd:
+        raise ValueError(f"MI_MARGN {yyyymmdd}: stat={data.get('stat')} date={data.get('date')}")
+    rows = _parse_margin_by_stock(data)
+    if not rows:
+        raise ValueError(f"MI_MARGN {yyyymmdd}: no per-stock rows parsed")
+    log(f"[twse] MI_MARGN {yyyymmdd}: {len(rows)} stocks")
+    return {"date": yyyymmdd, "rows": rows}
+
+
 def _parse_mi_index_quotes(data) -> tuple[dict[str, float], dict[str, dict]]:
     """Pure: TWSE MI_INDEX(date=…) → ({code: open}, {code: {vol張, close, chgPct真%, chgAmt元}}).
 

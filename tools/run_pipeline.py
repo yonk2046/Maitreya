@@ -131,6 +131,13 @@ def _write_strategy_tags(target_date: str) -> None:
             f"缺 {set(ALL_STRATEGIES) - set(_STRATEGY_TAG_KEYS.values())}, "
             f"多 {set(_STRATEGY_TAG_KEYS.values()) - set(ALL_STRATEGIES)}")
         chain = _load_chain_upto(target_date)
+        # A6/S5: same 20-day window the pipeline (and now the backtest) judge on —
+        # a badge must mean the same thing as the snapshot's obs_golden_*.
+        import datetime as _dt
+        _d0 = _dt.date.fromisoformat(target_date)
+        chain = [s for s in chain
+                 if 0 <= (_d0 - _dt.date.fromisoformat(s["date"])).days
+                 <= int((_load_config().get("temporal") or {}).get("lookback_window_days", 20))] or chain
         strategies = {k: ALL_STRATEGIES[name] for k, name in _STRATEGY_TAG_KEYS.items()}
         # feature_flags.engine_correction_v1 as RECORDED by the snapshot just built
         # (as-was; keeps the badges on the same semantics as that snapshot's obs_golden_*).

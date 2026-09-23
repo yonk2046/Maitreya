@@ -281,6 +281,9 @@ BACKTEST_ADD_MIN_PRICE_MULT = 0.98  # 3.2:加碼價必須 ≥ 前次進場價 ×
 BACKTEST_COST_FULL_TIER = 1.05  # 4.3 進場層3:價/本 ≤ 此 → 1.0 單位(滿倉);此上限至 COST_CAP → 0.5 單位
 BACKTEST_COST_CAP       = 1.15  # 4.3 進場層3:價/本 > 此 → 不進場(放寬後的成本閘門上界)。Part 5 掃描 {1.05,1.10,1.15,1.20}
 BACKTEST_COST_BREAK     = 0.92  # 4.3 S1 硬熔斷:現價 < entry_cost_anchor × 此 → 出(不依賴籌碼旗標)。Part 5 掃描 {0.90,0.92,0.95}
+BACKTEST_GOLDEN_WINDOW_DAYS = 20  # A6:回測的黃金名單窗口 = pipeline 的 lookback_window_days
+                                  # (config/scd.example.yaml temporal)。從前用「全歷史切片」→ 與快照
+                                  # obs_golden_* 不同名單,且成本隨快照數立方成長(FORWARD-RISK R13)。
 BACKTEST_ENTRY_STOP     = 0.93  # 4.3 S2 進場價止損:現價 < 進場價 × 此 → 出(不依賴籌碼旗標)。Part 5 掃描 {0.93,0.95,無}
 
 

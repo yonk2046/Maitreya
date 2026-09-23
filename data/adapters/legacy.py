@@ -462,6 +462,18 @@ def adapt_legacy(
     for ticker, ri in raw_inputs_per_ticker.items():
         ri["open"] = open_map.get(ticker)
 
+    # --- A5② per-stock margin (TWSE MI_MARGN?date=) ---------------------------
+    # Only when the payload belongs to THIS snapshot's date; old archives have no
+    # marginByDate → raw keys stay absent → ingest keeps the historical None.
+    _mbd = today.get("marginByDate") or {}
+    if _mbd.get("date") and _mbd.get("date") == str(target_date).replace("-", ""):
+        _mrows = _mbd.get("rows") or {}
+        for ticker, ri in raw_inputs_per_ticker.items():
+            m = _mrows.get(ticker)
+            if m:
+                ri["margin_balance"] = m.get("balance")
+                ri["margin_change"] = m.get("change")
+
     # --- Merge T86 三大法人 data into per-ticker raw_inputs ---
     # today.json["t86"] = { code: {foreign, trust, prop, total3} } all in 張
     # 兩段式快照 (2026-07-07,schema 1.8.1):T86 必須屬於快照當日 — t86Date

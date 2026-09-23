@@ -145,7 +145,8 @@ def _environment_block(repo_root: str | os.PathLike | None = None) -> dict:
     }
 
 
-def _abstain_stock_record(ticker: str, raw: dict, has_branches: bool) -> dict:
+def _abstain_stock_record(ticker: str, raw: dict, has_branches: bool,
+                          correction: bool = False) -> dict:
     """Build a StockRecord with all scoring fields abstained."""
     # buy_vol_lots from rollup buyList is NET buy (can be negative); volume must be >=0 or null.
     buy_vol = raw.get("buy_vol_lots")
@@ -211,8 +212,11 @@ def _abstain_stock_record(ticker: str, raw: dict, has_branches: bool) -> dict:
         "large_holder_1000_pct":              raw.get("large_holder_1000_pct"),
         "large_holder_1000_delta_pct":        raw.get("large_holder_1000_delta_pct"),
 
-        "margin_balance":                    None,
-        "margin_change":                     None,
+        # A5② (feature_flags.engine_correction_v1): 個股融資餘額/增減 —— 在此之前
+        # 恆 None(registry "pending"),W4 散戶接盤因此整期失效。旗標關閉時維持 None,
+        # 讓上線日之前的行為(含資料完整度分級)逐位元不變。
+        "margin_balance":                    raw.get("margin_balance") if correction else None,
+        "margin_change":                     raw.get("margin_change") if correction else None,
         "margin_maintenance_ratio":          None,
         "price_down_margin_down_days_10d":   None,
         "price_down_margin_up_days_10d":     None,
@@ -385,7 +389,8 @@ def ingest(
     stocks = []
     for ticker in universe:
         raw = raw_per_ticker[ticker]
-        rec = _abstain_stock_record(ticker, raw, has_branches=raw.get("_branches_present", False))
+        rec = _abstain_stock_record(ticker, raw, has_branches=raw.get("_branches_present", False),
+                                    correction=correction)
 
         # P5: weakening_profile — deterministic, uses prior snapshots + branch data
         # prior_snap_objects is None on bootstrap (first few days); weakening_profile
@@ -418,6 +423,9 @@ def ingest(
         rec["volume_ratio"]                = _te["volume_ratio"]
         rec["volume_increasing_streak"]    = _te["volume_increasing_streak"]
         rec["main_force_volume_trend"]     = _te["main_force_volume_trend"]
+        if correction:   # A5②: W4 的 10 日計數(旗標關閉時維持 None)
+            rec["price_down_margin_up_days_10d"]   = _te["price_down_margin_up_days_10d"]
+            rec["price_down_margin_down_days_10d"] = _te["price_down_margin_down_days_10d"]
         # sync_streak — 1.9.0 (P2-W3, NOTES #35) O 欄,owner=temporal_enrich。
         # 只在正常 pipeline(obs_landing=True)落地;backfill 模式(obs_landing=False,
         # 只寫 I)不寫任何 O 欄(D-7「空掛點不寫欄」)。

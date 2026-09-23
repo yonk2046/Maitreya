@@ -31,6 +31,7 @@ from core.engine_params import (
     BACKTEST_COST_FULL_TIER,
     BACKTEST_ENTRY_STOP,
     BACKTEST_FEE_MIN,
+    BACKTEST_GOLDEN_WINDOW_DAYS,
     BACKTEST_FEE_RATE,
     BACKTEST_INITIAL_CAPITAL,
     BACKTEST_POSITION_SIZE,
@@ -91,6 +92,40 @@ _DISCLOSURE_NOTE = (
     "realized/unrealized 已分離(3.4)——未實現不得混入已實現統計。"
     "信賴區間一律以 independent_tickers(獨立標的數)計,非交易筆數。"
 )
+
+
+def _golden_window(snaps: list[dict], i: int) -> list[dict]:
+    """The snapshots the pipeline itself would have used on day i (A6/S5).
+
+    = prior snapshots within BACKTEST_GOLDEN_WINDOW_DAYS calendar days + day i.
+    Before this, the backtest ran golden.run(snaps[:i+1]) over the WHOLE history:
+    a different golden list from the one landed in the snapshot (obs_golden_*),
+    and cost that grows ~cubically with corpus size (R13, 11 月底期限).
+    """
+    import datetime as _dt
+    try:
+        d0 = _dt.date.fromisoformat(snaps[i].get("date", ""))
+    except ValueError:
+        return snaps[: i + 1]
+    out = []
+    for s in snaps[: i + 1]:
+        try:
+            d = _dt.date.fromisoformat(s.get("date", ""))
+        except ValueError:
+            continue
+        if 0 <= (d0 - d).days <= BACKTEST_GOLDEN_WINDOW_DAYS:
+            out.append(s)
+    return out or snaps[: i + 1]
+
+
+def _as_was_correction(snap: dict) -> bool:
+    """feature_flags.engine_correction_v1 as RECORDED by that snapshot (as-was, C10).
+
+    A backtest spanning the 2026-10-05 cutover must judge each day with the
+    semantics that day's snapshot was built with — never today's config.
+    """
+    cs = (snap.get("config_snapshot") or {}).get("yaml") or {}
+    return bool((cs.get("feature_flags") or {}).get("engine_correction_v1", False))
 
 
 def _rec_for(snap: dict, ticker: str) -> dict | None:
@@ -212,9 +247,13 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
         # ---- new entries (decide on i, execute on i+1) ----
         # 進場判斷共用 core.strategies.would_enter — 回測與 UI 標示的單一事實來源
         # (治理紅線 5)。切片 snaps[:i+1] 防前視;chip 型共用當日 golden.run(gres)。
+        _corr = _as_was_correction(decide)
+        # A6/S5: entry judgment sees exactly the pipeline's window (golden + temporal),
+        # so a backtest entry means the same thing as the snapshot's obs_golden_*.
+        _win = _golden_window(snaps, i)
         gres = None
         if chip:
-            gres = _golden.run(snaps[:i + 1])           # golden list as of day i (no look-ahead)
+            gres = _golden.run(_win, correction=_corr)   # golden list as of day i (no look-ahead)
         slice_upto = snaps[:i + 1]
 
         for rec in decide.get("stocks", []):
@@ -223,7 +262,8 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
                 continue
             if _in_cooldown(cooldown, ticker, i + 1):   # 3.3: 冷卻期內禁再進場
                 continue
-            ok, _reasons = would_enter(ticker, slice_upto, strategy, golden_result=gres)
+            ok, _reasons = would_enter(ticker, _win, strategy, golden_result=gres,
+                                       correction=_corr)
             if not ok:
                 continue
             fp = _fill_price(fill, ticker)
@@ -580,10 +620,14 @@ def _run_backtest_v2(snaps, dates, strategy, result):
         # ---- entries ----
         # 進場閘門共用 would_enter(治理紅線 5,與 v1/UI 同一實作);chip 型另留
         # golden_map 只為取 anchor(would_enter 已保證 chip 過閘者 ge 存在)。
+        _corr = _as_was_correction(decide)
+        # A6/S5: entry judgment sees exactly the pipeline's window (golden + temporal),
+        # so a backtest entry means the same thing as the snapshot's obs_golden_*.
+        _win = _golden_window(snaps, i)
         gres = None
         golden_map = {}
         if chip:
-            gres = _golden.run(snaps[:i + 1])
+            gres = _golden.run(_win, correction=_corr)
             golden_map = {e.ticker: e for e in (gres.prime + gres.strong)}
         for rec in decide.get("stocks", []):
             ticker = rec.get("ticker")
@@ -591,7 +635,8 @@ def _run_backtest_v2(snaps, dates, strategy, result):
                 continue
             if _in_cooldown(cooldown, ticker, i + 1):   # 3.3: 冷卻期內禁再進場
                 continue
-            ok, _reasons = would_enter(ticker, snaps[:i + 1], strategy, golden_result=gres)
+            ok, _reasons = would_enter(ticker, _win, strategy, golden_result=gres,
+                                       correction=_corr)
             if not ok:
                 continue
             anchor = None
@@ -713,10 +758,14 @@ def _run_backtest_v3(snaps, dates, strategy, result):
         # ---- new entries (decide on i, execute on i+1) ----
         # 進場閘門共用 would_enter(治理紅線 5);chip 型另留 golden_map 只為取 anchor
         # 供位階分流(would_enter 已保證過閘者 ge 存在)。切片 snaps[:i+1] 防前視。
+        _corr = _as_was_correction(decide)
+        # A6/S5: entry judgment sees exactly the pipeline's window (golden + temporal),
+        # so a backtest entry means the same thing as the snapshot's obs_golden_*.
+        _win = _golden_window(snaps, i)
         gres = None
         golden_map = {}
         if chip:
-            gres = _golden.run(snaps[:i + 1])
+            gres = _golden.run(_win, correction=_corr)
             golden_map = {e.ticker: e for e in (gres.prime + gres.strong)}
         for rec in decide.get("stocks", []):
             ticker = rec.get("ticker")
@@ -724,7 +773,8 @@ def _run_backtest_v3(snaps, dates, strategy, result):
                 continue
             if _in_cooldown(cooldown, ticker, i + 1):     # 3.3: 冷卻期內禁再進場
                 continue
-            ok, _reasons = would_enter(ticker, snaps[:i + 1], strategy, golden_result=gres)
+            ok, _reasons = would_enter(ticker, _win, strategy, golden_result=gres,
+                                       correction=_corr)
             if not ok:
                 continue
             ge = golden_map.get(ticker)

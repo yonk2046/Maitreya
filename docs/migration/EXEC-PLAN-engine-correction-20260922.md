@@ -25,8 +25,8 @@
 | A2 | 缺席不透明:連買/速度/狀態機改用含缺日的窗口序列(缺日 = 中斷) | G3、G4 | 黃金名單中「當天不在榜」= 0;影子比對數字重現 |
 | A3 | 狀態機廣度閘改讀 `obs_market_breadth`(全市場母體) | G9 | 判斷改變;**Yonki 9/22 已核准** |
 | A4 | `open` 改用 TWSE MI_INDEX 按日期的真開盤(原始檔進 archive;舊 archive 無此檔 → 沿用舊來源,replay 不變) | B1 | 生效日後 `open` 與 TWSE 當日開盤 100% 相符 |
-| A5 | 資料修補:①分點約 45% 非當天 → 查抓取流程並修;②`margin_*`、`broker_count_diff` 從未寫入 → 接線(MI_MARGN 已在抓) | 缺漏 #1、#4 | 連續 5 個交易日:當天分點覆蓋 ≥ 95%、margin 非空 ≥ 95% |
-| A6 | 回測(= T1):撮合用真開盤;黃金用 pipeline 同一 20 天窗口(成本變線性);掉榜持倉以價格 MTM、價格停損照常檢查 | B1–B3、T1 | 全語料回測 < 2 分鐘;黃金基準逐筆可解釋;掉榜持倉 0 凍結 |
+| A5 | ✅ ①分點抓取涵蓋整個快照宇宙(原因:清單上限 40 且今日主力買超排最後);②個股融資改抓 MI_MARGN?date=(原為市場總額,個股恆 None)+ W4 的 10 日計數,掛旗標。`broker_count_diff` 需全券商家數,現有來源算不出 → 留 Phase C | 缺漏 #1、#4 | 9/23 起 `verify_a4a5.py` 全 ✅;10/5 後 margin 非空 ≥ 95% |
+| A6 | 回測(= T1):**①✅ 黃金/時序改用 pipeline 同一 20 天窗口 + 依快照記錄的旗標(as-was)**(五支合計 360s+ → 26.9s,成本改為線性;交易數 swing 32→35);②撮合改真開盤;③掉榜持倉逐日 MTM 與價格停損 —— ②③ 需 `data/prices/<date>.json`(由 A4 已抓的 MI_INDEX 全市場行情裁切落地 + 一次性回補 5/08–9/22) | B1–B3、T1 | 全語料回測 < 2 分鐘 ✅;掉榜持倉 0 凍結(待②③) |
 | A7 | 畫面黃金名單改讀快照 `obs_golden_*`(BLUEPRINT Phase 3 的一部分) | G5 | 畫面 == 快照(逐日抽驗) |
 | A8 | 生效日上線後宣告**新凍結**:記新 hash、前推重新計時;更新 EXEC-PLAN-backtest-arc §六、handoff、ARCHITECTURE | — | `tests/test_strategy_freeze.py` 更新並綠 |
 
