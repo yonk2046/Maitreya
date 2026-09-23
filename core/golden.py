@@ -818,3 +818,49 @@ def display_tier(entry: "GoldenEntry", weakening_severity: str = "none") -> str:
     if entry.conviction >= TIER_STRONG:
         return DTIER_STRENGTHEN
     return DTIER_MID
+
+
+# ── A7 / AUDIT G5:畫面與快照的同一份黃金名單 ────────────────────────────────
+def _lookback_window(snapshots: list[dict], days: int) -> list[dict]:
+    """The prior snapshots the pipeline itself would have loaded (calendar days)."""
+    import datetime as _dt
+    try:
+        d0 = _dt.date.fromisoformat(snapshots[-1].get("date", ""))
+    except ValueError:
+        return snapshots
+    out = []
+    for s in snapshots:
+        try:
+            d = _dt.date.fromisoformat(s.get("date", ""))
+        except ValueError:
+            continue
+        if 0 <= (d0 - d).days <= days:
+            out.append(s)
+    return out or snapshots
+
+
+def run_as_landed(snapshots: list[dict]) -> GoldenResult:
+    """The golden list the pipeline actually landed in the LAST snapshot (A7, G5).
+
+    `run(whole_history)` — what the viewer used to call — produces a THIRD golden
+    list: it judges over every snapshot ever built and keeps tickers that left the
+    主力買超榜 days ago. The pipeline judges over the lookback window recorded by
+    that snapshot, with that snapshot's own feature flag (C10 as-was), and reports
+    only tickers on that day's list. Over the last 40 trading days this reproduces
+    obs_golden_tier exactly (40/40); whole-history differed on 27/40 and cost 20x.
+
+    Falls back to today's defaults for a snapshot with no recorded config (pre-C11
+    epochs) — such days have no obs_golden_* to agree with anyway.
+    """
+    from dataclasses import replace
+    if not snapshots:
+        return GoldenResult(date="", snapshot_count=0)
+    current = snapshots[-1]
+    yaml_cfg = (current.get("config_snapshot") or {}).get("yaml") or {}
+    days = int((yaml_cfg.get("temporal") or {}).get("lookback_window_days", 20))
+    correction = bool((yaml_cfg.get("feature_flags") or {}).get("engine_correction_v1", False))
+    on_list = {s.get("ticker") for s in current.get("stocks", [])}
+    result = run(_lookback_window(snapshots, days), correction=correction)
+    keep = lambda entries: [e for e in entries if e.ticker in on_list]  # noqa: E731
+    return replace(result, prime=keep(result.prime), strong=keep(result.strong),
+                   qualified=keep(result.qualified), near_miss=keep(result.near_miss))

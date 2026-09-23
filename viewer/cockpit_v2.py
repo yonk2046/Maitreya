@@ -38,7 +38,7 @@ from core.market_context import (
     full_ticker_context,
 )
 from core.watchlists import TIER_A, build_name_map, RADAR_TICKERS
-from core.golden     import run as golden_run, GoldenEntry, TIER_PRIME_KEY, TIER_STRONG_KEY, TIER_QUALIFIED_KEY
+from core.golden     import run_as_landed as golden_as_landed, GoldenEntry, TIER_PRIME_KEY, TIER_STRONG_KEY, TIER_QUALIFIED_KEY
 from core.confidence import run as confidence_run, ConfidenceProfile
 from core.state_machine import run_all as sm_run_all, state_summary as sm_state_summary, STATE_ZH, STATE_ORDER
 
@@ -271,7 +271,8 @@ def _load_market_pulse() -> dict:
 @st.cache_data(ttl=120, show_spinner=False)
 def _run_golden(snaps_key: str, snaps: list[dict]):
     """Cached golden layer run. snaps_key is a cache discriminator."""
-    return golden_run(snaps)
+    # A7/G5:與快照 obs_golden_* 同一份名單。
+    return golden_as_landed(snaps)
 
 
 @st.cache_data(ttl=120, show_spinner=False)

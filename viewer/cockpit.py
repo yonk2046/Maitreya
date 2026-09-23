@@ -1985,7 +1985,8 @@ def _snaps_key(snaps: list[dict]) -> str:
 
 @st.cache_data(ttl=120, show_spinner=False)
 def _run_golden(key: str, snaps: list[dict]) -> "_golden_mod.GoldenResult":
-    return _golden_mod.run(snaps)
+    # A7/G5:與快照 obs_golden_* 同一份名單(該快照記錄的窗口+旗標,只含當天在榜)。
+    return _golden_mod.run_as_landed(snaps)
 
 
 @st.cache_data(ttl=120, show_spinner=False)
