@@ -2,27 +2,27 @@
   "strategy": "chip_anchored_swing",
   "date_range": [
     "2026-05-08",
-    "2026-09-22"
+    "2026-09-23"
   ],
-  "trade_count": 32,
+  "trade_count": 33,
   "summary": {
-    "trades": 32,
-    "win_rate": 0.5938,
-    "avg_return": 0.0011,
-    "median_return": 0.0082,
-    "sharpe_per_trade": 0.01,
-    "avg_holding_days": 10.28,
+    "trades": 33,
+    "win_rate": 0.5758,
+    "avg_return": 0.0003,
+    "median_return": 0.008,
+    "sharpe_per_trade": 0.0,
+    "avg_holding_days": 11.21,
     "max_drawdown": -0.0645,
     "worst_single_trade": -0.3185,
     "exit_reasons": {
       "weakening": 31,
-      "end_of_data": 1
+      "end_of_data": 2
     },
     "net": {
-      "win_rate": 0.5938,
-      "avg_return": -0.0036,
-      "median_return": 0.0034,
-      "sharpe_per_trade": -0.04
+      "win_rate": 0.5758,
+      "avg_return": -0.0044,
+      "median_return": 0.0032,
+      "sharpe_per_trade": -0.05
     },
     "realized": {
       "trades": 31,
@@ -36,17 +36,17 @@
       }
     },
     "unrealized": {
-      "trades": 1,
-      "win_rate": 1.0,
-      "avg_return": 0.0084,
-      "median_return": 0.0084,
+      "trades": 2,
+      "win_rate": 0.5,
+      "avg_return": -0.008,
+      "median_return": -0.008,
       "net": {
-        "win_rate": 1.0,
-        "avg_return": 0.0037,
-        "median_return": 0.0037
+        "win_rate": 0.5,
+        "avg_return": -0.0127,
+        "median_return": -0.0127
       }
     },
-    "independent_tickers": 22,
+    "independent_tickers": 23,
     "disclosure": "頂層 avg_return/win_rate/median 含全部交易(含 end_of_data 未實現部位);realized/unrealized 已分離(3.4)——未實現不得混入已實現統計。信賴區間一律以 independent_tickers(獨立標的數)計,非交易筆數。",
     "cost_model": {
       "fee_rate": 0.000855,
@@ -213,19 +213,24 @@
       },
       {
         "date": "2026-09-22",
-        "equity": 981807.66,
-        "drawdown": -0.0346
+        "equity": 988001.16,
+        "drawdown": -0.0285
       },
       {
-        "date": "2026-09-22",
-        "equity": 988368.27,
-        "drawdown": -0.0281
+        "date": "2026-09-23",
+        "equity": 982940.88,
+        "drawdown": -0.0335
+      },
+      {
+        "date": "2026-09-23",
+        "equity": 985463.1,
+        "drawdown": -0.031
       }
     ],
     "alpha": {
-      "trades_with_benchmark": 32,
-      "trades_total": 32,
-      "avg_excess_return": -0.0011,
+      "trades_with_benchmark": 33,
+      "trades_total": 33,
+      "avg_excess_return": -0.0035,
       "period_buy_hold_return": 0.078,
       "note": "avg_excess_return = 策略平均報酬 − 同期(進場↔出場)大盤買入持有報酬(逐筆);period_buy_hold_return = 整段回測期間(date_range)大盤買入持有報酬,供對照——回答「策略總報酬是 alpha 還是 beta」看兩者相對大小。"
     },
@@ -233,14 +238,14 @@
       "note": "進場當日落地體制(obs_market_regime.regime_label_en)分組毛平均報酬;unlabeled = 該進場日快照無 obs_market_*(內部 pulse 僅 7/08 起)。R5:讀落地值,不重算。",
       "groups": {
         "Capital Waiting": {
-          "trades": 8,
-          "win_rate": 1.0,
-          "avg_return": 0.0295
+          "trades": 9,
+          "win_rate": 0.8889,
+          "avg_return": 0.0211
         },
         "Mild Risk-Off": {
           "trades": 7,
           "win_rate": 0.2857,
-          "avg_return": -0.012
+          "avg_return": -0.0089
         },
         "Mild Risk-On": {
           "trades": 1,
@@ -834,18 +839,38 @@
       }
     },
     {
+      "ticker": "3576",
+      "name": "聯合再生",
+      "entry_date": "2026-07-20",
+      "entry_price": 18.45,
+      "exit_date": "2026-09-23",
+      "exit_price": 17.6,
+      "return_pct": -0.0461,
+      "exit_reason": "end_of_data",
+      "holding_days": 40,
+      "units": 1.0,
+      "benchmark_return_pct": 0.0566,
+      "excess_return_pct": -0.1027,
+      "regime": {
+        "breadth": 0.3494,
+        "regime": "Capital Waiting",
+        "regime_zh": "資金觀望",
+        "temperature_level": "warm"
+      }
+    },
+    {
       "ticker": "2618",
       "name": "長榮航",
       "entry_date": "2026-07-31",
       "entry_price": 41.6,
-      "exit_date": "2026-09-22",
-      "exit_price": 41.95,
-      "return_pct": 0.0084,
+      "exit_date": "2026-09-23",
+      "exit_price": 42.85,
+      "return_pct": 0.03,
       "exit_reason": "end_of_data",
-      "holding_days": 30,
+      "holding_days": 31,
       "units": 1.0,
       "benchmark_return_pct": 0.0,
-      "excess_return_pct": 0.0084,
+      "excess_return_pct": 0.03,
       "regime": {
         "breadth": 0.8252,
         "regime": "Mild Risk-Off",
