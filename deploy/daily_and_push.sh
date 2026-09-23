@@ -49,11 +49,22 @@ done
 # ── 1. Sync with remote BEFORE generating anything ─────────────────────────
 # --autostash: the working tree usually has untracked/modified __pycache__
 # noise; a plain rebase would refuse to run on a dirty tree.
-git fetch origin main
+# F-17:`set -e` 會讓 fetch 失敗(DNS/網路)無聲中止整個腳本,本機 commit 就此卡住。
+# 每一個網路動作都要自己講話。
+if ! git fetch origin main; then
+    echo "[daily_and_push] ❌ git fetch origin main 失敗(網路/DNS?)— 中止,不產生任何資料"
+    exit 1
+fi
 if ! git rebase --autostash origin/main; then
     git rebase --abort || true
-    echo "[daily_and_push] ❌ rebase onto origin/main failed — manual fix needed; aborting (no data generated, nothing lost)"
-    exit 1
+    echo "[daily_and_push] rebase onto origin/main 衝突 — 嘗試自癒(T9)"
+    if "$SCRIPT_DIR/heal_stranded_commits.sh" && git rebase --autostash origin/main; then
+        echo "[daily_and_push] 自癒成功,繼續"
+    else
+        git rebase --abort || true
+        echo "[daily_and_push] ❌ rebase onto origin/main failed — manual fix needed; aborting (no data generated, nothing lost)"
+        exit 1
+    fi
 fi
 
 # ── 1.5 Skip only if today's snapshot is already PUBLISHED on origin/main ──
@@ -110,7 +121,11 @@ else
             break
         fi
         echo "[daily_and_push] push rejected (attempt ${attempt}) — rebasing onto remote and retrying"
-        git fetch origin main
+        # F-17(9/17):這行 fetch 遇 DNS 失敗被 set -e 無聲吞掉 → 本機 ae9ddce 卡住。
+        if ! git fetch origin main; then
+            echo "[daily_and_push] ❌ push 重試時 git fetch 失敗(網路/DNS?)— 本機已有 commit 未推送,下次執行會自癒(T9)"
+            exit 1
+        fi
         if ! git rebase --autostash origin/main; then
             git rebase --abort || true
             echo "[daily_and_push] ❌ rebase during push-retry failed — manual fix needed"
