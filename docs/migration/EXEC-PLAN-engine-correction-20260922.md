@@ -27,7 +27,7 @@
 | A4 | `open` 改用 TWSE MI_INDEX 按日期的真開盤(原始檔進 archive;舊 archive 無此檔 → 沿用舊來源,replay 不變) | B1 | 生效日後 `open` 與 TWSE 當日開盤 100% 相符 |
 | A5 | ✅ ①分點抓取涵蓋整個快照宇宙(原因:清單上限 40 且今日主力買超排最後);②個股融資改抓 MI_MARGN?date=(原為市場總額,個股恆 None)+ W4 的 10 日計數,掛旗標。`broker_count_diff` 需全券商家數,現有來源算不出 → 留 Phase C | 缺漏 #1、#4 | 9/23 起 `verify_a4a5.py` 全 ✅;10/5 後 margin 非空 ≥ 95% |
 | A6 | 回測(= T1):**①✅ 黃金/時序改用 pipeline 同一 20 天窗口 + 依快照記錄的旗標(as-was)**(五支合計 360s+ → 26.9s,成本改為線性;交易數 swing 32→35);**②✅ 撮合改讀 `data/prices/<date>.json`**(真開盤;pipeline 逐日落地 + `tools/backfill_daily_prices.py` 已回補 5/08–9/23 共 88 天、5.4MB);**③✅ 掉榜持倉逐日估值 + 價格停損照常 + 連 2 日掉榜出場**(`BACKTEST_OFFLIST_EXIT_DAYS`) | B1–B3、T1 | 全語料回測 27 秒 ✅;掉榜持倉 0 凍結 ✅ |
-| A7 | 畫面黃金名單改讀快照 `obs_golden_*`(BLUEPRINT Phase 3 的一部分) | G5 | 畫面 == 快照(逐日抽驗) |
+| A7 | ✅ 畫面黃金名單改用 `golden.run_as_landed()`(該快照記錄的窗口+旗標、只留當天在榜)—— 全欄位仍即時重算,不需 Schema 2.0 | G5 | 88/88 天 == 快照;113s → 5s;`tests/test_golden_matches_snapshot.py` |
 | A8 | 生效日上線後宣告**新凍結**:記新 hash、前推重新計時;更新 EXEC-PLAN-backtest-arc §六、handoff、ARCHITECTURE | — | `tests/test_strategy_freeze.py` 更新並綠 |
 
 生效日:**2026-10-05(一)**(Yonki 9/22 核准)。
@@ -59,4 +59,4 @@ A4 ✅(9/22 實測 1137 檔開盤與獨立快取 100% 一致;當晚正式快照 
 
 ## 4. 順序與期限
 
-A0 → A1+A2+A4(同一生效日)→ A5(可平行)→ A6(**11 月底硬期限**)→ A7 → A8 → Phase C;Phase B 於 A 完成後決定。
+A0 → A1+A2+A4(同一生效日)→ A5(可平行)→ A6(**11 月底硬期限**)→ A7 ✅ → A8 → Phase C;Phase B 於 A 完成後決定。
