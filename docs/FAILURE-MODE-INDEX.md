@@ -125,7 +125,7 @@
 | F-22 | 回補批次在非交易日建出快照 | D | 星期日的快照混進 20 日窗口與回測語料 | rollup 回補未經交易日 oracle 把關(1.4.0 epoch) | `tests/test_trading_day_snapshots.py`(凍結現況,新增即紅) | 2026-05-17(2026-05-27 批次) |
 | F-23 | 回測持倉掉出榜單即凍結 | S·U | 停損在主力倒貨那幾天完全不檢查;`main_force_sell` 出場 0 次 | `paper_trading` 三個迴圈 `rec is None → continue`;快照只含在榜股 | ✅ A6:`data/prices/` 逐日估值 + 連 N 日掉榜出場(`tests/test_backtest_prices_offlist.py`) | 持有日 53%(AUDIT G6) |
 九列有守門員(含部分),十二列留白——**留白的列就是接下來要做的事,不必再開會決定**。
-優先序見 `MAITREYA_HANDOFF_20260915.md` §6;F-9 pipeline 端與 F-12 有日期壓力(2026-11 底前)。
+優先序見 `MAITREYA_HANDOFF_20260923.md` §3;F-9 pipeline 端與 F-12 有日期壓力(2026-11 底前)。
 
 ---
 

@@ -28,7 +28,7 @@ run」，沒有就在 workflow summary 標紅（一個 step，不用新服務）
 
 > **事後(2026-09-15)**:預判完全命中,但①②都沒做。實際損害比預判大,因為同一週 Mac 憑證也失效、
 > 且 GHA 原生 20:00 備援落在過午夜會解錯日期 —— 所謂「備援還在」並不成立。已換發新 **classic PAT**
-> (兩個 job 共用),**新 PAT 到期日 2026-12-14(一)**(記錄於 `MAITREYA_HANDOFF_20260915.md` §7)。heartbeat 仍未做,
+> (兩個 job 共用),**新 PAT 到期日 2026-12-14(一)**(記錄於 `MAITREYA_HANDOFF_20260923.md` §3;環境細節見 `docs/handoffs/MAITREYA_HANDOFF_20260915.md` §7)。heartbeat 仍未做,
 > 列 FAILURE-MODE-INDEX F-7。
 
 ## R3【結構型，已量化】repo 即資料庫的增長天花板

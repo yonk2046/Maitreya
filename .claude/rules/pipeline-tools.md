@@ -23,4 +23,4 @@ paths: ["tools/**/*.py"]
   排在前面會連帶丟棄已建好的快照(9 月斷更 7 天)。在 14 顆讀 `data/today.json` 的測試改用 WORM fixture 之前,
   **不要移除測試步驟的 `continue-on-error`**(否則原生 08:35 cron 盤中落地時每天假紅)。
 - 讀完整語料跑回測的測試必須標 `@pytest.mark.slow`(`tests/test_slow_marker_guard.py` 守門);回測成本隨快照數立方成長。
-- 最新交接 = repo 根目錄 `MAITREYA_HANDOFF_20260915.md`;觸發器正本 = `ARCHITECTURE.md §5`(實測版)。
+- 最新交接 = repo 根目錄 `MAITREYA_HANDOFF_20260923.md`;觸發器正本 = `ARCHITECTURE.md §5`(實測版)。

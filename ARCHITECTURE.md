@@ -139,7 +139,7 @@ core/market_context.temporal_enrich ──► 窗口欄位寫進快照
 ## 5. 部署與三條 pipeline 觸發器（OPS-1，唯一正本——README/RUNBOOK 只指到這裡，不重寫細節）
 
 > ⚠️ **2026-09-15 改為實測版。** 7/10 版的設計描述(launchd 為主、雲端抓不到當日 T86、原生 cron 只遲到 1–3h)已不符現況。
-> 以下「實際落地時間」取自 2026-08 ~ 09 Actions run 紀錄;事故經過見 `MAITREYA_HANDOFF_20260915.md`。
+> 以下「實際落地時間」取自 2026-08 ~ 09 Actions run 紀錄;事故經過見 `docs/handoffs/MAITREYA_HANDOFF_20260915.md`。
 
 | 觸發器 | 設定時間(台北) | **實際落地** | 實際角色 | 依賴的憑證 |
 |---|---|---|---|---|
