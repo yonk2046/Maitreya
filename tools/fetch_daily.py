@@ -576,6 +576,19 @@ def run(dry_run=False, date_str=None):
         if _mbd_err:
             print(f"[fetch_daily] MI_MARGN by-date failed ({_mbd_err}); per-stock margin absent",
                   file=sys.stderr)
+        # A6: land the day's full-market OHLCV as data/prices/<date>.json (I-state).
+        # Same payload as quotesByDate — the backtest needs prices for tickers that
+        # are NOT on today's 主力買超榜 (held positions go blind otherwise, B3).
+        if quotes_by_date and not dry_run:
+            try:
+                sys.path.insert(0, ROOT_DIR)
+                from core import prices as _prices
+                wrote = _prices.write_day(trading_date,
+                                          _prices.rows_from_quotes(quotes_by_date.get("marketQuotes") or {}))
+                print(f"[fetch_daily] data/prices/{trading_date}.json "
+                      f"{'written' if wrote else 'already present (identical)'}", file=sys.stderr)
+            except Exception as e:
+                print(f"[fetch_daily] prices landing failed ({e})", file=sys.stderr)
 
     output = {
         "date": trading_date,          # 主要 date 欄 = 交易日 (e.g. 5/15 even when fetched on 5/17)

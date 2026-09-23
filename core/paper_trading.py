@@ -32,11 +32,13 @@ from core.engine_params import (
     BACKTEST_ENTRY_STOP,
     BACKTEST_FEE_MIN,
     BACKTEST_GOLDEN_WINDOW_DAYS,
+    BACKTEST_OFFLIST_EXIT_DAYS,
     BACKTEST_FEE_RATE,
     BACKTEST_INITIAL_CAPITAL,
     BACKTEST_POSITION_SIZE,
     BACKTEST_TAX_RATE,
 )
+from core import prices as _prices
 from core.market_context import temporal_enrich
 from core.strategies import StrategyConfig, would_enter
 
@@ -136,11 +138,35 @@ def _rec_for(snap: dict, ticker: str) -> dict | None:
 
 
 def _fill_price(snap: dict, ticker: str) -> float | None:
-    """Execution price on a snapshot: next-day open if present, else close."""
+    """Execution price = that session's real OPEN (A6/B1).
+
+    `data/prices/<date>.json` (TWSE MI_INDEX by date) is the authority: it covers
+    every listed stock, including one that dropped off the 主力買超榜, and its open
+    IS that session's open. The snapshot fields are the fallback for days with no
+    price file — and before 2026-09-23 the snapshot `open` was usually the PREVIOUS
+    session's (EXEC-PLAN §7.1), which is exactly why the price file exists.
+    """
+    d = snap.get("date", "")
+    px = _prices.get(d, ticker, "o") or _prices.get(d, ticker, "c")
+    if px:
+        return px
     rec = _rec_for(snap, ticker)
     if rec is None:
         return None
     return rec.get("open") or rec.get("current_price")
+
+
+def _mark_price(snap: dict, ticker: str) -> float | None:
+    """Close used to manage an open position on a decision day (A6/B3).
+
+    A held ticker that left the 主力買超榜 has no snapshot record — the old engine
+    `continue`d, so stops/peaks froze for 53% of all holding days. The price file
+    keeps the position visible; chip-flag exits still require a record.
+    """
+    rec = _rec_for(snap, ticker)
+    if rec is not None and rec.get("current_price") is not None:
+        return rec["current_price"]
+    return _prices.get(snap.get("date", ""), ticker, "c")
 
 
 def _weakening_sev(rec: dict) -> str:
@@ -175,7 +201,10 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
         strategy=strategy.name,
         date_range=(dates[0] if dates else "", dates[-1] if dates else ""),
         limitations=[
-            "settlement uses next-day close as open-price proxy (snapshots carry no open)",
+            "settlement = that session's real open from data/prices/<date>.json "
+            "(TWSE MI_INDEX by date); snapshot fields are the fallback for days with no file",
+            "held positions are marked and price-stopped even while off the 主力買超榜; "
+            f"chip evidence gone for {BACKTEST_OFFLIST_EXIT_DAYS} consecutive sessions → exit 'offlist'",
             "fixed 1-unit position; 加碼/減碼 partial sizing deferred",
             "momentum needs fii (from 2026-06-12) + weakening (from 2026-06-15)",
             "資金曲線(2.2):P&L 於出場日一次性實現,非逐日 mark-to-market"
@@ -213,10 +242,11 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
         for ticker in list(open_pos.keys()):
             pos = open_pos[ticker]
             rec = _rec_for(decide, ticker)
-            price = rec.get("current_price") if rec else None
+            price = _mark_price(decide, ticker)     # A6/B3: works off-list too
             if price is None:
                 continue
             pos["peak"] = max(pos["peak"], price)
+            pos["offlist_run"] = 0 if rec is not None else pos.get("offlist_run", 0) + 1
 
             fii = (rec.get("fii_net_buy") or 0) if rec else 0
             pos["fii_neg_run"] = pos["fii_neg_run"] + 1 if fii < 0 else 0
@@ -224,7 +254,9 @@ def run_backtest(snapshots: list[dict], strategy: StrategyConfig) -> BacktestRes
             pos["mfb_neg_run"] = pos["mfb_neg_run"] + 1 if mfb < 0 else 0
 
             reason = None
-            if _weakening_sev(rec) in strategy.exit_on_weakening:
+            if pos["offlist_run"] >= BACKTEST_OFFLIST_EXIT_DAYS:
+                reason = "offlist"                 # A6/B3:籌碼證據消失(連 N 日不在榜)
+            elif _weakening_sev(rec) in strategy.exit_on_weakening:
                 reason = "weakening"               # 轉弱紅/橙 — chip-defined exit (both)
             elif chip:
                 # 主力連 2 日淨賣/翻負 → 硬止損 + TP2 spirit (chip-defined, no price trailing)
@@ -524,19 +556,20 @@ def _run_backtest_v2(snaps, dates, strategy, result):
         for ticker in list(open_pos.keys()):
             pos = open_pos[ticker]
             rec = _rec_for(decide, ticker)
-            price = rec.get("current_price") if rec else None
+            price = _mark_price(decide, ticker)      # A6/B3: off-list positions stay visible
             if price is None:
                 continue
             pos["peak"] = max(pos["peak"], price)
-            fii = (rec.get("fii_net_buy") or 0)
-            mfb = (rec.get("main_force_buy") or 0)
+            pos["offlist_run"] = 0 if rec is not None else pos.get("offlist_run", 0) + 1
+            fii = (rec.get("fii_net_buy") or 0) if rec else 0
+            mfb = (rec.get("main_force_buy") or 0) if rec else 0
             pos["fii_neg_run"] = pos["fii_neg_run"] + 1 if fii < 0 else 0
             pos["mfb_neg_run"] = pos["mfb_neg_run"] + 1 if mfb < 0 else 0
-            te = temporal_enrich(ticker, prior, rec)
-            vel = te["velocity_3d"]
+            # 掉榜日沒有籌碼紀錄 → 籌碼型旗標一律不成立(不猜),價格型停損照常。
+            vel = temporal_enrich(ticker, prior, rec)["velocity_3d"] if rec is not None else None
             pos["vel_neg_run"] = pos["vel_neg_run"] + 1 if (vel is not None and vel < 0) else 0
-            sev = _weakening_sev(rec)
-            flags = _wflags(rec)
+            sev = _weakening_sev(rec) if rec is not None else "none"
+            flags = _wflags(rec) if rec is not None else set()
             hd = (i + 1) - pos["entry_i"]
             fp = _fill_price(fill, ticker)
             if fp is None:
@@ -544,7 +577,9 @@ def _run_backtest_v2(snaps, dates, strategy, result):
 
             # ---- full exit (TP2 / hard stop) ----
             full = None
-            if sev in strategy.exit_on_weakening:
+            if pos["offlist_run"] >= BACKTEST_OFFLIST_EXIT_DAYS:
+                full = "offlist"                      # A6/B3:連 N 日不在榜 = 籌碼證據消失
+            elif sev in strategy.exit_on_weakening:
                 full = "weakening_tp2"
             elif chip and "W3" in flags:
                 full = "W3_hardstop"
@@ -556,7 +591,7 @@ def _run_backtest_v2(snaps, dates, strategy, result):
                 full = "trailing_stop"
             elif chip:
                 closes = _seq_closes(_seq(ticker, i + 1))
-                cost = rec.get("main_force_cost") or pos.get("anchor")
+                cost = (rec.get("main_force_cost") if rec is not None else None) or pos.get("anchor")
                 atrp = _atr_pct(closes, strategy.atr_window)
                 slow = min(closes[-strategy.structure_low_window:]) if closes else None
                 if cost and slow is not None and atrp is not None:
@@ -720,16 +755,19 @@ def _run_backtest_v3(snaps, dates, strategy, result):
         for ticker in list(open_pos.keys()):
             pos = open_pos[ticker]
             rec = _rec_for(decide, ticker)
-            price = rec.get("current_price") if rec else None
+            price = _mark_price(decide, ticker)           # A6/B3: off-list positions stay visible
             if price is None:
                 continue
             pos["peak"] = max(pos["peak"], price)
+            pos["offlist_run"] = 0 if rec is not None else pos.get("offlist_run", 0) + 1
             fp = _fill_price(fill, ticker)
             if fp is None:
                 continue
 
             reason = None
-            if _weakening_sev(rec) in strategy.exit_on_weakening:
+            if pos["offlist_run"] >= BACKTEST_OFFLIST_EXIT_DAYS:
+                reason = "offlist"                        # A6/B3:連 N 日不在榜 = 籌碼證據消失
+            elif rec is not None and _weakening_sev(rec) in strategy.exit_on_weakening:
                 reason = "weakening"                      # 籌碼定義普世出場(轉弱橙/紅)
             else:
                 eca = pos.get("entry_cost_anchor")
@@ -742,7 +780,7 @@ def _run_backtest_v3(snaps, dates, strategy, result):
                     # 3.1:結構低隨股價墊高會抬到進場價之上,獲利觸發實為移動停利 →
                     # 依出場報酬正負分標籤(虧損 atr_stop / 獲利·打平 trailing_stop)。
                     closes = _seq_closes(_seq(ticker, i + 1))
-                    cost = rec.get("main_force_cost") or pos.get("anchor")
+                    cost = (rec.get("main_force_cost") if rec is not None else None) or pos.get("anchor")
                     atrp = _atr_pct(closes, strategy.atr_window)
                     slow = min(closes[-strategy.structure_low_window:]) if closes else None
                     if cost and slow is not None and atrp is not None:

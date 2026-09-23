@@ -73,7 +73,7 @@ def _parse_mi_index_quotes(data) -> tuple[dict[str, float], dict[str, dict]]:
         f = t.get("fields") or []
         if not f or f[0] != "證券代號":
             continue
-        need = ("開盤價", "收盤價", "成交股數", "漲跌(+/-)", "漲跌價差")
+        need = ("開盤價", "最高價", "最低價", "收盤價", "成交股數", "漲跌(+/-)", "漲跌價差")
         if not all(k in f for k in need):
             continue
         i = {k: f.index(k) for k in need}
@@ -91,6 +91,9 @@ def _parse_mi_index_quotes(data) -> tuple[dict[str, float], dict[str, dict]]:
             prev_close = close - chg
             quotes[code] = {
                 "vol":    int(round(parse_int_safe(r[i["成交股數"]]) / 1000.0)),  # 張
+                "open":   op or None,
+                "high":   parse_float_safe(r[i["最高價"]]) or None,
+                "low":    parse_float_safe(r[i["最低價"]]) or None,
                 "close":  close,
                 "chgPct": round(chg / prev_close * 100, 2) if prev_close else 0.0,
                 "chgAmt": chg,

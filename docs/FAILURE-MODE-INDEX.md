@@ -111,7 +111,7 @@
 | F-9 | 回測成本隨快照數立方成長 | T | CI 測試 15–29 分鐘;未來 pipeline 本身逾時 | `run_backtest` 每日呼叫 `golden.run(snaps[:i+1])` 不快取 | 測試端:`tests/test_slow_marker_guard.py`(`4555161`);**pipeline 端 *(待補)*,推估 2026-12 ~ 2027-01 撞牆** | 8/25 起 |
 | F-10 | 過午夜建置解出錯的交易日 | T·M | 快照日期與內容不符;缺一天、多一天 | `derive_trading_date` 只在同日 ≥15:00 採用今天,凌晨退回 TWSE 落後日期 | *(部分)* `tools/daily.py` stale-fetch 守門員擋住「解出日期 < 最新已提交」(9/19 run #296 實證);**擋不住解出日期仍高於最新的情形**(9/4 案)*(待補:clock matrix 過午夜格)* | 9/7 晚班建成 9/4;9/19 被擋 |
 | F-11 | 「只給最新一天」來源與「按日期」來源混用 | T·U | 同一筆紀錄 `open` 是 A 日、`current_price` 是 B 日 | 富邦/Sinotrade/STOCK_DAY_ALL 無日期參數;`tradingDate` 由同一解析器標記,ingest 守門員看不出 | *(待補)* | 9/4(D1 裁定只註記不重建,列已知不可用日,見 EXEC-PLAN §7.4) |
-| F-12 | 快照 `open` 落後一天 → 回測 look-ahead | T·U | 回測進場價 = 訊號日當天早上的開盤 | STOCK_DAY_ALL OpenAPI 晚上落後;`_fill_price` 讀下一份快照的 `open` | *(待補:撮合改用按日期真實開盤)* | 5 月至今,91% 成交價非真實開盤 |
+| F-12 | 快照 `open` 落後一天 → 回測 look-ahead | T·U | 回測進場價 = 訊號日當天早上的開盤 | STOCK_DAY_ALL OpenAPI 晚上落後;`_fill_price` 讀下一份快照的 `open` | ✅ A4:抓取改 MI_INDEX 按日期(`tests/test_open_price.py`);A6:撮合改讀 `data/prices/<date>.json`(`tests/test_backtest_prices_offlist.py`) | 5 月至今,91% 成交價非真實開盤;9/23 起修正 |
 | F-13 | 憑證到期讓兩條路同週倒 | M | launchd exit 128;cron-job.org 401 | Mac keychain 憑證與 cron-job PAT 皆有期限且無人追蹤 | Mac 改 `gh` OAuth(無強制到期);**cron-job PAT 到期日已記錄(**2026-12-14**);*(待補:heartbeat)*** | ~9/1、9/4 |
 | F-14 | 警報發了卻沒人處理 | P | issue 堆了 8 張 | 警報沒說「不處理明天就永久遺失」 | *(待補:警報文字寫出不可逆代價)* | 9 月 |
 | F-15 | 子代理在錯的目錄工作 | P | 回報成功但主 checkout 毫無變化;測試數對不上 | 子代理 cwd 預設為 session 起始目錄(可能是舊 worktree) | *(流程:交辦寫死 `cd && pwd`、git 一律 `-C`)* | 9/15 |
@@ -122,6 +122,8 @@
 | F-20 | 缺席被當透明 → 連買=累計上榜天數;掉榜股仍掛黃金 | S | 黃金名單出現今天不在榜的 PRIME;連買天數異常大 | funnel/state machine/accumulation_velocity 只收有出現的日子 | *(待補)* | 黃金條目 28% 當天不在榜(同上 G3/G4) |
 | F-21 | 三份不同的黃金名單(畫面全歷史/快照 20 天窗口/回測全歷史) | S·P | 畫面與快照 `obs_golden_*` 對不上;前推紀錄記的不是畫面看到的 | `viewer/cockpit.py:1988` 用全部快照重算 | *(待補)* | 45 天中 24 天不同(同上 G5) |
 
+| F-22 | 回補批次在非交易日建出快照 | D | 星期日的快照混進 20 日窗口與回測語料 | rollup 回補未經交易日 oracle 把關(1.4.0 epoch) | `tests/test_trading_day_snapshots.py`(凍結現況,新增即紅) | 2026-05-17(2026-05-27 批次) |
+| F-23 | 回測持倉掉出榜單即凍結 | S·U | 停損在主力倒貨那幾天完全不檢查;`main_force_sell` 出場 0 次 | `paper_trading` 三個迴圈 `rec is None → continue`;快照只含在榜股 | ✅ A6:`data/prices/` 逐日估值 + 連 N 日掉榜出場(`tests/test_backtest_prices_offlist.py`) | 持有日 53%(AUDIT G6) |
 九列有守門員(含部分),十二列留白——**留白的列就是接下來要做的事,不必再開會決定**。
 優先序見 `MAITREYA_HANDOFF_20260915.md` §6;F-9 pipeline 端與 F-12 有日期壓力(2026-11 底前)。
 
