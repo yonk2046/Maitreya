@@ -209,43 +209,33 @@ def safe_fetch(name, fn, *args, **kwargs):
 
 
 def derive_trading_date(twse_result):
-    """Extract authoritative trading date.
+    """權威交易日 = 「盤後資料已完整結算」的最近一個交易日。
 
-    Logic:
-    1. Get the date TWSE OpenAPI returned (often lags by ~1 day after close).
-    2. If today is a weekday AND we are running after market close (≥15:00 local),
-       and TWSE returned a date strictly older than today → use today as the
-       trading date (Fubon real-time data is already for today).
-    3. Otherwise use the TWSE-returned date (or last weekday as final fallback).
+    T2(9/15 交接 §4.4)兩個破洞,都來自拿 TWSE OpenAPI 回傳的日期當答案:
+      ① **過午夜**:原本只有「同日 ≥15:00」才用今天,凌晨跑會退回 TWSE 的日期,
+         而該 API 在凌晨仍停在**上上個** session → 9/8 01:40 的班把 9/7 的資料
+         建成 9/4 的快照(D1 混日事故)。
+      ② **15:00–18:00**:原本 ≥15:00 就標今天,但富邦 ZGK 約 18:00 才結算
+         → 此時段抓到的是前一天的主力榜,卻被標成今天。
+
+    改為純日曆推導:今天要過 SETTLE_HOUR 才算數,否則取今天之前最近的平日。
+    休市日不需特判 —— 以該日抓 T86 會回空,daily 的 trading_day_gate 乾淨跳過
+    (見 Step 8 註解)。twse_result 不再參與判斷:它落後時正是事故來源,而它
+    領先時也不可能有我們還沒收到的結算資料。保留參數以免動到三個呼叫端。
     """
     from datetime import timedelta
-    twse_date = None
-    try:
-        td = twse_result.get("tradingDate") if twse_result else None
-        if td and len(td) == 8 and td.isdigit():
-            twse_date = f"{td[0:4]}-{td[4:6]}-{td[6:8]}"
-    except Exception:
-        pass
+    del twse_result                      # 見 docstring:刻意不採信
 
-    now = datetime.now()
-    today_is_weekday = now.weekday() < 5   # Mon–Fri
-    after_close      = now.hour >= 15      # ≥ 15:00 台灣時間
-
-    if today_is_weekday and after_close:
-        today_str = now.strftime("%Y-%m-%d")
-        if twse_date and twse_date < today_str:
-            # TWSE T86 lags behind; Fubon real-time is already today → use today
-            return today_str
-        elif twse_date:
-            return twse_date
-        return today_str
-
-    # Before close or weekend: trust TWSE date or fallback to last weekday
-    if twse_date:
-        return twse_date
-    d = now
-    while d.weekday() >= 5:
-        d = d - timedelta(days=1)
+    SETTLE_HOUR = 18                     # 富邦 ZGK 結算;此前「今天」的分點還是昨天的
+    # 台北牆鐘,不信執行機的本地時區(tools/daily.py::_now_taipei 同一裁示)。
+    # GHA 靠 env.TZ 設 Asia/Taipei,少一個環境變數就會整份日期偏移 8 小時。
+    from zoneinfo import ZoneInfo
+    now = datetime.now(ZoneInfo("Asia/Taipei"))
+    d = now.date()
+    if not (d.weekday() < 5 and now.hour >= SETTLE_HOUR):
+        d -= timedelta(days=1)
+        while d.weekday() >= 5:          # 週末往前走到週五
+            d -= timedelta(days=1)
     return d.strftime("%Y-%m-%d")
 
 
