@@ -48,13 +48,14 @@ class _ClockStub:
     """替換 fetch_daily 模組內的 `datetime`,讓 datetime.now() 回傳凍結時刻。
 
     derive_trading_date 內部另外 `from datetime import timedelta`(函式內 import),
-    不受影響 —— 只有 now() 被凍結。
+    不受影響 —— 只有 now() 被凍結。T2 後 now() 會帶 Asia/Taipei 的 tzinfo
+    參數(不信執行機時區),stub 照收但仍回同一個凍結時刻。
     """
 
     def __init__(self, moment: datetime.datetime):
         self._moment = moment
 
-    def now(self):
+    def now(self, tz=None):
         return self._moment
 
 
@@ -84,6 +85,35 @@ def test_after_close_advances_past_lagging_twse(monkeypatch):
     """盤後 19:00:TWSE T86 慣性落後一天,此時才可以用今天覆蓋它。"""
     got = _resolve(monkeypatch, datetime.datetime(2026, 7, 28, 19, 0), "20260727")
     assert got == "2026-07-28"
+
+
+def test_the_1500_1800_hole_no_longer_stamps_today(monkeypatch):
+    """T2 ②:富邦 ZGK 約 18:00 才結算,15:00–18:00 抓到的是**前一天**的主力榜。
+
+    舊碼從 15:00 起就標今天 → 混日。2026-09-07(一)。
+    """
+    for hh, mm in ((15, 0), (16, 0), (17, 59)):
+        got = _resolve(monkeypatch, datetime.datetime(2026, 9, 7, hh, mm), "20260907")
+        assert got == "2026-09-04", f"{hh}:{mm:02d} 結算前不得標成今天(得到 {got})"
+    assert _resolve(monkeypatch, datetime.datetime(2026, 9, 7, 18, 0), "20260907") == "2026-09-07"
+
+
+def test_the_after_midnight_hole_no_longer_trusts_a_lagging_twse(monkeypatch):
+    """T2 ①:D1 混日事故 —— 9/8(二)01:40 的班把 9/7 的資料建成 **9/4** 的快照。
+
+    成因是凌晨走「盤前」分支、無條件採信 TWSE OpenAPI 的日期,而該 API 凌晨
+    仍停在上上個 session(9/4 週五)。正解是 9/7(最近一個已結算的交易日)。
+    """
+    assert _resolve(monkeypatch, datetime.datetime(2026, 9, 8, 1, 40), "20260904") == "2026-09-07"
+
+
+def test_never_stamps_a_session_that_has_not_settled(monkeypatch):
+    """全天掃描:解出的日期不得晚於今天;未過結算時刻前不得等於今天。"""
+    for hour in range(24):
+        got = _resolve(monkeypatch, datetime.datetime(2026, 9, 7, hour, 0), "20260907")
+        assert got <= "2026-09-07"
+        if hour < 18:
+            assert got < "2026-09-07", f"{hour}:00 不得標成今天"
 
 
 def test_weekend_never_returns_a_weekend(monkeypatch):
