@@ -26,6 +26,8 @@
 | **A1–A3 已寫好(掛旗標)** | 轉弱含當天、缺席中斷連買、廣度閘改讀全市場 | `config/scd.example.yaml` `feature_flags.engine_correction_v1` |
 | **A6 回測三修(已上線)** | ①窗口與 as-was 旗標(360s+ → 27s、成本線性)②撮合改真開盤(`data/prices/`)③掉榜持倉不再凍結 | `core/paper_trading.py`、`core/prices.py` |
 | **A7 已上線(9/24)** | 畫面黃金名單改用 `golden.run_as_landed()`:88/88 天與快照相符(改前最近 40 天有 27 天不符)、113s → 5s | `core/golden.py`、`viewer/` |
+| **T2 已上線(9/24)** | `derive_trading_date` 改純日曆推導(18:00 結算後才算今天)+ 台北牆鐘;不再採信落後的 TWSE 日期 —— D1 混日事故的根因 | `tools/fetch_daily.py` |
+| **T9 已上線(9/24)** | 夜班 `git fetch` 失敗不再被 `set -e` 無聲吞掉;卡住的重複資料 commit 自動備份後丟棄(origin 先發布者為準) | `deploy/heal_stranded_commits.sh` |
 | **訊號研究** | 三年語料:訊號無優勢,**無訊號對照組反而更好**;動能因子同樣被行情主導 | `_research/multiyear/FINDINGS.md` |
 
 **回測數字(修正後,4.5 個月語料,僅供理解機制,不足以做決策)**:v3 由 11 筆/81.8% 勝率/+2.00% → 43 筆/46.5%/+0.36%;
@@ -52,8 +54,6 @@
 | Phase B | Schema 2.0(`main_force_net` 新欄、掉榜追蹤紀錄)—— 需決定時機與審查人 | 待定 |
 | Phase C | 10 年語料研究(進行中,見 §4) | — |
 | T3 | cron-job.org PAT 換發 + heartbeat | **2026-12-14 前** |
-| T9 | `deploy/daily_and_push.sh` 自癒(卡住的本機 commit) | 盡快 |
-| T2 | `derive_trading_date` 過午夜與 15–18 點破洞 | 盡快 |
 
 ---
 
